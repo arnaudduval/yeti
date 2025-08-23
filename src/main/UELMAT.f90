@@ -26,6 +26,7 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
             &   n_dist_elem, nb_n_dist, RHS,AMATRX)
 
     use parameters
+    use nurbspatch
 
     implicit None
 
@@ -64,8 +65,13 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     dimension GaussPdsCoord(MCRD+1,NBINT)
 
     !! Nurbs basis functions
-    double precision :: R, dRdx, DetJac
-    dimension R(NNODE),dRdx(MCRD,NNODE)
+    double precision :: R, dRdx, DetJac, xi, R1
+    dimension R(NNODE),dRdx(MCRD,NNODE), xi(dim_patch), R1(NNODE)
+
+    !! Gauss points physics coordinates
+    integer :: icp, idim
+    double precision :: x_phys
+    dimension x_phys(dim_patch)
 
     !! Material behaviour
     double precision :: ddsdde
@@ -97,6 +103,8 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
 
     !! Compute Gauss points coordinates and weights
     call Gauss(NbPtInt,MCRD,GaussPdsCoord,0)
+    
+    ! write(*,*) "*****Cpatch ", current_patch, "********"
 
     !! Stiffness matrix and load vector initialized to zero
     RHS(:)        = zero
@@ -109,52 +117,110 @@ subroutine UELMAT_byCP(NDOFEL,MCRD,NNODE,JELEM,NBINT,COORDS,            &
     do n = 1,NBINT
         !! Compute NURBS basis functions and derivatives
         call shap(dRdx,R,DetJac,COORDS,GaussPdsCoord(2:,n),MCRD)
+        call shap2(xi,COORDS,GaussPdsCoord(2:,n),MCRD)
+        call evalnurbs_noder(xi, R1)
+        
+        x_phys(:) = zero
+        do icp = 1, nnode_patch
+            do idim = 1, MCRD
+                x_phys(idim) = x_phys(idim) + &
+                    &   R(icp)*COORDS(idim,icp)        
+            enddo
+        enddo
+        
+        ! write(*,*) "*****xi ", xi, "********"
+        ! write(*,*) "*****x_phys gauss", x_phys, "********"
 
         !! Compute stiffness matrix
         call stiffmatrix_byCP(ntens,NNODE,MCRD,NDOFEL,ddsdde,dRdx,  &
             &        stiff)
 
         !! Assemble AMATRIX
-        dvol = GaussPdsCoord(1,n)*ABS(detJac)
-        AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol
+        dvol = GaussPdsCoord(1,n)*ABS(DetJac)
+
+        ! ! 2 plaques à moitié recouvertes
+        if (current_patch .EQ. 1 .AND. xi(1) .GE. 0.5) then
+            ! write(*,*) "******Overlapping1*******"
+            AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol*(2.0-2.0*xi(1))
+        elseif (current_patch .EQ. 2 .AND. xi(1) .LE. 0.5) then
+            ! write(*,*) "******Overlapping2*******"
+            AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol*(2.0*xi(1))
+        else
+            AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol  
+        endif
+
+        !! Exemple Arlequin x0 = y0 = 0 r = 1
+
+        ! if (current_patch .EQ. 1) then
+        !     write(*,*) "1*****"
+        !     write(*,*) (x_phys(1)**2 + x_phys(2)**2)
+        ! endif
+
+        ! if (current_patch .EQ. 1 .AND. (x_phys(1)**2 + x_phys(2)**2) <= 1**2) then
+        !     ! write(*,*) "******Overlapping1*******"
+        !     AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol*(0.5)
+        ! elseif (current_patch .EQ. 2 .AND. x_phys(1) <= (-0.5) .AND. x_phys(2) <= (0.5) .AND. x_phys(2) >= (-0.5) ) then
+        !     ! write(*,*) "******Overlapping2*******"
+        !     AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol*(0.5)
+        ! else
+        !     ! write(*,*) "*****"
+        !     AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol  
+        ! endif
+
+        !! Cas Classique
+        ! AMATRX(:,:,:) = AMATRX(:,:,:) + stiff(:,:,:)*dvol
 
         !! body load
         load_addinfos_count = 1
         kload = 0
-        do i_load = 1,nb_load
-            if (JDLTYPE(i_load)==101) then
-                if (ANY(indDLoad(kload+1:kload+load_target_nbelem(i_load))==JELEM)) then
+        do i_load = 1, nb_load
+            if (JDLTYPE(i_load) == 101) then
+                if (ANY(indDLoad(kload + 1:kload + load_target_nbelem(i_load)) == JELEM)) then
                     !! Centrifugal load
                     !! Gauss point location
                     pointGP(:) = zero
-                    do numCP = 1,NNODE
-                        pointGP(:) = pointGP(:) + R(numCP)*COORDS(:,numCP)
-                    enddo
+                    do numCP = 1, NNODE
+                        pointGP(:) = pointGP(:) + R(numCP) * COORDS(:, numCP)
+                    end do
                     !! Distance to rotation axis
                     pointA(:) = load_additionalInfos(load_addinfos_count:    &
-                                &                    load_addinfos_count+MCRD)
-                    pointB(:) = load_additionalInfos(load_addinfos_count+MCRD:   &
-                                &                    load_addinfos_count+2*MCRD)
+                        &                    load_addinfos_count + MCRD)
+                    pointB(:) = load_additionalInfos(load_addinfos_count + MCRD:   &
+                        &                    load_addinfos_count + 2 * MCRD)
 
                     vectD(:)  = pointB(:) - pointA(:)
-                    vectD(:)  = vectD(:)/SQRT(SUM(vectD(:)*vectD(:)))
+                    vectD(:)  = vectD(:) / SQRT(SUM(vectD(:) * vectD(:)))
                     vectAG(:) = pointGP(:) - pointA(:)
-                    call dot(vectAG(:),vectD(:),scal)
-                    vectR(:)   = vectAG(:) - scal*vectD(:)
+                    call dot(vectAG(:), vectD(:), scal)
+                    vectR(:)   = vectAG(:) - scal * vectD(:)
                     !! Update load vector
                     kk = 0
-                    do numCP = 1,NNODE
-                        do j = 1,MCRD
-                            kk = kk+1
-                            RHS(kk) = RHS(kk) + DENSITY*ADLMAG(i_load)**two*vectR(j)*R(numCP)*dvol
-                        enddo
-                    enddo
+                    do numCP = 1, NNODE
+                        do j = 1, MCRD
+                            kk = kk + 1
+                            RHS(kk) = RHS(kk) + DENSITY * ADLMAG(i_load) ** two * vectR(j) * R(numCP) * dvol
+                        end do
+                    end do
+                end if
+            else if (JDLTYPE(i_load) == 102) then
+                if (ANY(indDLoad(kload + 1:kload + load_target_nbelem(i_load)) == JELEM)) then
+                    !! Volumic force
+                    vectR(:) = load_additionalInfos(load_addinfos_count:    &
+                        &                    load_addinfos_count + MCRD)
+                    !! Update load vector
+                    kk = 0
+                    do numCP = 1, NNODE
+                        do j = 1, MCRD
+                            kk = kk + 1
+                            RHS(kk) = RHS(kk) + ADLMAG(i_load) * vectR(j) * R(numCP) * dvol
+                        end do
+                    end do
                 endif
-            endif
+            end if
             kload = kload + load_target_nbelem(i_load)
             load_addinfos_count = load_addinfos_count + nb_load_additionalInfos(i_load)
-        enddo
-    enddo   !! End of the loop on integration points
+        end do
+    end do   !! End of the loop on integration points
 
     !! Loop for load : find boundary loads
     load_addinfos_count = 1

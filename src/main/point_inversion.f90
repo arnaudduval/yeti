@@ -318,7 +318,7 @@ end subroutine
 !!  isHull : boolean indicating if projection is made on a hull
 !!  xi : evaluated parametric coordinates
 !!  info : return code :    0 = standard exit
-subroutine point_inversion_plane_curve(point, iface, coords3D, nb_cp, is_hull, xi, info)
+subroutine point_inversion_plane_curve(point, iface, coords3D, nb_cp, is_hull, u0, xi, info)
     use parameters
     use nurbspatch
 
@@ -332,6 +332,7 @@ subroutine point_inversion_plane_curve(point, iface, coords3D, nb_cp, is_hull, x
     dimension coords3D(3, nb_cp)
     integer, intent(in) :: nb_cp
     logical :: is_hull
+    double precision, intent(in) :: u0
 
     !! Output variables
     double precision, intent(out) :: xi
@@ -341,16 +342,19 @@ subroutine point_inversion_plane_curve(point, iface, coords3D, nb_cp, is_hull, x
     !! Local variables
     integer :: maxiter
     integer :: maxstep
-    double precision :: u0
     integer :: projection_info
 
+    double precision :: point2D
+    dimension point2D(3)
+
+    point2D = point
+    point2D(3) = zero
 
     maxiter = 100
     maxstep = 0.1D0
+    
 
-    u0 = 0.5
-
-    call projection_curve(point, iface, coords3D, nb_cp, is_hull, maxstep, maxiter,  &
+    call projection_curve(point2D, iface, coords3D, nb_cp, is_hull, maxstep, maxiter,  &
                         &  u0, xi, projection_info)
 
     info = projection_info

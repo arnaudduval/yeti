@@ -1,0 +1,73 @@
+*HEADING
+**Job name:PlateWithHolem.txt
+**NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon
+*Part, name=Piece
+*USER ELEMENT, NODES=9, TYPE=U1,  COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
+1,2
+*Node,nset=AllNode
+1, -1.0, 0.0, 0.0
+2, -1.0, -1.0, 0.0
+3, 0.0, -1.0, 0.0
+4, -1.0, 1.0, 0.0
+5, 0.0, 0.0, 0.0
+6, 1.0, -1.0, 0.0
+7, 0.0, 1.0, 0.0
+8, 1.0, 1.0, 0.0
+9, 1.0, 0.0, 0.0
+** 1, -1.0, -1.0, 0.0
+** 2, 0.0, -1.0, 0.0
+** 3, 1.0, -1.0, 0.0
+** 4, -1.0, 0.0, 0.0
+** 5, 0.0, 0.0, 0.0
+** 6, 1.0, 0.0, 0.0
+** 7, -1.0, 1.0, 0.0
+** 8, 0.0, 1.0, 0.0
+** 9, 1.0, 1.0, 0.0
+*Element,type=U1, elset=AllEls
+1,    9, 8, 7, 6, 5, 4, 3, 2, 1
+*ELSET,ELSET=EltPAtch1,generate
+1,1, 1
+*NSET,NSET=CPatX0patch1
+1,4,7
+**
+*UEL PROPERTY, ELSET=EltPAtch1, MATERIAL=MAT
+1
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly 
+*Instance, name=I1, part=Piece
+*End Instance
+*End Assembly
+**MATERIAL
+*MATERIAL,NAME=MAT
+*Elastic
+60.e9, 0.30
+*MATERIAL,NAME=MAT2
+*Elastic
+1., 0.00
+*MATERIAL,NAME=MATvoid
+*Elastic
+0.00, 0.00
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPatX0patch1,  1, 2, 0.
+**I1.CPatXMpatch2,  1, 1, 0.
+**I1.CPatY0patch2,  1, 2, 0.
+**I1.CPlgrge,       1, 2, 0.
+**
+** DLOAD
+*Dload
+I1.EltPAtch1, U22,  1000.00
+**I1.EltPAtch1, U11, -1.00
+** CLOAD
+** *Cload
+** 8, 2, -1.0
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step

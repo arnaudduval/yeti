@@ -18,7 +18,7 @@ import scipy.sparse as sp
 
 
 # resolution
-def PCPGortho(A,b,x0=None,tol=1.e-5,maxiter=50,M=None,P=None,Pt=None,savetxt=False):
+def PCPGortho(A,b,x0=None,tol=1.e-5,maxiter=50,M=None,P=None,Pt=None,savetxt=False,savexk=False):
     '''
     Preconditioned Conjugate Projected Gradient
     -- with orthogonalization of directions --
@@ -37,7 +37,9 @@ def PCPGortho(A,b,x0=None,tol=1.e-5,maxiter=50,M=None,P=None,Pt=None,savetxt=Fal
     if savetxt is True:
         saveresidual   = []
         saveresidualrk = []
-        
+    if savexk is True:
+        xk_iter = []
+
     rk = b - A.dot(xk)
     wk = Pt.dot(rk)
     cvg= False; norm0 = np.linalg.norm(wk)
@@ -71,9 +73,14 @@ def PCPGortho(A,b,x0=None,tol=1.e-5,maxiter=50,M=None,P=None,Pt=None,savetxt=Fal
         if savetxt is True:
             saveresidual.append(normk/norm0)
             saveresidualrk.append(np.linalg.norm(rk)/norm0)
-            
+        if savexk is True:
+            xk_iter.append(xk.copy())      
     info = k
     if savetxt is True:
         np.savetxt('pcpg_cvrg.txt',np.array([saveresidual,saveresidualrk]).T,
                    delimiter=',')
-    return xk,info
+    if savexk is True:
+        xk_iter = np.array(xk_iter) 
+        return xk,info,xk_iter
+    else: 
+        return xk,info

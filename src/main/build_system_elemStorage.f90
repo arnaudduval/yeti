@@ -156,7 +156,7 @@ subroutine sys_linmat_lindef_static(Kdata,Krow,Kcol,F,  &
     count = 1
     JELEM = 0
     do NumPatch = 1,nb_patch
-
+        ! write(*,*) "*****patch ", Numpatch, "********"
         call extractNurbsPatchGeoInfos(NumPatch, Nkv,Jpqr,Nijk,Ukv, &
             &        weight,nb_elem_patch)
         call extractNurbsPatchMechInfos(NumPatch,IEN,PROPS,JPROPS,  &
@@ -259,6 +259,93 @@ subroutine sys_linmat_lindef_static(Kdata,Krow,Kcol,F,  &
 
                 !! Assemble AMATRX to global stiffness matrix K
                 sctr(:nnode_patch) = IEN_patch(:,num_elem)
+                ! if (JELEM == 2 .OR. JELEM == 4 .OR. JELEM == 5 .OR. JELEM == 7) then
+                !     write(*,*) "*****Element selec ", JELEM, "********"
+                !     i = 0
+                !     do cpj = 1,nnode_patch
+                !         dofj= (sctr(cpj)-1)*MCRD
+
+                !         !! case cpi < cpj
+                !         do cpi = 1,cpj-1
+                !             dofi= (sctr(cpi)-1)*MCRD
+                !             i   = i + 1
+                !             do ll = 1,MCRD
+                !                 do kk = 1,MCRD
+                !                     Kdata(count) = AMATRX(kk,ll,i)*0.5d0
+                !                     Krow( count) = dofi + kk - 1
+                !                     Kcol( count) = dofj + ll - 1
+                !                     count = count + 1
+                !                 enddo
+                !             enddo
+                !         enddo
+
+                !         !! case cpi == cpj
+                !         i = i + 1
+                !         do ll = 1,MCRD
+                !             AMATRX(ll,ll,i) = AMATRX(ll,ll,i)*0.5d0
+                !             do kk = 1,ll
+                !                 Kdata(count) = AMATRX(kk,ll,i)*0.5d0
+                !                 Krow( count) = dofj + kk - 1
+                !                 Kcol( count) = dofj + ll - 1
+                !                 count = count + 1
+                !             enddo
+                !         enddo
+
+                !     enddo
+
+                !     !! Update Load Vector
+                !     dofi = 0
+                !     do i = 1,nnode_patch
+                !         ddli  = (sctr(i)-1)*MCRD
+                !         do kk = 1,MCRD
+                !             F(ddli+kk) = F(ddli+kk) + RHS(dofi+kk)
+                !         enddo
+                !         dofi = dofi + MCRD
+                !     enddo
+                ! else
+                !     i = 0
+                !     do cpj = 1,nnode_patch
+                !         dofj= (sctr(cpj)-1)*MCRD
+
+                !         !! case cpi < cpj
+                !         do cpi = 1,cpj-1
+                !             dofi= (sctr(cpi)-1)*MCRD
+                !             i   = i + 1
+                !             do ll = 1,MCRD
+                !                 do kk = 1,MCRD
+                !                     Kdata(count) = AMATRX(kk,ll,i)
+                !                     Krow( count) = dofi + kk - 1
+                !                     Kcol( count) = dofj + ll - 1
+                !                     count = count + 1
+                !                 enddo
+                !             enddo
+                !         enddo
+
+                !         !! case cpi == cpj
+                !         i = i + 1
+                !         do ll = 1,MCRD
+                !             AMATRX(ll,ll,i) = AMATRX(ll,ll,i)*0.5d0
+                !             do kk = 1,ll
+                !                 Kdata(count) = AMATRX(kk,ll,i)
+                !                 Krow( count) = dofj + kk - 1
+                !                 Kcol( count) = dofj + ll - 1
+                !                 count = count + 1
+                !             enddo
+                !         enddo
+
+                !     enddo
+
+                !     !! Update Load Vector
+                !     dofi = 0
+                !     do i = 1,nnode_patch
+                !         ddli  = (sctr(i)-1)*MCRD
+                !         do kk = 1,MCRD
+                !             F(ddli+kk) = F(ddli+kk) + RHS(dofi+kk)
+                !         enddo
+                !         dofi = dofi + MCRD
+                !     enddo
+
+                ! endif
 
                 i = 0
                 do cpj = 1,nnode_patch

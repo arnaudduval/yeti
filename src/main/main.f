@@ -53,6 +53,7 @@ c     Include lapack subroutines
       include "../ext/lapack/lapack_routine/iparmq.f"
       include "../ext/lapack/lapack_routine/lsame.f"
       include "../ext/lapack/lapack_routine/xerbla.f"
+      include "../ext/lapack/lapack_routine/sgesvd.f"
       include "../ext/lapack/double/disnan.f"
       include "../ext/lapack/double/dlaisnan.f"
       include "../ext/lapack/double/dposv.f"

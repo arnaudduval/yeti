@@ -61,8 +61,8 @@
 *UEL PROPERTY, ELSET=EltPAtch2, MATERIAL=MAT
 2
 *UEL PROPERTY, ELSET=EltPAtch3, MATERIAL=MATvoid
-3, 2, 1, 1, 2
-** Maitre = patch 2 (face 1), esclave = patch 1 (face 2)
+3, 2, 1, 1, 2, 0
+** Maitre = patch 2 (face 1), esclave = patch 1 (face 2), continuité C0
 *End Part
 ** ASSEMBLY
 *Assembly, name=Assembly 

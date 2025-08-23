@@ -1610,6 +1610,49 @@ class IGAparametrization:
                   self._nb_dof_tot]
 
         return inputs
+    
+    def get_inputs4rigid_motion(self, patch_idx=1, translation =np.zeros((2)), rotation_center = np.zeros((2)), rotation_angle = 0, COORDS=None, activeElem=None):
+        """Return parameters to apply rigid body motion for a given patch
+        !!!!!!!!!!!!!!!!!!!!!!!! WARNING : WORKS ONLY IN 2D ; too much parameters   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        """
+        if activeElem is None:
+            activeElem = np.ones(self._nb_elem, dtype=np.intp)
+            indpatch2rm = np.where(np.all(np.array([self._ELT_TYPE != 'U1',
+                                                    self._ELT_TYPE != 'U99',
+                                                    self._ELT_TYPE != 'U98',
+                                                    self._ELT_TYPE != 'U2',
+                                                    self._ELT_TYPE != 'U3',
+                                                    self._ELT_TYPE != 'U10',
+                                                    self._ELT_TYPE != 'U30']),
+                                          axis=0))[0]
+            e = np.cumsum(np.concatenate(([0], self._elementsByPatch)),
+                          dtype=np.intp)
+            for patch in indpatch2rm:
+                activeElem[e[patch]: e[patch+1]] = 0
+
+        ndofel = self._nnode*self._mcrd
+        ndofel_list = np.repeat(ndofel*(ndofel + 1) / 2, self._elementsByPatch)
+        nb_data = np.sum(activeElem*ndofel_list)
+
+        load_infos = self._get_load_info()
+        bcs_infos = self._get_bcs_info()
+        if np.shape(COORDS) != np.shape(self._COORDS):
+            COORDS = self._COORDS
+
+        inputs = [patch_idx, translation, rotation_center, rotation_angle, activeElem, nb_data, COORDS, self._IEN_flat,
+                  self._elementsByPatch, self._Nkv, self._Ukv_flat,
+                  self._Nijk, self._weight_flat, self._Jpqr,
+                  self._ELT_TYPE_flat, self._PROPS_flat, self._JPROPS,
+                  self._MATERIAL_PROPERTIES[:2, :], self._N_MATERIAL_PROPERTIES[:],
+                  self._MATERIAL_PROPERTIES[2, :], self._TENSOR_flat,
+                  load_infos[0], load_infos[1], load_infos[2], load_infos[3],
+                  load_infos[5], load_infos[6], bcs_infos[0], bcs_infos[1], bcs_infos[2],
+                  self._ind_dof_free, self._nb_dof_free, self._mcrd,
+                  self._NBPINT, self._nnode, load_infos[-1], bcs_infos[-1],
+                  load_infos[4], self._nb_patch, self._nb_elem, self._nb_cp,
+                  self._nb_dof_tot]
+
+        return inputs
 
     def get_inputs4massmat(self, COORDS=None, activeElem=None):
         """
@@ -1802,6 +1845,60 @@ class IGAparametrization:
                   self._nb_elem, self._nb_cp, self._nb_dof_tot]
 
         return inputs
+
+    def get_inputs4cplgmatrix_collocation(self, xi_master, xi_slave, xi_inter, i_master, i_slave, i_inter ,d):
+        """
+        Generate input arguments for ``coupling.cplgmatrix.cplg_matrix_collocation``.
+
+        Parameters
+        ----------
+        COORDS : list, optional
+            Control points coordinates. The default is None.
+
+        Returns
+        -------
+        inputs : dict
+            List of parameters for ``coupling.cplgmatrix.cplg_matrix_collocation``.
+
+        """
+
+    
+        nb_data1 = self._mcrd * self._nnode[i_master-1] * \
+        (self._nnode[i_inter-1])
+
+        nb_data2 = self._mcrd * self._nnode[i_slave-1] * \
+        (self._nnode[i_inter-1])
+
+        inputs = { 
+                   'coords3d' : self._COORDS, 
+                   'xi_master': xi_master,
+                   'xi_slave': xi_slave,
+                   'xi_inter': xi_inter,
+                   'i_master': i_master,
+                   'i_slave': i_slave,
+                   'i_inter': i_inter,
+                   'd': d, 
+                   'mcrd': self._mcrd, 
+                   'ien': self._IEN_flat,
+                   'nb_elem_patch': self._elementsByPatch,
+                   'elt_type': self._ELT_TYPE_flat,
+                   'tensor': self._TENSOR_flat,
+                   'props': self._PROPS_flat,
+                   'jprops': self._JPROPS,
+                   'nnode': self._nnode,
+                   'nb_patch': self._nb_patch,
+                   'nb_elem': self._nb_elem,
+                   'nb_cp': self._nb_cp,
+                   'nkv': self._Nkv,
+                   'ukv': self._Ukv_flat,
+                   'nijk': self._Nijk,
+                   'weight': self._weight_flat,
+                   'jpqr': self._Jpqr,
+                   'nb_data1': nb_data1, 
+                   'nb_data2': nb_data2}
+
+        return inputs
+
 
     def get_inputs4cplgmatrixU5(self, COORDS=None, integrationOrder=0):
         """

@@ -135,7 +135,7 @@ x  = LU.solve(Fb[idof])
 print(('\n Time for monolithique solving : %.2f s\n\n' % (time.time() - t2)))
 
 # Postprocessing
-SOL,u = rsol.reconstruction(*modeleIGA.get_inputs4solution(x))
+SOL,u = rsol.reconstruction(**modeleIGA.get_inputs4solution(x))
 pp.generatevtu(*modeleIGA.get_inputs4postprocVTU(
     'coupling_mono',SOL.transpose(),nb_ref=np.array([3,3,1]),
     Flag=np.array([True,True,False])))

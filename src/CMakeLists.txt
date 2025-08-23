@@ -122,7 +122,7 @@ CreateF2PYModule(NAME stiffmtrx_elemstorage
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 CreateF2PYModule(NAME utils
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/utils/GaussPts.f90
+                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/utils/GaussPts.f90 ${CMAKE_CURRENT_SOURCE_DIR}/main/rigid_motion.f90
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 

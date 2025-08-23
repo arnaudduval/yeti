@@ -200,11 +200,19 @@ subroutine point_on_solid_face(u,v,iface,xi)
         case(5)
             xi(1) = u
             xi(2) = v
-            xi(3) = minval(ukv3_patch)
+            if (dim_patch .eq. 3) then
+                xi(3) = minval(ukv3_patch)
+            else 
+               xi(3) = 0
+            endif 
         case(6)
             xi(1) = u
             xi(2) = v
-            xi(3) = maxval(ukv3_patch)
+            if (dim_patch .eq. 3) then
+                xi(3) = maxval(ukv3_patch)
+            else 
+                xi(3) = 0  
+            endif          
     end select
 
 end subroutine point_on_solid_face
@@ -468,11 +476,14 @@ subroutine projection_curve(point, iface, coords3D, nb_cp, is_hull, maxstep, max
     double precision, dimension(3) :: r
     double precision :: err
     integer :: i
-
+    logical :: correction
+    write(*,*) 'point', point
     info = 3
     u = u0
 
     do i = 1, maxiter
+        ! write(*,*) '*********************************'
+        ! write(*,*) i 
         !! Evaluation at u
         call derivative_curve(u, iface, coords3D, nb_cp, C, Cu, Cuu)
 
@@ -492,22 +503,41 @@ subroutine projection_curve(point, iface, coords3D, nb_cp, is_hull, maxstep, max
 
         uprev = u
         u = u - dot_product(Cu, r)/(dot_product(Cuu, r)+dot_product(Cu, Cu))
+        ! write(*,*) 'u inter' , u
+        ! write(*,*) 'residu' , sqrt(dot_product(r,r))
 
         select case(iface)
         case(1,2)
-            if ( u .lt. minval(Ukv2_patch)) u = minval(Ukv2_patch)
-            if ( u .gt. maxval(Ukv2_patch)) u = maxval(Ukv2_patch)
+            if ( u .lt. minval(Ukv2_patch)) then
+                u = minval(Ukv2_patch) ! TEMPORAIRE  
+                correction = .true.
+                ! write(*,*) 'correction', minval(Ukv2_patch)
+            endif
+            if ( u .gt. maxval(Ukv2_patch)) then
+                u = maxval(Ukv2_patch)
+                correction = .true.
+                ! write(*,*) 'correction', maxval(Ukv2_patch)
+            endif
         case(3,4)
-            if ( u .lt. minval(Ukv1_patch)) u = minval(Ukv1_patch)
-            if ( u .gt. maxval(Ukv1_patch)) u = maxval(Ukv1_patch)
+            if ( u .lt. minval(Ukv1_patch)) then
+                u = minval(Ukv1_patch)
+                correction = .true.
+            endif
+            if ( u .gt. maxval(Ukv1_patch)) then
+                u = maxval(Ukv1_patch)
+                correction = .true.
+            endif
         end select
 
-        if (norm2((u-uprev)*Cu) .le. tol1) then
-            info = 2
-            exit
+        if (.not. correction) then
+            if (norm2((u-uprev)*Cu) .le. tol1) then
+                info = 2
+                exit
+            endif
         endif
     enddo
-
+    ! write(*,*) i, u
+    write(*,*) 'info : ', info
     if (i .eq. maxiter) then
         write(*,*) "Warning : max number of iterations reached during point to surface projection"
         info = 1

@@ -155,7 +155,7 @@ subroutine postproc_curve_2d(sol, n_sample, i_patch, i_face,                  &
             tan_vect(:mcrd) = dxdxi(:mcrd, 1) / norm2(dxdxi(:, 1))
         endif
         norm_vect(1) = tan_vect(2)
-        norm_vect(2) = -tan_vect(0)
+        norm_vect(2) = -tan_vect(1)
 
         ! TODO : rewrite code without copy (compute directly in sample values)
         x_sample(:, i_sample) = x(:mcrd)

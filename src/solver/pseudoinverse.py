@@ -137,27 +137,6 @@ class pseudoLU:
 
 
 
-
-class pseudoDense:
-    '''
-    Use scipy dense library to build the pseudo inverse and the null space
-    '''
-    def __init__(self,A,tol=1.e-10):
-        self._factorized(A,rcond=tol)
-
-    def _factorized(self,A,rcond=1.e-10):
-        B = la.pinvh(A.toarray())
-        self._pinv = sp.csc_matrix(B)
-        self._shape= B.shape
-        self.R = sp.csc_matrix(la.null_space(A.toarray(),rcond=rcond))
-        return None
-
-    def solve(self,b):
-        x = self._pinv.dot(b)
-        return x
-
-
-
 class pseudoLUstep:
     '''
     Successive superLU factorization for soliving singular linear system
@@ -178,25 +157,37 @@ class pseudoLUstep:
         i = 0
         while i<ngmax+1 and nullpiv:
 
+            # print(f'{i = }')
+
             LU = sp.linalg.splu(Ai,permc_spec='MMD_AT_PLUS_A',diag_pivot_thresh=0.,
                                 options=dict(SymmetricMode=True))
 
             if not np.all(LU.perm_r == LU.perm_c):
-                print(LU.perm_r, LU.perm_c)
+                # print(LU.perm_r, LU.perm_c)
                 print('warning: different left and right permutation')
 
             ind = np.where(np.abs(LU.U.diagonal())<tol*LU.U.diagonal().max())[0]
+            # print(f'{ind  = }')
+            # print(f'{LU.perm_r = }')
+            # print(f'{LU.perm_c = }')
+            np.savetxt("/home/agagnaire/yeti/temp/LUU.txt",  LU.U.todense(), fmt='%.4e')
             if ind.size == 0:
                 nullpiv = False
             else:
                 ni = Ai.shape[0]
                 Pr = sp.csc_matrix((np.ones(ni,dtype=np.float64), (LU.perm_r,np.arange(ni)) ))
+                # print(f'{Pr.todense()  = }')
                 Pi = sp.bmat([[Pr,None],[None,sp.eye(n-ni)]],format='csc')
+                # print(f'{Pi.todense()  = }')
 
                 isort = np.concatenate((np.setdiff1d(np.arange(ni),ind[0]),[ind[0]],
                                         np.arange(ni,n)))
+                # print(f'{isort = }')
                 Ji = sp.csc_matrix((np.ones(n,dtype=np.float64),(np.arange(n),isort)))
+                # print(f'{Ji.todense() = }')
+                # print(f'{(Ji*Pi).todense() = }')
                 Ab = Ji * Pi * Ab * Pi.T * Ji.T
+                np.savetxt("/home/agagnaire/yeti/temp/Ab.txt", Ab.todense(), fmt='%.4e')
                 Ptot = Ji * Pi * Ptot
                 i += 1
                 Ai = Ab[:-i,:-i]
@@ -229,3 +220,107 @@ class pseudoLUstep:
             xp = self._LU.solve(bp[:-ng])
             x  = self._P.T * np.concatenate((xp,np.zeros(ng,dtype=np.float64)))
         return x
+
+
+
+class pseudoDense:
+    '''
+    Use scipy dense library to build the pseudo inverse and the null space
+    '''
+    def __init__(self,A,tol=1.e-10):
+        self._factorized(A,rcond=tol)
+
+    def _factorized(self,A,rcond=1.e-10):
+        B = la.pinv(A.toarray()) # ou pinvh ? 
+        self._pinv = sp.csc_matrix(B)
+        self._shape= B.shape
+        self.R = sp.csc_matrix(la.null_space(A.toarray(),rcond=rcond))
+        return None
+
+    def solve(self,b):
+        x = self._pinv.dot(b)
+        return x
+
+# class pseudoLUstep:
+#     '''
+#     Successive superLU factorization for soliving singular linear system
+#     - generate a pseudo-inverse callable through fct solve()
+#     - build of the null space of the matrix
+#     '''
+#     def __init__(self,A,tol=1.e-08):
+#         self._stepLU(A,tol=tol)
+
+#     def _stepLU(self,A,tol=1.e-08):
+#         n    = A.shape[0]
+#         Ai   = A.copy()
+#         Ab   = A.copy()
+#         Ptot = sp.identity(n,format='csc')
+#         ngmax= 10 # -- maximal size of nullspace
+#         nullpiv = True
+
+#         i = 0
+#         while i<ngmax+1 and nullpiv:
+
+#             print(f'{i = }')
+
+#             LU = sp.linalg.splu(Ai,permc_spec='MMD_AT_PLUS_A',diag_pivot_thresh=0.,
+#                                 options=dict(SymmetricMode=True))
+
+#             if not np.all(LU.perm_r == LU.perm_c):
+#                 print(LU.perm_r, LU.perm_c)
+#                 print('warning: different left and right permutation')
+
+#             ind = np.where(np.abs(LU.U.diagonal())<tol*LU.U.diagonal().max())[0]
+#             print(f'{ind  = }')
+#             print(f'{LU.perm_r = }')
+#             print(f'{LU.perm_c = }')
+#             np.savetxt("/home/agagnaire/yeti/temp/LUU.txt",  LU.U.todense(), fmt='%.4e')
+#             if ind.size == 0:
+#                 nullpiv = False
+#             else:
+#                 ni = Ai.shape[0]
+#                 Pr = sp.csc_matrix((np.ones(ni,dtype=np.float64), (LU.perm_r,np.arange(ni)) ))
+#                 print(f'{Pr.todense()  = }')
+#                 Pi = sp.bmat([[Pr,None],[None,sp.eye(n-ni)]],format='csc')
+#                 print(f'{Pi.todense()  = }')
+
+#                 isort = np.concatenate((np.setdiff1d(np.arange(ni),ind[0]),[ind[0]],
+#                                         np.arange(ni,n)))
+#                 print(f'{isort = }')
+#                 Ji = sp.csc_matrix((np.ones(n,dtype=np.float64),(np.arange(n),isort)))
+#                 print(f'{Ji.todense() = }')
+#                 print(f'{(Ji*Pi).todense() = }')
+#                 Ab = Ji * Pi * Ab * Pi.T * Ji.T
+#                 np.savetxt("/home/agagnaire/yeti/temp/Ab.txt", Ab.todense(), fmt='%.4e')
+#                 Ptot = Ji * Pi * Ptot
+#                 i += 1
+#                 Ai = Ab[:-i,:-i]
+
+
+#         # build nullspace
+#         if i> 0:
+#             Rp = LU.solve(Ab[:-i,-i:].A)
+#             Id = np.identity(i)
+#             Rb = np.block([[-Rp],
+#                            [ Id]])
+#             Rb/= np.linalg.norm(Rb,axis=0)
+#             R  = sp.csc_matrix(Ptot.T * Rb)
+#         else:
+#             R  = sp.csc_matrix((n,0))
+
+#         self._LU = LU
+#         self._P  = Ptot
+#         self.R   = R
+#         return None
+
+#     def solve(self,b):
+#         n = self._LU.shape[0]
+#         nb= b.size
+#         if nb == n:
+#             x = self._LU.solve(b)
+#         else:
+#             bp = self._P * b
+#             ng = nb-n
+#             xp = self._LU.solve(bp[:-ng])
+#             x  = self._P.T * np.concatenate((xp,np.zeros(ng,dtype=np.float64)))
+#         return x

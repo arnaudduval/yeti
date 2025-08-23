@@ -1,0 +1,1 @@
+ref = 2, deg = 1, d = 0.1, u_inter=5, v_inter=5

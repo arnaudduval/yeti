@@ -1,0 +1,83 @@
+*HEADING
+**Job name:PlateWithHolem.txt
+**NurbsABQ - Laboratoire de Mecanique des Contacts et des Solides - INSA-Lyon
+*Part, name=Piece
+*USER ELEMENT, NODES=4, TYPE=U1,  COORDINATES=2, INTEGRATION=4, TENSOR=PSTRESS
+1,2
+*Node,nset=AllNode
+1,  -2.0 , -0.5
+2,  -1.4330127018922192 , -0.5
+3,  -0.8660254037844386 , -0.5
+4,  -0.5773502691896256 , -1.0
+5,  0.0 , -1.0
+6,  -2.0 , -0.25
+7,  -1.355489421530495 , -0.3256196415254551
+8,  -0.6003983099814815 , -0.41421356237309503
+9,   0.04692477494883163 , -0.9102464467015705
+10,  1.0 , -1.0
+11,  -2.0 , 0.0
+12,  -1.1830127018922192 , 0.0
+13,  -0.3660254037844386 , 0.0
+14,  0.2886751345948128 , 0.0
+15,  1.0 , 0.0
+16,  -2.0 , 0.25
+17,  -1.355489421530495 , 0.3256196415254551
+18,  -0.6003983099814815 , 0.41421356237309503
+19,  0.04692477494883163 , 0.9102464467015705
+20,  1.0 , 1.0
+21,  -2.0 , 0.5
+22,  -1.4330127018922192 , 0.5
+23,  -0.8660254037844386 , 0.5
+24,  -0.5773502691896256 , 1.0
+25,  0.0 , 1.0
+*Element,type=U1, elset=AllEls
+1,    13, 12, 11, 8, 7, 6, 3, 2, 1
+2,    15, 14, 13, 10, 9, 8, 5, 4, 3
+3,    23, 22, 21, 18, 17, 16, 13, 12, 11
+4,    25, 24, 23, 20, 19, 18, 15, 14, 13
+*ELSET,ELSET=EltPAtch1,generate
+1,4, 1
+*NSET,NSET=CPatX0patch1
+1,6,11,16,21
+**
+*UEL PROPERTY, ELSET=EltPAtch1, MATERIAL=MAT
+1
+*End Part
+** ASSEMBLY
+*Assembly, name=Assembly 
+*Instance, name=I1, part=Piece
+*End Instance
+*End Assembly
+**MATERIAL
+*MATERIAL,NAME=MAT
+*Elastic
+60.e9, 0.30
+*MATERIAL,NAME=MAT2
+*Elastic
+1., 0.00
+*MATERIAL,NAME=MATvoid
+*Elastic
+0.00, 0.00
+*STEP,extrapolation=NO,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPatX0patch1,  1, 2, 0.
+**I1.CPatXMpatch2,  1, 1, 0.
+**I1.CPatY0patch2,  1, 2, 0.
+**I1.CPlgrge,       1, 2, 0.
+**
+** DLOAD
+*Dload
+I1.EltPAtch1, U20,  -1000000000.00
+**I1.EltPAtch1, U11, -1.00
+** CLOAD
+** *Cload
+** 8, 2, -1.0
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step

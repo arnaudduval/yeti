@@ -22,7 +22,7 @@ nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
 
 p = 1
-r = 1
+r = 2
 # domains
 nb_deg[:2,:2] = p
 nb_ref[:2, 0] = r + 1 #r cas 1 #r+1 cas2

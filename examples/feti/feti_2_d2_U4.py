@@ -13,7 +13,7 @@ from coupling.cplgmatrix import cplg_matrix
 import reconstructionSOL as rsol
 import postprocessing.postproc as pp
 
-modeleIGA = IGAparametrization(filename='twoplatesDDcas4')
+modeleIGA = IGAparametrization(filename='twoplatesDDcas3')
 # modeleIGA = IGAparametrization(filename='twoplatesDDcurved')
 
 ti = time.time()
@@ -22,20 +22,22 @@ nb_deg = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 nb_ref = np.zeros((3,modeleIGA._nb_patch),dtype=np.intp)
 additional_knots = {"patches":np.array([]),"1":np.array([]),"2":np.array([]),"3":np.array([])}
 
-p = 2
-r = 3
+p = 1
+r = 1
 # domains
 nb_deg[:2,:2] = p-1
-nb_ref[:2, 0] = r #r+1
-nb_ref[:2, 1] = r 
-nb_ref[0, :2] = r+1
+nb_ref[:2, 0] = r +1 #r+1
+nb_ref[:2, 1] = r +1
+nb_ref[0, :2] = r +1 #r+1
 # curves
-nb_ref[0,(2,3)] = r+2
+nb_ref[0,(2,3)] = r+1
 # lgrge
 nb_deg[0,4] = p
 nb_ref[0,4] = r
 
 modeleIGA.refine(nb_ref,nb_deg,additional_knots)
+print(modeleIGA._Ukv)
+print(modeleIGA._COORDS)
 modeleIGA._NBPINT[ np.where(modeleIGA._ELT_TYPE == 'U00') ] = 6
 
 # --
@@ -59,6 +61,10 @@ t1 = time.time()
 Cdata,Crow,Ccol = cplg_matrix( *modeleIGA.get_inputs4cplgmatrix() )
 Cside = sp.coo_matrix((Cdata,(Crow,Ccol)), shape=(modeleIGA._nb_dof_tot,modeleIGA._nb_dof_tot),
                       dtype='float64').tocsc()
+np.savetxt('/home/agagnaire/yeti/temp/CsideU4', (Cside[idof,:][:,idof])[:,-4:].todense())
+
+with open("/home/agagnaire/yeti/temp/CsideU4.txt","w") as file:
+    file.write(str(Cside[idof,:][:,idof])) 
 Ctot  = Cside + Cside.transpose()
 del Cdata,Crow,Ccol,Cside
 print(('\n Time to build coupling matrix  : %.2f s\n' % (time.time() - t1)))
