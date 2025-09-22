@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     tags: [ 'v*' ]        # A tag startingwith v (e.g. v0.1.2) will trigger the publication
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build-test:
