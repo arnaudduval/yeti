@@ -31,7 +31,7 @@ jobs:
       - name: Build wheel for current Python version
         env:
           CIBW_BUILD: cp${{ replace(matrix.python-version, '.', '') }}-*        
-          run: cibuildwheel --platform linux --output-dir wheelhouse
+        run: cibuildwheel --platform linux --output-dir wheelhouse
 
       - name: Install built wheels
         run: pip install wheelhouse/*.whl
