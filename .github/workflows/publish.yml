@@ -29,9 +29,6 @@ jobs:
           pip install cibuildwheel pytest
 
       - name: Build wheels
-        env:
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
-          CIBW_SKIP: "cp36-* cp37-* cp38-* *musllinux*"
         run: cibuildwheel --platform linux --output-dir wheelhouse
 
       - name: Install built wheels
