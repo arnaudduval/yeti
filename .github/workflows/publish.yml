@@ -34,10 +34,11 @@ jobs:
           CIBW_SKIP: "cp36-* cp37-* cp38-* *musllinux*"
         run: cibuildwheel --platform linux --output-dir wheelhouse
 
+      - name: Install built wheels
+        run: pip install wheelhouse/*.whl
+      
       - name: Run tests
         run: pytest benchs
-        # If tests need installation of the wheel
-        # run: pip install wheelhouse/*.whl && pytest
 
       - name: Upload wheels (artifact)
         uses: actions/upload-artifact@v4
