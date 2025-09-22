@@ -1,0 +1,63 @@
+name: Build, test & publish
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]        # A tag startingwith v (e.g. v0.1.2) will trigger the publication
+  pull_request:
+
+jobs:
+  build-test:
+    name: Build & test wheels
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install cibuildwheel pytest
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "cp36-* cp37-* cp38-* *musllinux*"
+        run: cibuildwheel --platform linux --output-dir wheelhouse
+
+      - name: Run tests
+        run: pytest benchs
+        # If tests need installation of the wheel
+        # run: pip install wheelhouse/*.whl && pytest
+
+      - name: Upload wheels (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: wheelhouse/*.whl
+
+  publish:
+    name: Publish to PyPI
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')   # seulement pour un tag
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels
+          path: dist
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.8
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
