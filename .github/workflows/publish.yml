@@ -27,7 +27,7 @@ jobs:
       - name: Build wheels (all target Pythons)
         env:
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
-          CIBW_SKIP: "cp36-* cp37-* cp38-* *musllinux*"
+          CIBW_SKIP: "cp38-* *musllinux*"
         run: |
           echo "CIBW-BUILD=$CIBW_BUILD"
           cibuildwheel --platform linux --output-dir wheelhouse
