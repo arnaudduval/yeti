@@ -30,7 +30,7 @@ jobs:
           CIBW_SKIP: "cp36-* cp37-* cp38-* *musllinux*"
         run: |
           echo "CIBW-BUILD=$CIBW_BUILD"
-          cibuildwhell --platform linux --output-dir wheelhouse
+          cibuildwheel --platform linux --output-dir wheelhouse
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
