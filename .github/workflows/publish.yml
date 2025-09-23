@@ -8,45 +8,40 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-test:
-    name: Build & test wheels
+  build:
+    name: Build all wheels
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-        cibw-build: ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
-
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
 
-      - name: Install build deps
+      - name: Set up Python (for cibuildwheel tool)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install buils deps
         run: |
           python -m pip install --upgrade pip
-          pip install cibuildwheel pytest
+          pip install cibuildwheel
 
-      - name: Build wheel for current Python version
+      - name: Build wheels (all target Pythons)
         env:
-          CIBW_BUILD: ${{ matrix.cibw-build }}     
-        run: cibuildwheel --platform linux --output-dir wheelhouse
-
-      - name: Install built wheels
-        run: pip install wheelhouse/*.whl
-      
-      - name: Run tests
-        run: pytest benchs
-
-      - name: Upload wheels (artifact)
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "cp36-* cp37-* cp38-* *musllinux*"
+        run: |
+          echo "CIBW-BUILD=$CIBW_BUILD"
+          cibuildwhell --platform linux --output-dir wheelhouse
+      - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: wheelhouse/*.whl
+        
+
 
   publish:
     name: Publish to PyPI
-    needs: build-test
+    needs: test
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')   # seulement pour un tag
     steps:
