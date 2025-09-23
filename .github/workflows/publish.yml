@@ -61,7 +61,11 @@ jobs:
       - name: Install wheel and run tests
         run: |
           python -m pip install --upgrade pip
-          pip install dist/*.whl
+          # Get ABI CPxx of current Python version (ex : cp312)
+          PYTAG=$(python -c "import sys; print(f'cp{sys.version_info[0]}{sys.version_info[1]}')")
+          echo "Installing wheel for $PYTAG"
+          # Install wheel with this tag
+          pip install dist/*${PYTAG}*.whl
           pytest benchs
     
 
