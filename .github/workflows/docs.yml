@@ -18,5 +18,5 @@ jobs:
         run: |
             curl -X POST \
                  -d "token=${{ secrets.RTD_TOKEN }}" \
-                 https://readthedocs.org/api/v3/projects/yeti-iga-documentation/builds/
+                 https://app.readthedocs.org/api/v2/webhook/yeti-iga-documentation/310200/
 
