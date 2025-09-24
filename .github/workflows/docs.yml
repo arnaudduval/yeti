@@ -1,0 +1,17 @@
+name: Build & Deploy Docs
+
+on:
+  workflow_run:
+    workflows: ["Publish to PyPI"]
+    types: [completed]
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+  steps:
+    - name: Trigger Read the Docs
+      run: |
+          curl -X POST \
+               -d "token=${{ secrets.RTD_TOKEN }}" \
+               https://readthedocs.org/api/v3/projects/yeti-iga-documentation/builds/
+
