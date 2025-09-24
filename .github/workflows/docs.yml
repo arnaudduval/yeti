@@ -8,10 +8,15 @@ on:
 jobs:
   build-docs:
     runs-on: ubuntu-latest
-  steps:
-    - name: Trigger Read the Docs
-      run: |
-          curl -X POST \
-               -d "token=${{ secrets.RTD_TOKEN }}" \
-               https://readthedocs.org/api/v3/projects/yeti-iga-documentation/builds/
+    if: >
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        startsWith(github.event.workflow_run.head_branch, 'v')
+      }}
+    steps:
+      - name: Trigger Read the Docs
+        run: |
+            curl -X POST \
+                 -d "token=${{ secrets.RTD_TOKEN }}" \
+                 https://readthedocs.org/api/v3/projects/yeti-iga-documentation/builds/
 
