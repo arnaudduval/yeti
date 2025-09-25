@@ -68,6 +68,7 @@ macro(CreateF2PYModule)
             ${FCOMPILER}
             --f90flags='-fopenmp' -lgomp
             ${MODULE_FILES}
+            skip: ${skip_string}
             DEPENDS ${MODULE_FILES}
             DEPENDS ${MODULE_LINK_LIBRARIES}
             COMMENT "[F2PY] Building Fortran to Python interface module ${MODULE_NAME}"

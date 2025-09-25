@@ -255,7 +255,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
                 enddo
 
                 !! Update Load Vector
-                !! ********* ATTENTION, FB non traité *********
+                !! ********* WARNING: FB not taken into account *********
                 idof = 0
                 do i = 1, patch%nnode_patch
                     jdof  = (sctr(i)-1)*MCRD
@@ -264,7 +264,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
                     enddo
                     idof = idof + MCRD
                 enddo
-                !! ********* ATTENTION, FB non traité *********
+                !! ********* WARNING: FB not taken into account *********
 
 
             endif
