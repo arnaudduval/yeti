@@ -1558,6 +1558,97 @@ class IGAparametrization:
 
         return inputs
 
+    def get_inputs4system_elemStorage_OMP(self, COORDS=None, activeElem=None):
+        """
+        A copy a function get_inputs4system_elemStorage to comply with
+        sys_linmat_lindef_static_omp Fortran wrapped function designed to work
+        without dimension(:) declarations
+        TODO : merge this function with original get_inputs4system_elemStorage
+        function.
+
+        Parameters
+        ----------
+        COORDS : numpy array, optional
+            Control points coordinates. The default is None. Default
+            correponds to the coordinates of the current geometry.
+        activeElem : numpy array (dtype=intp), optional
+            Array indicating elements considered to build the stiffness matrix.
+            Value `1` stands for active elements. The default is None (all
+            elements are activated).
+
+        Returns
+        -------
+        inputs : list
+            All necessary inputs to build stiffness matrix.
+
+        """
+        if activeElem is None:
+            activeElem = np.ones(self._nb_elem, dtype=np.intp)
+            indpatch2rm = np.where(np.all(np.array([self._ELT_TYPE != 'U1',
+                                                    self._ELT_TYPE != 'U99',
+                                                    self._ELT_TYPE != 'U98',
+                                                    self._ELT_TYPE != 'U2',
+                                                    self._ELT_TYPE != 'U3',
+                                                    self._ELT_TYPE != 'U10',
+                                                    self._ELT_TYPE != 'U30']),
+                                          axis=0))[0]
+            e = np.cumsum(np.concatenate(([0], self._elementsByPatch)),
+                          dtype=np.intp)
+            for patch in indpatch2rm:
+                activeElem[e[patch]: e[patch+1]] = 0
+
+        ndofel = self._nnode*self._mcrd
+        ndofel_list = np.repeat(ndofel*(ndofel + 1) / 2, self._elementsByPatch)
+        nb_data = np.sum(activeElem*ndofel_list)
+
+        load_infos = self._get_load_info()
+        bcs_infos = self._get_bcs_info()
+        if np.shape(COORDS) != np.shape(self._COORDS):
+            COORDS = self._COORDS
+
+            inputs = {'activeelement': activeElem,
+                      'nb_data': nb_data,
+                      'coords3d': COORDS,
+                      'ien': self._IEN_flat,
+                      'nb_elem_patch': self._elementsByPatch,
+                      'nkv': self._Nkv,
+                      'ukv': self._Ukv_flat,
+                      'nijk': self._Nijk,
+                      'weight': self._weight_flat,
+                      'jpqr': self._Jpqr,
+                      'elt_type': self._ELT_TYPE_flat,
+                      'props': self._PROPS_flat,
+                      'jprops': self._JPROPS,
+                      'material_properties': self._MATERIAL_PROPERTIES[:2, :],
+                      'n_mat_props': self._N_MATERIAL_PROPERTIES[:],
+                      'rho': self._MATERIAL_PROPERTIES[2, :],
+                      'tensor': self._TENSOR_flat,
+                      'inddload': load_infos[0],
+                      'jdltype': load_infos[1],
+                      'adlmag': load_infos[2],
+                      'load_target_nbelem': load_infos[3],
+                      'load_additionalinfos': load_infos[5],
+                      'nb_load_additionalinfos': load_infos[5],
+                      'bc_values': bcs_infos[0],
+                      'nb_bc': bcs_infos[-1],
+                      'bc_target': bcs_infos[1],
+                      'bc_target_nbelem': bcs_infos[2],
+                      'ind_dof_free': self._ind_dof_free,
+                      'nb_dof_free': self._nb_dof_free,
+                      'mcrd': self._mcrd,
+                      'nbint': self._NBPINT,
+                      'nb_load': load_infos[4],
+                      'nb_patch': self._nb_patch,
+                      'nb_elem': self._nb_elem,
+                      'nnode': self._nnode,
+                      'nb_cp': self._nb_cp,
+                      'nb_dof_tot': self._nb_dof_tot,
+                      'nodal_dist': load_infos[-1]}
+
+        return inputs
+
+
+
     def get_inputs4system_elemStorage(self, COORDS=None, activeElem=None):
         """Return parameters to compute the sparse stiffness matrix.
 
