@@ -100,7 +100,7 @@ CreateF2PYModule(NAME tools
 
 CreateF2PYModule(NAME stiffmtrx_elemstorage_omp
                  FILES
-                 ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage_OMP2.f90
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage_OMP.f90
                  ${CMAKE_CURRENT_SOURCE_DIR}/main/uelmat_solid_omp.f90
                  LINK_LIBRARIES base
                  SKIP uelmat_bycp_omp

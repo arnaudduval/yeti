@@ -1558,7 +1558,7 @@ class IGAparametrization:
 
         return inputs
 
-    def get_inputs4system_elemStorage_OMP(self, COORDS=None, activeElem=None):
+    def get_inputs4system_elemStorage_OMP(self, num_threads=None, COORDS=None, activeElem=None):
         """
         A copy a function get_inputs4system_elemStorage to comply with
         sys_linmat_lindef_static_omp Fortran wrapped function designed to work
@@ -1568,6 +1568,9 @@ class IGAparametrization:
 
         Parameters
         ----------
+        num_threads: int
+            Number of threads to use for openMP parallelization
+            (default = None -> use environment variable OMP_NUM_THREADS)
         COORDS : numpy array, optional
             Control points coordinates. The default is None. Default
             correponds to the coordinates of the current geometry.
@@ -1582,6 +1585,9 @@ class IGAparametrization:
             All necessary inputs to build stiffness matrix.
 
         """
+        if num_threads is None:
+            num_threads = -1
+
         if activeElem is None:
             activeElem = np.ones(self._nb_elem, dtype=np.intp)
             indpatch2rm = np.where(np.all(np.array([self._ELT_TYPE != 'U1',
@@ -1643,7 +1649,8 @@ class IGAparametrization:
                       'nnode': self._nnode,
                       'nb_cp': self._nb_cp,
                       'nb_dof_tot': self._nb_dof_tot,
-                      'nodal_dist': load_infos[-1]}
+                      'nodal_dist': load_infos[-1],
+                      'num_threads': num_threads}
 
         return inputs
 

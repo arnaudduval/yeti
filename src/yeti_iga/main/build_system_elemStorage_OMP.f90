@@ -35,7 +35,7 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
     &   nb_n_dist, nb_cp_n_dist, n_mat_props_max,           &
     &   len_Ukv, len_weight, len_PROPS, len_IEN, len_indDLoad, &
     &   len_load_additionalInfos, len_nb_load_additionalInfos, &
-    &   len_bc_target)
+    &   len_bc_target, num_threads)
 
     use m_nurbspatch, only : nurbspatch, nurbselement
     use omp_lib
@@ -111,6 +111,9 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
     integer(kind=8), intent(in) :: nb_data
     integer, dimension(nb_elem), intent(in) :: activeElement
 
+    !! OMP infos
+    integer, intent(in) :: num_threads
+
 
     !! Output variables
     !! ----------------
@@ -138,6 +141,9 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
     integer :: ndofel, nnodeSum, nb_data_elem, count, jelem
     integer(kind=8) :: loccount, idx
 
+    if (num_threads .ne. -1) then
+        call omp_set_num_threads(num_threads)
+    endif
 
     Kdata(:) = 0.0
     Krow(:) = 0.0
@@ -179,7 +185,6 @@ subroutine sys_linmat_lindef_static_omp(Kdata,Krow,Kcol,F,  &
         nnodeSum = patch%nnode_patch*(patch%nnode_patch + 1)/2
         nb_data_elem = mcrd*mcrd*(patch%nnode_patch*(patch%nnode_patch-1))/2      &
             &           + patch%nnode_patch * (mcrd * (mcrd+1))/2
-        write(*,*) 'nnode_patch : ', patch%nnode_patch
 
         !! Loop on elements
         !$omp parallel
