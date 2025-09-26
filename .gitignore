@@ -2,7 +2,7 @@ build
 dist
 venv
 .vscode/settings.json
-src/*.mod
+*.mod
 *.save
 *.pyc
 *.log
@@ -41,4 +41,5 @@ examples/feti/CsideU4.txt
 .vscode
 wheelhouse
 temp
+
 
