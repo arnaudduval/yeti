@@ -29,14 +29,12 @@ import scipy.sparse as sp
 
 from copy import deepcopy
 
-from preprocessing.igaparametrization import IGAparametrization
-from preprocessing.igaparametrization import IGAmanip as manip
-print('R1')
-from stiffmtrx_elemstorage_omp import sys_linmat_lindef_static_omp as build_stiffmatrix_omp
-print('R2')
-from stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
-import reconstructionSOL as rsol
-import postprocessing.postproc as pp
+from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+from yeti_iga.preprocessing.igaparametrization import IGAmanip as manip
+from yeti_iga.stiffmtrx_elemstorage_omp import sys_linmat_lindef_static_omp as build_stiffmatrix_omp
+from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static as build_stiffmatrix
+import yeti_iga.reconstructionSOL as rsol
+import yeti_iga.postprocessing.postproc as pp
 
 # Read data and create initial model
 iga_model_ini = IGAparametrization(filename='beam-dist')
@@ -46,7 +44,7 @@ modeleIGA = deepcopy(iga_model_ini)
 nb_deg = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_ref = np.zeros((3, modeleIGA._nb_patch), dtype=np.intp)
 nb_deg[:, 0] = np.array([2, 2, 2])
-nb_ref[:, 0] = np.array([5, 5, 4])
+nb_ref[:, 0] = np.array([5, 4, 4])
 modeleIGA.refine(nb_ref, nb_deg)
 
 # Matrix assembly
@@ -54,38 +52,48 @@ ndof = modeleIGA._nb_dof_free
 idof = modeleIGA._ind_dof_free[:ndof]-1
 
 # Sequential
-t0 = time.time()
+start = time.time()
 data, row, col, Fb = build_stiffmatrix(
                     *modeleIGA.get_inputs4system_elemStorage())
-t1 = time.time()
+end = time.time()
+
+time_single = end - start
+
 Kside = sp.coo_matrix((data, (row, col)),
                 shape=(modeleIGA._nb_dof_tot, modeleIGA._nb_dof_tot),
                 dtype='float64').tocsc()
 
-t2 = time.time()
+del data, row, col
+
+
 # Multithreaded
-modeleIGA2 = deepcopy(modeleIGA)
-t3 = time.time()
-dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
-                    **modeleIGA2.get_inputs4system_elemStorage_OMP())
-# dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
-#                      *modeleIGA2.get_inputs4system_elemStorage())
-t4 = time.time()
+# for n_threads in (1, 2, 4, 6, 8, 12):
+if True:
+    modeleIGA2 = deepcopy(modeleIGA)
+    start = time.time()
+    dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
+                        **modeleIGA2.get_inputs4system_elemStorage_OMP( num_threads=2))
+    # dataMP, rowMP, colMP, FbMP = build_stiffmatrix_omp(
+    #                      *modeleIGA2.get_inputs4system_elemStorage())
+    end = time.time()
+    time_mp = end - start
 
-# exit()
+    # exit()
 
-KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
-                shape=(modeleIGA2._nb_dof_tot, modeleIGA2._nb_dof_tot),
-                dtype='float64').tocsc()
+    KsideMP = sp.coo_matrix((dataMP, (rowMP, colMP)),
+                    shape=(modeleIGA2._nb_dof_tot, modeleIGA2._nb_dof_tot),
+                    dtype='float64').tocsc()
 
-t5 = time.time()
+    del dataMP, rowMP, colMP
 
-print(np.linalg.norm(dataMP))
-print(np.linalg.norm(FbMP))
 
-print("Erreur calcul K : ", sp.linalg.norm(Kside - KsideMP))
-print("Erreur calcul F : ", np.linalg.norm(Fb - FbMP))
-print("Acceleration factor : ", (t1-t0)/(t4-t3))
+    # print(np.linalg.norm(dataMP))
+    # print(np.linalg.norm(FbMP))
+
+    # print(f'Threads: {n_threads}, time: {time_mp:.4f}')
+    print("Erreur calcul K : ", sp.linalg.norm(Kside - KsideMP))
+    print("Erreur calcul F : ", np.linalg.norm(Fb - FbMP))
+    print("Acceleration factor : ", time_single/time_mp)
 
 # print(data, dataMP)
 
