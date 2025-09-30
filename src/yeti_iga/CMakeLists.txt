@@ -51,7 +51,23 @@ add_library(base        parameters.f90
                         main/embedded/mapEntities2parametricSpaces.f
                         main/embedded/UELMAT_embeddedshell.f
                         main/embedded/UELMAT_embeddedvol.f90
+                        main/m_nurbspatch.f90
+                        main/material_lib.f90
+                        main/shapPress_omp.f90
+                        main/shap_omp.f90
                         )
+
+# add_library(types   ${CMAKE_CURRENT_SOURCE_DIR}/main/m_nurbspatch.f90)
+
+# add_library(nurbs_utils ${CMAKE_CURRENT_SOURCE_DIR}/main/shap_omp.f90
+#                         ${CMAKE_CURRENT_SOURCE_DIR}/main/shapPress_omp.f90
+#                         ${CMAKE_CURRENT_SOURCE_DIR}/main/dersbasisfuns.f90
+#                         ${CMAKE_CURRENT_SOURCE_DIR}/main/operateurs.f
+#                         ${CMAKE_CURRENT_SOURCE_DIR}/main/GaussLegendre.f90
+#                         ${CMAKE_CURRENT_SOURCE_DIR}/main/stiffmatrix.F90
+#                         )
+
+# add_library(materials   ${CMAKE_CURRENT_SOURCE_DIR}/main/material_lib.f90)
 
 # Create Python modules massmtrx, DOF, reconstructionSOL, stiffmtrx_elemstorage
 
@@ -81,6 +97,15 @@ CreateF2PYModule(NAME utils
 CreateF2PYModule(NAME tools
                  FILES ${CMAKE_CURRENT_SOURCE_DIR}/main/dersbasisfuns.f90
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
+
+CreateF2PYModule(NAME stiffmtrx_elemstorage_omp
+                 FILES
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/build_system_elemStorage_OMP.f90
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/uelmat_solid_omp.f90
+                 LINK_LIBRARIES base
+                 SKIP uelmat_bycp_omp
+                 DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
+
 
 
 

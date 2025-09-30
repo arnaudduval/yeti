@@ -17,6 +17,8 @@ MODULE nurbspatch
 
   use parameters
 
+  use omp_lib
+
   Implicit none
 
   ! Patch geo infos
@@ -38,6 +40,8 @@ MODULE nurbspatch
   Integer :: current_elem
   Double precision, allocatable, dimension(:) :: weight_elem
   Double precision, dimension(2,3) :: Ukv_elem
+
+  !$omp threadprivate(current_elem, weight_elem, Ukv_elem)
 
 CONTAINS
 
@@ -262,6 +266,7 @@ CONTAINS
     integer :: i
 
     current_elem   = num_elem
+    ! write(*,*) 'extractor : ', num_elem, current_elem, omp_get_thread_num()
     weight_elem(:) = weight_patch(:,num_elem)
 
     Ni(:) = Nijk_patch(:,num_elem)
