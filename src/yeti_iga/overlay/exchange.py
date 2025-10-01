@@ -86,7 +86,7 @@ def read_one_patch_json_geomdl(patch_dict, patch_type):
         nb_spans = np.subtract(sizes_cp, degrees)
 
         yeti_connectivity = np.empty((np.prod(nb_spans), np.prod(np.array(degrees)+1)), dtype=int)
-        spans = np.empty((np.prod(nb_spans), dimension))
+        spans = np.empty((np.prod(nb_spans), dimension), dtype=int)
 
         ispan = 0
         for i in range(nb_spans[0]):
@@ -129,7 +129,7 @@ def read_one_patch_json_geomdl(patch_dict, patch_type):
         yeti_connectivity = np.empty((np.prod(nb_spans), np.prod(np.array(degrees)+1)), dtype=int)
         # spans = np.empty((np.prod(nb_spans), dimension))
         # For a surface, dimension of parametric space is 2
-        spans = np.empty((np.prod(nb_spans), 2))
+        spans = np.empty((np.prod(nb_spans), 2), dtype=int)
 
         ispan = 0
         for i in range(nb_spans[0]):
