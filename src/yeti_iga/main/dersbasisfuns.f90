@@ -346,7 +346,6 @@ subroutine gen_dersbasisfuns(ni, Jp, NKv, u, u_knotl, nders, ders)
     !! Generic function for computation basis function and derivatives up
     !! to a given order
     !!!! TODO : reecrire les autres fonctions specifiques pour appeler la fonction generique
-    implicit none
 
     !! Input variables
     !! ---------------
@@ -356,28 +355,29 @@ subroutine gen_dersbasisfuns(ni, Jp, NKv, u, u_knotl, nders, ders)
     !! u : parameter value
     !! u_knotl : knot vector
     !! nders : derivation order
+
+    !! Output variable
+    !! ---------------
     !! ders : derivatives matrix
 
-    integer, intent(in) :: Jp, NKv, ni
-    double precision, intent(in) :: u, u_knotl
-    integer, intent(in) ::  nders
-    double precision, intent(out) :: ders
+    use, intrinsic :: iso_c_binding
+    implicit none
 
-    !! Local variables
-    !! ---------------
-    double precision :: Aleft, right, Andu
+    integer(c_int), intent(in) :: Jp, NKv, ni
+    real(c_double), intent(in) :: u
+    real(c_double), dimension(Nkv) :: u_knotl
+    integer(c_int), intent(in) ::  nders
 
+    real(c_double), dimension(nders + 1, Jp + 1), intent(out) :: ders
 
-    dimension Aleft(Jp + 1)
-    dimension right(Jp + 1)
-    dimension a(2, Jp + 1)
-    dimension u_knotl(NKv)
-    dimension ders(nders + 1, Jp + 1)
-    dimension Andu(Jp + 1, Jp + 1)
+    real(c_double), dimension(Jp + 1) :: Aleft
+    real(c_double), dimension(Jp + 1) :: right
+    real(c_double), dimension(Jp + 1, Jp + 1) :: Andu
+    real(c_double), dimension(2, Jp + 1) :: a
 
 
-    integer j, k, l, Kr, Kp, j1, j2, ls1, ls2
-    double precision saved, temp, A, D
+    integer(c_int) :: j, k, l, Kr, Kp, j1, j2, ls1, ls2
+    real(c_double) :: saved, temp, D
 
     Andu(1, 1) = 1.d0
     do j = 1, Jp

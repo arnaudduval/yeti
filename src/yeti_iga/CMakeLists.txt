@@ -95,7 +95,10 @@ CreateF2PYModule(NAME utils
 
 # Create a Python module for basic functions, already contained in compiled library "base"
 CreateF2PYModule(NAME tools
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/main/dersbasisfuns.f90
+                 FILES
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/dersbasisfuns.f90
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/find_span.f90
+                 ${CMAKE_CURRENT_SOURCE_DIR}/main/evaluate.f90
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 
 CreateF2PYModule(NAME stiffmtrx_elemstorage_omp
