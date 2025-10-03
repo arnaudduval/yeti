@@ -55,6 +55,7 @@ add_library(base        parameters.f90
                         main/material_lib.f90
                         main/shapPress_omp.f90
                         main/shap_omp.f90
+                        utils/linalg3x3.f90
                         )
 
 # add_library(types   ${CMAKE_CURRENT_SOURCE_DIR}/main/m_nurbspatch.f90)
@@ -89,7 +90,9 @@ CreateF2PYModule(NAME stiffmtrx_elemstorage
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 CreateF2PYModule(NAME utils
-                 FILES ${CMAKE_CURRENT_SOURCE_DIR}/utils/GaussPts.f90
+                 FILES
+                 ${CMAKE_CURRENT_SOURCE_DIR}/utils/GaussPts.f90
+                 ${CMAKE_CURRENT_SOURCE_DIR}/utils/trivariate_point_inversion.f90
                  LINK_LIBRARIES base
                  DESTINATION ${PYTHON_MODULES_OUTPUT_PATH})
 
