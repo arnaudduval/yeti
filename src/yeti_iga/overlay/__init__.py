@@ -1,5 +1,6 @@
 from .iga_model import IgaModel
 from .patch import Patch
+from .templates import QuarterPipe
 from .material import ElasticMaterial
 from .boundary_condition import BoundaryCondition
 from .distributed_load import DistributedLoad
