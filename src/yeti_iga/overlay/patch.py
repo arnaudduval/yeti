@@ -53,3 +53,17 @@ class Patch:
         self.spans = spans
         self.material = material
         self.properties = properties
+
+    def translate(self, vector):
+        """
+        Translate a patch by a given vector
+
+        Parameters
+        ==========
+        vector: np.array(dtype=float)
+            translation vector
+        """
+        for i in range(self.control_points.shape[0]):
+            self.control_points[i, :] += vector
+
+
