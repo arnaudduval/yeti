@@ -32,7 +32,6 @@ from .IGA_refinementFcts import iga_refinement
 from .IGA_manipulation import bezier_decomposition_patch
 
 
-
 class IGAparametrization:
     """A class containing the necessary parameters for IGA."""
 
@@ -2542,6 +2541,51 @@ class IGAparametrization:
             generate_vtk(*inputs)
         else:
             generate_vtk_wsol(*inputs)
+
+    def get_inputs4point_inversion(self, point, i_patch=0, eps1=1.e-5, eps2=1.e-5, eps3=1.e-5, maxiter=100):
+        """
+        Perform point inversion on a given patch
+
+        Parameters
+        ----------
+        point: numpy.array
+            coordinates of point to be inverted
+        ipatch: int
+            index of patch on wich point ninversion is performed (default=0)
+
+        Returns
+        -------
+        u: numpy.array
+            corresponding parametric coordinates, None if point is not in the patch
+        """
+
+        # Set inputs
+        # WARNING: we set the full data structure but only patch of interest is needed
+        inputs = {'point': point,
+                  'i_patch': i_patch+1,
+                  'eps1': eps1,
+                  'eps2': eps2,
+                  'eps3': eps3,
+                  'maxiter': maxiter,
+                  'nnode': self._nnode,
+                  'ien': self._IEN_flat,
+                  'nb_elem_patch': self._elementsByPatch,
+                  'nkv': self._Nkv,
+                  'jpqr': self._Jpqr,
+                  'nijk': self._Nijk,
+                  'ukv': self._Ukv_flat,
+                  'weight': self._weight_flat,
+                  'coords': self._COORDS,
+                  'nb_patch': self._nb_patch,
+                  'nb_elem': self._nb_elem,
+                  'nb_cp': self._nb_cp,
+                  'mcrd': self._mcrd
+                 }
+
+        return inputs
+
+
+
 
     @property
     def coords(self):
