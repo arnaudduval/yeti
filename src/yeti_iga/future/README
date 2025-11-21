@@ -1,0 +1,3 @@
+Command line for configuraion with pybind11
+
+cmake -Dpybind11_DIR=$(python3 -m pybind11 --cmakedir) ..
