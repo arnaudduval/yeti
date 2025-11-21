@@ -1,20 +1,19 @@
 #include "BSplineTensor.hpp"
 
 py::array_t<int> BSplineTensor::FindSpanND(const py::array_t<double>& u) const {
-    auto params = u.unchecked<1>();
-    const ssize_t n_dims = params.shape(0);
+    auto pr = u.unchecked<1>();
+    py::array_t<int> spans({(ssize_t)components.size()});
+    auto sp = spans.mutable_unchecked<1>();
 
-    // Remove throw to improve computation time
-    // if (n_dims != components.size())
-    //     throw std::runtime_error("Wrong parameters dimensions, (" + std::to_string(components.size()) + " expected");
+    FindSpanND(&pr(0), &sp(0));  // pointeur → zéro copie
+    return spans;
+}
 
-    py::array_t<int> result({n_dims});
-    auto res = result.mutable_unchecked<1>();
-
-    for (ssize_t d = 0; d < n_dims; ++d)
-        res(d) = components[d].FindSpan(params(d));
-
-    return result;
+void BSplineTensor::FindSpanND(const double* u, int* spans) const
+{
+    int dim = components.size();
+    for (int d = 0; d < dim; ++d)
+        spans[d] = components[d].FindSpan(u[d]);
 }
 
 /*

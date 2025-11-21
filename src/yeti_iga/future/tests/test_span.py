@@ -1,7 +1,12 @@
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build"))
+
+
 import numpy as np
 from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch
 import matplotlib
 import matplotlib.pyplot as plt
+
 
 u = np.arange(0, 1, 0.1)
 U = np.array([0., 0., 0.,0.33, 0.66, 1., 1., 1.])
@@ -94,8 +99,8 @@ print(f"Surface evaluated at u={u[0]}, v={u[1]} : {surface_pt}")
 
 
 print("======")
-u = np.array([[0.25, 0.75]], dtype=np.float64)
-spans = np.array([surf.find_span_nd(u[0])])
+u = np.array([[0.25, 0.75],[0.7, 0.66]], dtype=np.float64)
+spans = np.array([surf.find_span_nd(u[0]), surf.find_span_nd(u[1])])
 
 print(patch.evaluate_patch_nd(spans, u))
 

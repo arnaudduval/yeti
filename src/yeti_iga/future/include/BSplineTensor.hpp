@@ -10,6 +10,11 @@ public:
     py::array_t<int> FindSpanND(const py::array_t<double>& u) const;
     py::array_t<double> BasisFunsND(const py::array_t<int>& span, const py::array_t<double>& u) const;
 
+    // Optimized versions
+    void FindSpanND(const double* u, int* spans) const;
+    // py::array_t<double> BasisFunsND(const int* spans, const double* u) const;
+    
+
 };
 
 class BSplineSurface : public BSplineTensor {
