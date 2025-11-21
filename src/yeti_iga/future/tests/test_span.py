@@ -90,3 +90,12 @@ local_pts_reshaped = local_pts.reshape((dim_u, dim_v, mgr.dim_phys))
 surface_pt = np.tensordot(tensor_basis, local_pts_reshaped, axes=([0,1],[0,1]))
 
 print(f"Surface evaluated at u={u[0]}, v={u[1]} : {surface_pt}")
+
+
+
+print("======")
+u = np.array([[0.25, 0.75]], dtype=np.float64)
+spans = np.array([surf.find_span_nd(u[0])])
+
+print(patch.evaluate_patch_nd(spans, u))
+
