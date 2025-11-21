@@ -52,8 +52,11 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
         py::array_t<double> u_point({n_dims});
         py::array_t<int> span_point({n_dims});
         auto u_point_mut = u_point.mutable_unchecked<1>();
-        for (ssize_t d = 0; d < n_dims; ++d)
+        auto span_point_mut = span_point.mutable_unchecked<1>();
+        for (ssize_t d = 0; d < n_dims; ++d) {
             u_point_mut(d) = params(k,d);
+            span_point_mut(d) = sp(k,d);
+        }
         py::array_t<double> tensor_basis = tensor.BasisFunsND(span_point, u_point);
 
         // intialize value
