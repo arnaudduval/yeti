@@ -20,8 +20,12 @@ PYBIND11_MODULE(bspline, m)
 
     py::class_<BSplineTensor>(m, "BSplineTensor")
         .def_property_readonly("components", [](const BSplineTensor& t) {return t.components; })
-        .def("find_span_nd", &BSplineTensor::FindSpanND)
-        .def("basis_funs_nd", &BSplineTensor::BasisFunsND);
+        .def("basis_funs_nd", &BSplineTensor::BasisFunsND)
+        .def("find_span_nd",
+             static_cast<py::array_t<int>(BSplineTensor::*)(const py::array_t<double>&) const>
+                (&BSplineTensor::FindSpanND),
+             py::arg("u"),
+             "Compute span indices in all parameter dimensions.");
 
     py::class_<BSplineSurface, BSplineTensor>(m, "BSplineSurface")
         .def(py::init<const BSpline&, const BSpline&>(),
