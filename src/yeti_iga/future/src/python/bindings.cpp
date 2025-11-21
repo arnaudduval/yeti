@@ -56,5 +56,6 @@ PYBIND11_MODULE(bspline, m)
             py::arg("i_local"),
             "Return Numpy 1D view on a local point")
         .def("local_control_point_view", &Patch::local_control_point_view,
-             "Return a zero-copy NumPy array view of global control points (indexing from Python needed)");
+             "Return a zero-copy NumPy array view of global control points (indexing from Python needed)")
+        .def("evaluate_patch_nd", &Patch::EvaluatePatchND);
 }

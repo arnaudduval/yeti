@@ -1,3 +1,4 @@
+#pragma once
 #include "BSpline.hpp"
 #include <pybind11/stl.h>
 
