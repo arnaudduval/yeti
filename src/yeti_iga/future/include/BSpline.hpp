@@ -11,6 +11,7 @@ public:
     py::array_t<double> kvView() const;
     int FindSpan(double u) const;
     py::array_t<double> BasisFuns(int span, double u) const;
+    void BasisFuns_raw(int span, double u, double* out) const;
     double OneBasisFun(double u, int i);
     int getDegree() const {return degree; }
 

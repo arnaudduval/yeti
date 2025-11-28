@@ -30,52 +30,62 @@ py::array_t<double> Patch::local_control_point_view() const {
 
 py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
                                            const py::array_t<double>& u) const {
-    auto params = u.unchecked<2>();     // shape(n_points, dim_params)
+    auto params = u.unchecked<2>();   // shape(n_points, dim_params)
     auto sp = spans.unchecked<2>();
-    ssize_t n_points = u.shape(0);
-    ssize_t n_dims = u.shape(1);
-    ssize_t dim_phys = cp_manager->dim_phys;
+    const ssize_t n_points = u.shape(0);
+    const ssize_t n_dims   = u.shape(1);
+    const ssize_t dim_phys = cp_manager->dim_phys;
 
-    // output array
+    // output array Python (contigu)
     py::array_t<double> result({n_points, dim_phys});
-    auto res = result.mutable_unchecked<2>();
+    double* res_ptr = result.mutable_data();
 
-    // Get local points
-    std::vector<double*> local_pts_ptrs(global_indices.size());
+    // pointeurs vers points de contrôle locaux
+    std::vector<const double*> local_pts_ptrs(global_indices.size());
     for (size_t i = 0; i < global_indices.size(); ++i)
         local_pts_ptrs[i] = cp_manager->coords.data() + global_indices[i] * dim_phys;
 
-    // Compute for each point
+    // buffer temporaire pour BasisFunsND_raw
+    std::vector<ssize_t> sizes;
+    std::vector<double> basis_vals;
+
+    // évaluation pour chaque point
     for (ssize_t k = 0; k < n_points; ++k) {
-        // Temporary 1D array for current point
-        // TODO not optimized : there is a copy
-        py::array_t<double> u_point({n_dims});
-        py::array_t<int> span_point({n_dims});
-        auto u_point_mut = u_point.mutable_unchecked<1>();
-        auto span_point_mut = span_point.mutable_unchecked<1>();
-        for (ssize_t d = 0; d < n_dims; ++d) {
-            u_point_mut(d) = params(k,d);
-            span_point_mut(d) = sp(k,d);
-        }
-        py::array_t<double> tensor_basis = tensor.BasisFunsND(span_point, u_point);
+        // pointeurs vers spans et params pour ce point
+        const int* span_ptr   = &sp(k,0);
+        const double* param_ptr = &params(k,0);
 
-        // intialize value
-        std::vector<double> val(dim_phys, 0.0);
+        // appel à la version raw pour remplir basis_vals
+        tensor.BasisFunsND_raw(span_ptr, param_ptr, sizes, basis_vals);
 
-        auto basis = tensor_basis.unchecked<2>(); // pour 2D, adaptables pour N-d
-        ssize_t nu = basis.shape(0);
-        ssize_t nv = basis.shape(1);
+        // calcul de l’indice linéaire pour chaque combinaison des dimensions
+        // pour N-dimensions, on fait un produit tensoriel
+        std::vector<ssize_t> idx(n_dims, 0);
+        ssize_t total_size = 1;
+        for (auto s : sizes) total_size *= s;
 
-        for (ssize_t i = 0; i < nu; ++i) {
-            for (ssize_t j = 0; j < nv; ++j) {
-                const double* pt = local_pts_ptrs[i*nv + j];
-                for (ssize_t d = 0; d < dim_phys; ++d)
-                    val[d] += basis(i,j) * pt[d];
+        for (ssize_t n = 0; n < total_size; ++n) {
+            // calcul de l’indice linéaire dans le tableau N-d (row-major)
+            ssize_t lin_idx = 0;
+            ssize_t stride = 1;
+            for (ssize_t d = n_dims - 1; d >= 0; --d) {
+                lin_idx += idx[d] * stride;
+                stride *= sizes[d];
+            }
+
+            // récupérer le point de contrôle correspondant
+            const double* pt = local_pts_ptrs[lin_idx];
+
+            // accumulation dans res_ptr pour ce point
+            for (ssize_t d = 0; d < dim_phys; ++d)
+                res_ptr[k*dim_phys + d] += basis_vals[n] * pt[d];
+
+            // incrément de l’indice multi-dim
+            for (ssize_t d = n_dims - 1; d >= 0; --d) {
+                if (++idx[d] < sizes[d]) break;
+                idx[d] = 0;
             }
         }
-
-        for (ssize_t d = 0; d < dim_phys; ++d)
-            res(k,d) = val[d];
     }
 
     return result;
