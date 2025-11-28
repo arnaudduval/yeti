@@ -44,32 +44,43 @@ int BSpline::FindSpan(double u) const {
 }
 
 py::array_t<double> BSpline::BasisFuns(int span, double u) const {
-    py::array_t<double> N(degree+1);
-    auto Nview = N.mutable_unchecked<1>();
+    int p = degree;
 
-    std::vector<double> left(degree+1);
-    std::vector<double> right(degree+1);
+    // Crée un array Python de taille p+1
+    py::array_t<double> result({p + 1});
 
-    Nview(0) = 1.0;
+    // Récupération d’un pointeur direct → zéro overhead
+    double* out_ptr = result.mutable_data();
 
-    for (int j=1; j <= degree; j++)
-    {
-        left[j] = u - kvector[span + 1 - j];
-        right[j] = kvector[span + j] - u;
+    // Appel direct à ta version interne optimisée
+    BasisFuns_raw(span, u, out_ptr);
+
+    return result;
+}
+
+void BSpline::BasisFuns_raw(int span, double u, double* out) const {
+    int p = degree;
+    const auto& U = kvector;
+
+    std::vector<double> left(p+1), right(p+1);
+
+    out[0] = 1.0;
+
+    for (int j = 1; j <= p; ++j) {
+        left[j]  = u - U[span + 1 - j];
+        right[j] = U[span + j] - u;
 
         double saved = 0.0;
-
-        for (int r=0; r < j; r++)
-        {
-            double temp = Nview(r) / (right[r + 1] + left[j - r]);
-            Nview(r) = saved + right[r + 1] * temp;
-            saved = left[j - r] * temp;
+        for (int r = 0; r < j; ++r) {
+            double temp = out[r] / (right[r+1] + left[j-r]);
+            out[r] = saved + right[r+1] * temp;
+            saved = left[j-r] * temp;
         }
-
-        Nview(j) = saved;
+        out[j] = saved;
     }
-    return N;
 }
+
+
 
 double BSpline::OneBasisFun(double u, int i) {
     int m = kvector.size() - 1;

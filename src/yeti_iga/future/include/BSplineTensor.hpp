@@ -9,11 +9,15 @@ public:
     BSplineTensor(const std::vector<BSpline>& comps) : components(comps) {}
     py::array_t<int> FindSpanND(const py::array_t<double>& u) const;
     py::array_t<double> BasisFunsND(const py::array_t<int>& span, const py::array_t<double>& u) const;
+    void BasisFunsND_raw(const int* spans,
+                         const double* params,
+                         std::vector<ssize_t>& sizes,
+                         std::vector<double>& output) const;
 
     // Optimized versions
     void FindSpanND(const double* u, int* spans) const;
     // py::array_t<double> BasisFunsND(const int* spans, const double* u) const;
-    
+
 
 };
 
