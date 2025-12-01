@@ -39,7 +39,7 @@ PYBIND11_MODULE(bspline, m)
         .def(py::init<int>(), py::arg("dim")=3)
         .def_property_readonly("dim_phys", [](const ControlPointManager& mgr) {return mgr.dim_phys; })
         .def("add_point", &ControlPointManager::add_point)
-        .def("n_points", &ControlPointManager::n_points)
+        .def_property_readonly("n_points", &ControlPointManager::n_points)
         .def("coords_view", [](ControlPointManager& self){
             auto capsule = py::capsule(&self);
             std::vector<ssize_t> shape = {(ssize_t)self.n_points(), (ssize_t)self.dim_phys};
