@@ -11,6 +11,7 @@ struct Patch {
     BSplineTensor tensor;
 
     // mapping local -> global
+    // Row-major indexing : [i_v * n_u + i_u]
     std::vector<size_t> global_indices;
 
     // dimensions nu, nv, nw (for indexing)
@@ -38,5 +39,5 @@ struct Patch {
                                         const py::array_t<double>& u) const;
 
     py::array_t<double> EvaluatePatchNDOMP(const py::array_t<int> spans,
-                                        const py::array_t<double>& u) const;
+                                           const py::array_t<double>& u) const;
 };
