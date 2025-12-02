@@ -87,45 +87,34 @@ def test_cp_manager():
 
 def test_evaluation():
     mgr = ControlPointManager(dim=2)
-
-    id0 = mgr.add_point([0.0, 0.0])
-    id1 = mgr.add_point([1.0, 0.0])
-    id2 = mgr.add_point([0.0, 1.0])
-    id3 = mgr.add_point([1.0, 1.0])
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([3.0, 0.0])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([3.0, 1.0])
+    mgr.add_point([1.5, 0.0])
+    mgr.add_point([1.5, 1.0])
     # TODO : les ajouter dans un autre ordre et avoir un mapping non ordonné
 
     # Create surface with degree 1
-    su = BSpline(1, np.array([0., 0., 1., 1.]))
+    su = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
-    mapping = np.array([0, 1, 2, 3], dtype=np.int64)
-    local_shape = [2, 2]
+    mapping = np.array([0, 4, 1, 2, 5, 3], dtype=np.int64)
+    local_shape = [3, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
 
     u = np.array([0.25, 0.75], dtype=np.float64)
     spans = surf.find_span_nd(u)
     tensor_basis = surf.basis_funs_nd(spans, u)
 
-    print(spans)
-    print(tensor_basis)
-
-
     local_pts = patch.local_control_point_view()[mapping, :]
     dim_u, dim_v = tensor_basis.shape
 
-    print(local_pts)
-    print(dim_u, dim_v)
+    local_pts_reshaped = local_pts.reshape((dim_v, dim_u, mgr.dim_phys)).transpose(1, 0, 2)
+    surface_pt = np.tensordot(tensor_basis, local_pts_reshaped, axes=([0,1],[0,1]))
 
-    local_pts_reshaped = local_pts.reshape((dim_u, dim_v, mgr.dim_phys))
-    print(f'{local_pts_reshaped[0, 1, :] = }')
-    print(f'{local_pts[1, :] = }')
-    surface_pt = np.tensordot(tensor_basis, local_pts_reshaped, axes=([1,0],[0,1]))
-
-    print(local_pts_reshaped)
-    print(surface_pt)
-
-    # Pb inversion x, y
-    # assert np.allclose(surface_pt, u, rtol=1.e-9)
+    assert np.allclose(surface_pt, u*[3., 1.], rtol=1.e-9)
+    assert np.allclose(patch.evaluate_patch_nd([spans], [u]),  [u*[3., 1.]], rtol=1.e-9)
 
 
 

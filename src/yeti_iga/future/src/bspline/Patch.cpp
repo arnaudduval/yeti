@@ -1,4 +1,5 @@
 #include "Patch.hpp"
+#include <iostream> // temp for debug
 
 double* Patch::local_cp_ptr(size_t i_local) {
     size_t gid = global_indices.at(i_local);
@@ -39,6 +40,8 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
     // output array Python (contigu)
     py::array_t<double> result({n_points, dim_phys});
     double* res_ptr = result.mutable_data();
+    // initialization
+    std::fill_n(res_ptr, n_points * dim_phys, 0.0);
 
     // pointeurs vers points de contrôle locaux
     std::vector<const double*> local_pts_ptrs(global_indices.size());
@@ -65,18 +68,20 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
         for (auto s : sizes) total_size *= s;
 
         for (ssize_t n = 0; n < total_size; ++n) {
-            // calcul de l’indice linéaire dans le tableau N-d (row-major)
+            // linear index = j*n_u + i
             ssize_t lin_idx = 0;
             ssize_t stride = 1;
-            for (ssize_t d = n_dims - 1; d >= 0; --d) {
+            for (ssize_t d = 0; d < n_dims; ++d) {
                 lin_idx += idx[d] * stride;
                 stride *= sizes[d];
             }
+
 
             // récupérer le point de contrôle correspondant
             const double* pt = local_pts_ptrs[lin_idx];
 
             // accumulation dans res_ptr pour ce point
+
             for (ssize_t d = 0; d < dim_phys; ++d)
                 res_ptr[k*dim_phys + d] += basis_vals[n] * pt[d];
 
