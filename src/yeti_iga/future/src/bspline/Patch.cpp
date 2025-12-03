@@ -41,7 +41,7 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
     py::array_t<double> result({n_points, dim_phys});
     double* res_ptr = result.mutable_data();
     // initialization
-    std::fill_n(res_ptr, n_points * dim_phys, 0.0);
+    std::memset(res_ptr, 0, n_points * dim_phys * sizeof(double));
 
     // pointeurs vers points de contrôle locaux
     std::vector<const double*> local_pts_ptrs(global_indices.size());
@@ -95,3 +95,90 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
 
     return result;
 }
+
+py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
+                                              const py::array_t<double>& u) const
+{
+    auto params = u.unchecked<2>();   // shape(n_points, dim_params)
+    auto sp = spans.unchecked<2>();
+    const ssize_t n_points = u.shape(0);
+    const ssize_t n_dims   = u.shape(1);
+    const ssize_t dim_phys = cp_manager->dim_phys;
+
+    // output array Python (contigu)
+    py::array_t<double> result({n_points, dim_phys});
+    double* res_ptr = result.mutable_data();
+    // initialization
+    std::memset(res_ptr, 0, (size_t)n_points * (size_t)dim_phys * sizeof(double));
+
+    // pointeurs vers points de contrôle locaux
+    std::vector<const double*> local_pts_ptrs(global_indices.size());
+    for (size_t i = 0; i < global_indices.size(); ++i)
+        local_pts_ptrs[i] = cp_manager->coords.data() + global_indices[i] * dim_phys;
+
+
+    // -------------------------
+    // Parallel loop over points
+    // -------------------------
+    #pragma omp parallel
+    {
+        // buffers thread-local (éviter réallocations fréquentes)
+        std::vector<ssize_t> sizes;
+        std::vector<double> basis_vals;
+        std::vector<ssize_t> idx;
+        std::vector<double> val;
+        #pragma omp for schedule(static)
+        for (ssize_t kk = 0; kk < n_points; ++kk) {
+            // pointeurs vers spans et params pour ce point
+            const int* span_ptr   = &sp(kk,0);
+            const double* param_ptr = &params(kk,0);
+
+            // compute tensor-product basis (RAW version)
+            tensor.BasisFunsND_raw(span_ptr, param_ptr, sizes, basis_vals);
+            const ssize_t total_size = basis_vals.size();
+
+
+            idx.assign((size_t)n_dims, 0);
+            val.assign((size_t)dim_phys, 0.0);
+
+
+
+            // loop over tensor-product basis
+            for (ssize_t n = 0; n < total_size; ++n)
+            {
+                // compute linear index (row-major: [d] least significant)
+                ssize_t lin_idx = 0;
+                ssize_t stride = 1;
+
+                for (ssize_t d = 0; d < n_dims; ++d)
+                {
+                    lin_idx += idx[d] * stride;
+                    stride *= sizes[d];
+                }
+
+                const double b = basis_vals[n];
+                const double* pt = local_pts_ptrs[lin_idx];
+
+                for (ssize_t d = 0; d < dim_phys; ++d)
+                    val[d] += b * pt[d];
+
+                // increment N-D index
+                for (ssize_t d = n_dims - 1; d >= 0; --d)
+                {
+                    if (++idx[d] < sizes[d])
+                        break;
+                    idx[d] = 0;
+                }
+            }
+
+            // write result
+            double* dst = res_ptr + kk * dim_phys;
+            for (ssize_t d = 0; d < dim_phys; ++d)
+                dst[d] = val[d];
+        }
+
+    }
+    return result;
+}
+
+
