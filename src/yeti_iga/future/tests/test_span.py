@@ -77,9 +77,8 @@ def test_cp_manager():
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
 
     # Test view to local control point
-    assert np.allclose(patch.local_cp_view(0), np.array([0., 0.]), rtol=1.e-9)
-    assert np.allclose(patch.local_cp_view(2), np.array([0., 1.]), rtol=1.e-9)
-
+    assert np.allclose(patch.control_point(0), np.array([0., 0.]), rtol=1.e-9)
+    assert np.allclose(patch.control_point(2), np.array([0., 1.]), rtol=1.e-9)
     # View to CP coordinates using mapping (zero-copy)
     assert np.allclose(patch.local_control_point_view()[mapping, :],
                        np.array([[0., 0.],[1., 0.],[0., 1.],[1., 1.]]),
@@ -119,19 +118,48 @@ def test_evaluation():
 
 
     # Test multiple evaluation
-    n_points = 10000
+    n_points = 100
     u = np.random.rand(n_points, 2)
     spans = np.array([surf.find_span_nd(pt) for pt in u])
-    # import time
-    # start = time.perf_counter()
     res_serial = patch.evaluate_patch_nd(spans, u)
-    # end = time.perf_counter()
-    # print(f"Serial evaluate_patch_nd: {end - start:.6f} s")
-
-    # start = time.perf_counter()
     res_omp = patch.evaluate_patch_nd_omp(spans, u)
-    # end = time.perf_counter()
-    # print(f"OpenMP evaluate_patch_nd_omp: {end - start:.6f} s")
+
+    assert np.allclose(res_omp, u*[3., 1.], rtol=1.e-9)
+    assert np.allclose(res_serial, res_omp, rtol=1.e-9)
+
+def test_evaluation_low_continuity():
+    """
+    Test patch evaluation when knot vector contained repeated inner nodes
+    """
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([0.75, 0.0])
+    mgr.add_point([1.5, 0.0])
+    mgr.add_point([2.25, 0.0])
+    mgr.add_point([3.0, 0.0])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([0.75, 1.0])
+    mgr.add_point([1.5, 1.0])
+    mgr.add_point([2.25, 1.0])
+    mgr.add_point([3.0, 1.0])
+
+    su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
+    sv = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
+    local_shape = [5, 2]
+    patch = Patch(surf, mgr, mapping.tolist(), local_shape)
+
+    # Test multiple evaluation
+    n_points = 100
+    u = np.random.rand(n_points, 2)
+    spans = np.array([surf.find_span_nd(pt) for pt in u])
+
+    res_serial = patch.evaluate_patch_nd(spans, u)
+    res_omp = patch.evaluate_patch_nd_omp(spans, u)
+
+    print(res_omp)
+    print(res_serial)
 
     assert np.allclose(res_omp, u*[3., 1.], rtol=1.e-9)
     assert np.allclose(res_serial, res_omp, rtol=1.e-9)
@@ -182,6 +210,7 @@ test_BSpline_getters()
 test_ND_BSpline()
 test_cp_manager()
 test_evaluation()
+test_evaluation_low_continuity()
 test_span_iterator()
 
 

@@ -54,6 +54,11 @@ public:
         for (size_t d = 0; d < n_dims; ++d)
             if (valid_spans[d].empty())
                 done = true;
+
+        // Compute total size
+        total_size_ = 1;
+        for (const auto& vs : valid_spans)
+            total_size_ *= vs.size();
     }
 
     Iterator begin() {
@@ -82,10 +87,13 @@ public:
 
     bool is_done() const {return done;}
 
+    size_t size() const {return total_size_; }
+
 private:
     const BSplineTensor& tensor;
     size_t n_dims;
     std::vector<std::vector<int>> valid_spans;
     std::vector<size_t> idx;
     bool done;
+    size_t total_size_;
 };

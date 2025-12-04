@@ -53,11 +53,15 @@ PYBIND11_MODULE(bspline, m)
     py::class_<Patch>(m, "Patch")
         .def(py::init<const BSplineTensor&, ControlPointManager*, const std::vector<size_t>&, const std::vector<size_t>&>(),
              py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"))
-        .def("local_cp_ptr", &Patch::local_cp_ptr,
+        .def("local_cp_ptr", static_cast<double*(Patch::*)(size_t)>(&Patch::local_cp_ptr),
              py::arg("i_local"),
              "Return pointer to local control point (as int or PyCapsule for Python?)")
-        .def("local_cp_view", &Patch::local_cp_view,
-            py::arg("i_local"),
+        .def("control_point",
+             [](const Patch& p, size_t i_local) {
+                auto ptr = p.local_cp_ptr(i_local);
+                ssize_t dim = p.cp_manager->dim_phys;
+                return py::array_t<double>({dim}, ptr);
+            },
             "Return Numpy 1D view on a local point")
         .def("local_control_point_view", &Patch::local_control_point_view,
              "Return a zero-copy NumPy array view of global control points (indexing from Python needed)")
