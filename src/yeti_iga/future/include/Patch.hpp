@@ -40,4 +40,6 @@ struct Patch {
 
     py::array_t<double> EvaluatePatchNDOMP(const py::array_t<int> spans,
                                            const py::array_t<double>& u) const;
+
+    void Test();
 };

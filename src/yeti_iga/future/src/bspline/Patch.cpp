@@ -1,4 +1,5 @@
 #include "Patch.hpp"
+#include "SpanNDIterator.hpp"
 #include <iostream> // temp for debug
 
 double* Patch::local_cp_ptr(size_t i_local) {
@@ -72,7 +73,12 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
             ssize_t lin_idx = 0;
             ssize_t stride = 1;
             for (ssize_t d = 0; d < n_dims; ++d) {
-                lin_idx += idx[d] * stride;
+                // lin_idx += idx[d] * stride;
+                // stride *= sizes[d];
+                int p = tensor.components[d].getDegree();
+                int global_idx = (span_ptr[d] - p) + idx[d];
+
+                lin_idx += global_idx * stride;
                 stride *= sizes[d];
             }
 
@@ -152,7 +158,12 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
 
                 for (ssize_t d = 0; d < n_dims; ++d)
                 {
-                    lin_idx += idx[d] * stride;
+                    // lin_idx += idx[d] * stride;
+                    // stride *= sizes[d];
+                    int p = tensor.components[d].getDegree();
+                    int global_idx = (span_ptr[d] - p) + idx[d];
+
+                    lin_idx += global_idx * stride;
                     stride *= sizes[d];
                 }
 
@@ -179,6 +190,18 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
 
     }
     return result;
+}
+
+void Patch::Test()
+{
+    std::cout << "HELLO" << "\n";
+    SpanNDIterator it(tensor);
+    while(!it.is_done()) {
+        auto span = it.current();
+        std::cout << "boucle finale : " << span[0] << "\t" << span[1] << "\n";
+        it.next();
+    }
+
 }
 
 
