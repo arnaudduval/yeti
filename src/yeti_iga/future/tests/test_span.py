@@ -158,9 +158,6 @@ def test_evaluation_low_continuity():
     res_serial = patch.evaluate_patch_nd(spans, u)
     res_omp = patch.evaluate_patch_nd_omp(spans, u)
 
-    print(res_omp)
-    print(res_serial)
-
     assert np.allclose(res_omp, u*[3., 1.], rtol=1.e-9)
     assert np.allclose(res_serial, res_omp, rtol=1.e-9)
 
@@ -178,8 +175,6 @@ def test_span_iterator():
     mgr.add_point([2.25, 1.0])
     mgr.add_point([3.0, 1.0])
 
-
-
     su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
@@ -187,20 +182,20 @@ def test_span_iterator():
     local_shape = [5, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
 
-    u = [0.125, 0]
-    span = surf.find_span_nd(u)
-    print(f'{span = }')
+    u = np.array([0.5, 1.0])
 
-    funs = surf.basis_funs_nd(span, u)
-    print(f'{funs = }')
+    ref_spans = np.array([[2, 1], [4, 1]])
+    for i, span in enumerate(patch.spans()):
+        assert (span == ref_spans[i]).all()
 
-    # ERROR : pb evaluation pour u = 0.5
-    pt = patch.evaluate_patch_nd([span], [u])
-    print(f'{pt = }')
+    pts = patch.control_points_for_span(np.array([4, 1]))
+    pts = pts.reshape([3, 2, 2])
 
+    assert (pts[1, 1] == [2.25, 1.]).all()
+    assert (pts[2, 1] == [3., 1.]).all()
+    # assert np.allaclose(patch.control_points_for_span(span)
 
-
-    patch.test()
+    # patch.test()
 
 
 

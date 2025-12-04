@@ -4,6 +4,7 @@
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
 #include "Patch.hpp"
+#include "SpanNDIterator.hpp"
 
 
 namespace py = pybind11;
@@ -67,5 +68,38 @@ PYBIND11_MODULE(bspline, m)
              "Return a zero-copy NumPy array view of global control points (indexing from Python needed)")
         .def("evaluate_patch_nd", &Patch::EvaluatePatchND)
         .def("evaluate_patch_nd_omp", &Patch::EvaluatePatchNDOMP)
+        .def("spans", &Patch::spans)
+        .def("control_points_for_span",
+            [](const Patch &self, const std::vector<int>& span) {
+                auto pts = self.control_points_for_span(span);
+
+                ssize_t dim = self.cp_manager->dim_phys;
+                ssize_t n   = pts.size();
+
+                // Build a (n, dim) numpy array
+                py::array_t<double> arr({n, dim});
+                double* data = arr.mutable_data();
+
+                for (ssize_t i = 0; i < n; ++i)
+                    std::memcpy(data + i*dim, pts[i], dim * sizeof(double));
+
+                return arr;
+            })
         .def("test", &Patch::Test);
+
+
+    py::class_<SpanNDIterator>(m, "SpanIterator")
+        .def("__iter__", [](SpanNDIterator &self) -> SpanNDIterator& {
+            return self;
+        })
+        .def("__next__", [](SpanNDIterator &self) {
+            if (self.is_done())
+                throw py::stop_iteration();
+            auto result = self.current();
+            self.next();
+            return py::cast(result);
+        })
+        .def("size", &SpanNDIterator::size)
+        .def("current", &SpanNDIterator::current)
+        .def("next", &SpanNDIterator::next);
 }
