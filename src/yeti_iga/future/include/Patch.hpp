@@ -4,6 +4,7 @@
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
+#include "SpanNDIterator.hpp"
 
 namespace py = pybind11;
 
@@ -43,6 +44,8 @@ struct Patch {
                                            const py::array_t<double>& u) const;
 
     std::vector<const double*> control_points_for_span(const std::vector<int>& span) const;
+
+    SpanNDIterator spans() const { return SpanNDIterator(tensor); }
 
     void Test();
 };
