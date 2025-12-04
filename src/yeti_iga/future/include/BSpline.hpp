@@ -14,6 +14,7 @@ public:
     void BasisFuns_raw(int span, double u, double* out) const;
     double OneBasisFun(double u, int i);
     int getDegree() const {return degree; }
+    const std::vector<double>& getKnotVector() const { return kvector; }
 
 
 private:

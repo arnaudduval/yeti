@@ -93,9 +93,8 @@ def test_evaluation():
     mgr.add_point([3.0, 1.0])
     mgr.add_point([1.5, 0.0])
     mgr.add_point([1.5, 1.0])
-    # TODO : les ajouter dans un autre ordre et avoir un mapping non ordonné
 
-    # Create surface with degree 1
+    # Create surface with degree 1 / 2
     su = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
@@ -138,6 +137,43 @@ def test_evaluation():
     assert np.allclose(res_serial, res_omp, rtol=1.e-9)
 
 
+def test_span_iterator():
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([0.75, 0.0])
+    mgr.add_point([1.5, 0.0])
+    mgr.add_point([2.25, 0.0])
+    mgr.add_point([3.0, 0.0])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([0.75, 1.0])
+    mgr.add_point([1.5, 1.0])
+    mgr.add_point([2.25, 1.0])
+    mgr.add_point([3.0, 1.0])
+
+
+
+    su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
+    sv = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
+    local_shape = [5, 2]
+    patch = Patch(surf, mgr, mapping.tolist(), local_shape)
+
+    u = [0.5, 0]
+    span = surf.find_span_nd(u)
+    print(f'{span = }')
+
+    funs = surf.basis_funs_nd(span, u)
+    print(f'{funs = }')
+
+    # ERROR : pb evaluation pour u = 0.5
+    pt = patch.evaluate_patch_nd([span], [u])
+    print(f'{pt = }')
+
+
+
+    patch.test()
+
 
 
 
@@ -146,6 +182,7 @@ test_BSpline_getters()
 test_ND_BSpline()
 test_cp_manager()
 test_evaluation()
+test_span_iterator()
 
 
 exit()
