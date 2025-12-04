@@ -27,6 +27,7 @@ struct Patch {
 
     // get view (zero copy) to coordinates of local control point i_local
     double* local_cp_ptr(size_t i_local);
+    const double* local_cp_ptr(size_t i_local) const;
 
     // Numpy 1D view on a local point
     py::array_t<double> local_cp_view(size_t i_local);
@@ -40,6 +41,8 @@ struct Patch {
 
     py::array_t<double> EvaluatePatchNDOMP(const py::array_t<int> spans,
                                            const py::array_t<double>& u) const;
+
+    std::vector<const double*> control_points_for_span(const std::vector<int>& span) const;
 
     void Test();
 };
