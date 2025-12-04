@@ -194,12 +194,15 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
 
 void Patch::Test()
 {
-    std::cout << "HELLO" << "\n";
     SpanNDIterator it(tensor);
-    while(!it.is_done()) {
-        auto span = it.current();
-        std::cout << "boucle finale : " << span[0] << "\t" << span[1] << "\n";
-        it.next();
+    // while(!it.is_done()) {
+    //     auto span = it.current();
+    //     std::cout << "boucle finale : " << span[0] << "\t" << span[1] << "\n";
+    //     it.next();
+    // }
+
+    for (auto spans : it) {
+        std::cout << spans[0] << ", " << spans[1] << "\n";
     }
 
 }

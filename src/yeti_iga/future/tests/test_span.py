@@ -159,7 +159,7 @@ def test_span_iterator():
     local_shape = [5, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
 
-    u = [0.5, 0]
+    u = [0.125, 0]
     span = surf.find_span_nd(u)
     print(f'{span = }')
 
