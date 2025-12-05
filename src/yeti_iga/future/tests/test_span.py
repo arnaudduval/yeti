@@ -197,41 +197,31 @@ def test_span_iterator():
 
     # patch.test()
 
+def test_functions_derivatives():
+    b = BSpline(3, W)
+    u_list = [0.1, 1./3., 0.5, 8./9.]
+
+    eps = 1.e-7
+    for u in u_list:
+        span = b.find_span(u)
+        funs = b.basis_funs(span, u)
+        dfuns = b.basis_funs_derivatives(span, u, 2)
+
+        assert np.allclose(dfuns[0, :], funs, rtol = 1.e-9)
+
+        val_minus = b.basis_funs(span, u - eps)
+        val_plus = b.basis_funs(span, u + eps)
+
+        assert np.allclose(dfuns[1, :], (val_plus - val_minus)/(2.*eps), rtol = 1.e-6)
 
 
+if __name__ == '__main_':
+    test_BSpline_getters()
+    test_ND_BSpline()
+    test_cp_manager()
+    test_evaluation()
+    test_evaluation_low_continuity()
+    test_span_iterator()
+    test_functions_derivatives()
 
-
-test_BSpline_getters()
-test_ND_BSpline()
-test_cp_manager()
-test_evaluation()
-test_evaluation_low_continuity()
-test_span_iterator()
-
-
-exit()
-
-
-
-# Creation d'un espace 2D
-
-
-
-print("========")
-# ERROR : IL Y A UNE INVERSION DE DIRECTION DANS CE QUI EST FAIT CI-DESSOUS !!!
-
-
-
-
-
-print(f"Surface evaluated at u={u[0]}, v={u[1]} : {surface_pt}")
-
-
-
-print("======")
-u = np.array([[0.25, 0.75],[0.7, 0.66]], dtype=np.float64)
-spans = np.array([surf.find_span_nd(u[0, :]), surf.find_span_nd(u[1])])
-print(spans)
-
-print(patch.evaluate_patch_nd(spans, u))
 
