@@ -15,6 +15,29 @@ PYBIND11_MODULE(bspline, m)
         .def(py::init<int, py::array_t<double>>())
         .def("find_span", &BSpline::FindSpan)
         .def("basis_funs", &BSpline::BasisFuns)
+        .def("basis_funs_derivatives", &bspline_basis_funs_derivatives,
+                                        py::arg("span"),
+                                        py::arg("u"),
+                                        py::arg("d"),
+                                        R"pbdoc(
+                                            Compute B-spline basis functions and their derivatives.
+
+                                            Parameters
+                                            ----------
+                                            span : int
+                                                Valid span index.
+                                            u : float
+                                                Parameter value in knot support.
+                                            d : int
+                                                Order of derivatives to compute.
+
+                                            Returns
+                                            -------
+                                            numpy.ndarray
+                                                Shape (d+1, degree+1):
+                                                - row 0 = basis values
+                                                - row k = kth derivative
+                                        )pbdoc")
         .def("one_basis_fun", &BSpline::OneBasisFun)
         .def_property_readonly("degree", &BSpline::getDegree)
         .def_property_readonly("knot_vector", &BSpline::kvView);
