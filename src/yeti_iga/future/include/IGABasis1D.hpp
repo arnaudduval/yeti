@@ -7,11 +7,11 @@
 // Precomputed basis values for one span at gauss points
 struct SpanGauss1D {
     std::vector<double> u_phys;
-    std;;vector<double> w_phys;
+    std::vector<double> w_phys;
     // N[g][a] : g in 0..ngauss-1, a in 0..p
     std::vector<std::vector<double>> N;
     std::vector<std::vector<double>> dN;
-}
+};
 
 struct IGABasis1D {
     std::vector<SpanGauss1D> spans;
@@ -54,11 +54,11 @@ struct IGABasis1D {
 
                 for (int aidx = 0; aidx <= p; ++aidx) {
                     sg.N[g][aidx] = ders[0*(p+1) + aidx];
-                    sg.dN[g][aidx] = ders[1*(p+1) + aidx]
+                    sg.dN[g][aidx] = ders[1*(p+1) + aidx];
                 }
             }
             out.spans.push_back(std::move(sg));
         }
         return out;
     }
-}
+};
