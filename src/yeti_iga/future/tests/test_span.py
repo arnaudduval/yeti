@@ -214,8 +214,32 @@ def test_functions_derivatives():
 
         assert np.allclose(dfuns[1, :], (val_plus - val_minus)/(2.*eps), rtol = 1.e-6)
 
+def test_test_test():
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([0.75, 0.0])
+    mgr.add_point([1.5, 0.0])
+    mgr.add_point([2.25, 0.0])
+    mgr.add_point([3.0, 0.0])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([0.75, 1.0])
+    mgr.add_point([1.5, 1.0])
+    mgr.add_point([2.25, 1.0])
+    mgr.add_point([3.0, 1.0])
 
-if __name__ == '__main_':
+    su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
+    sv = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
+    local_shape = [5, 2]
+    patch = Patch(surf, mgr, mapping.tolist(), local_shape)
+
+    patch.test()
+
+
+if __name__ == '__main__':
+    test_test_test()
+    exit()
     test_BSpline_getters()
     test_ND_BSpline()
     test_cp_manager()

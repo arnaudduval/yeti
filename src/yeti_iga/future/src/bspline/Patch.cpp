@@ -1,5 +1,7 @@
 #include "Patch.hpp"
 #include "SpanNDIterator.hpp"
+#include "IGABasis1D.hpp"
+#include "IGAAssembler.hpp"
 #include <algorithm>
 #include <iostream> // temp for debug
 
@@ -250,6 +252,31 @@ std::vector<const double*> Patch::control_points_for_span(const std::vector<int>
 
 void Patch::Test()
 {
+    int ngauss_u = this->tensor.components[0].getDegree() + 1;
+    int ngauss_v = this->tensor.components[1].getDegree() + 1;
+
+    std::cout << ngauss_u << "\t" << ngauss_v << "\n";
+
+    // build IGA basis per direction
+    IGABasis1D basis_u = IGABasis1D::build(this->tensor.components[0], ngauss_u);
+    IGABasis1D basis_v = IGABasis1D::build(this->tensor.components[1], ngauss_v);
+
+    // Assembler
+    IGAAssembler2D assembler(*this, basis_u, basis_v);
+    auto elems = assembler.assemble_stiffness();
+    std::cout << elems.size() << "\n";
+
+    for (auto e : elems) {
+        std::cout << e.nb_loc << "\n";
+        for (auto v : e.K)
+            std::cout << v << ' ';
+        std::cout << "\n";
+
+    }
+
+    return;
+
+
     SpanNDIterator it(tensor);
     // while(!it.is_done()) {
     //     auto span = it.current();
