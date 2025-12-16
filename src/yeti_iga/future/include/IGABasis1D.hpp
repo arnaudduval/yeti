@@ -6,8 +6,9 @@
 
 // Precomputed basis values for one span at gauss points
 struct SpanGauss1D {
-    std::vector<double> u_phys;
-    std::vector<double> w_phys;
+    std::vector<double> u_param;
+    std::vector<double> weight;
+    // Functions et derivatives values N, dN
     // N[g][a] : g in 0..ngauss-1, a in 0..p
     std::vector<std::vector<double>> N;
     std::vector<std::vector<double>> dN;
@@ -16,7 +17,7 @@ struct SpanGauss1D {
 struct IGABasis1D {
     std::vector<SpanGauss1D> spans;
 
-    // Build form a BSpline object
+    // Build fram a BSpline object
     // - gauss_n : number of Gauss points per span
     // - derivative_order = 1 (1st derivative only)
     static IGABasis1D build(const BSpline& b, int gauss_n) {
@@ -32,8 +33,8 @@ struct IGABasis1D {
             std::vector<double> gx, gw;
             gauss_legendre_table(gauss_n, gx, gw);
 
-            sg.u_phys.resize(gauss_n);
-            sg.w_phys.resize(gauss_n);
+            sg.u_param.resize(gauss_n);
+            sg.weight.resize(gauss_n);
             sg.N.assign(gauss_n, std::vector<double>(p+1));
             sg.dN.assign(gauss_n, std::vector<double>(p+1));
 
@@ -47,13 +48,15 @@ struct IGABasis1D {
             for (int g = 0; g < gauss_n; ++g) {
                 double xi = gx[g];
                 double up = mid + half*xi;
-                sg.u_phys[g] = up;
-                sg.w_phys[g] = gw[g] * half;    // weight * jacobian of mapping
+                sg.u_param[g] = up;
+                sg.weight[g] = gw[g] * half;    // weight * jacobian of mapping
 
+                // compute functions + 1st derivative (output in ders)
                 b.BasisFunsDerivatives(i, up, 1, ders.data());
-
+                // ders layout: ders[k*(p+1) + a], k=0..1
                 for (int aidx = 0; aidx <= p; ++aidx) {
-                    sg.N[g][aidx] = ders[0*(p+1) + aidx];
+
+                    sg.N[g][aidx] = ders[aidx];   // == ders[0*(p+1) + aidx];
                     sg.dN[g][aidx] = ders[1*(p+1) + aidx];
                 }
             }
