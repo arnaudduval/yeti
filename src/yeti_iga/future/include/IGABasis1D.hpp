@@ -17,7 +17,7 @@ struct SpanGauss1D {
 struct IGABasis1D {
     std::vector<SpanGauss1D> spans;
 
-    // Build fram a BSpline object
+    // Build from a BSpline object
     // - gauss_n : number of Gauss points per span
     // - derivative_order = 1 (1st derivative only)
     static IGABasis1D build(const BSpline& b, int gauss_n) {
