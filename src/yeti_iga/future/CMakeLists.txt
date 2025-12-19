@@ -18,6 +18,11 @@ message(STATUS "Build type : ${CMAKE_BUILD_TYPE}")
 find_package(pybind11 REQUIRED)
 find_package(OpenMP REQUIRED)
 
+find_package(Eigen3 REQUIRED)
+if(Eigen3_VERSION VERSION_LESS 3.3.0)
+    message(WARNING "Eigen version < 3.3.0 may not support all features")
+endif()
+
 
 pybind11_add_module(bspline
     src/bspline/BSpline.cpp
@@ -28,6 +33,7 @@ pybind11_add_module(bspline
 
 target_include_directories(bspline PRIVATE
     ${PROJECT_SOURCE_DIR}/include
+    ${EIGEN3_INCLUDE_DIRS}
 )
 target_link_libraries(bspline PUBLIC OpenMP::OpenMP_CXX)
 
