@@ -3,10 +3,22 @@
 #include <cmath>
 #include <iostream>
 
+Eigen::Matrix3d IGAAssembler2D::computeConstitutiveMatrix() const {
+    double E = material_.E;
+    double nu = material_.nu;
+    double factor = E / (1.0 - nu*nu);
+    Eigen::Matrix3d D;
+    D <<
+        factor, factor * nu, 0.0,
+        factor * nu, factor, 0.0,
+        0.0, 0.0, factor * (1.0 - nu) / 2.0;
+    return D;
+}
+
+
+
 std::vector<ElementMatrix> IGAAssembler2D::assemble_stiffness() const {
     std::vector<ElementMatrix> elems;
-
-    // Get iterator over spans
     SpanNDIterator it(patch_.tensor);
 
     for (auto span : it) {
@@ -54,9 +66,9 @@ std::vector<ElementMatrix> IGAAssembler2D::assemble_stiffness() const {
         int ngauss_v = static_cast<int>(sg_v.u_param.size());
 
         // Elementary matrix
-        ElementMatrix E;
-        E.nb_loc = nb_loc_;
-        E.K.assign(nb_loc_ * nb_loc_, 0.0);
+        ElementMatrix E(nb_loc_);
+        Eigen::Matrix<double, 12, 12> K_loc = Eigen::Matrix<double, 12, 12>::Zero();
+        Eigen::Matrix3d D = computeConstitutiveMatrix();
 
         // Get active control points pointers for current span
         std::vector<const double*> pts = patch_.control_points_for_span(span);
@@ -81,7 +93,7 @@ std::vector<ElementMatrix> IGAAssembler2D::assemble_stiffness() const {
             int lv = start_v + jv;
             for (int iu = 0; iu <= p_u_; ++iu) {
                 int lu = start_u + iu;
-                size_t local_linear = static_cast<size_t>(lv * n_u + iu);
+                size_t local_linear = static_cast<size_t>(lv * n_u + lu);
                 size_t gid = patch_.global_indices.at(local_linear);
                 local_to_global[idx++] = gid;
             }
@@ -90,16 +102,16 @@ std::vector<ElementMatrix> IGAAssembler2D::assemble_stiffness() const {
 
         // Loop over Gauss points
         for (int gu = 0; gu < ngauss_u; ++gu) {
-            for(int gv = 0; gv < ngauss_v; ++gv) {
+            for (int gv = 0; gv < ngauss_v; ++gv) {
                 double w = sg_u.weight[gu] * sg_v.weight[gv];
 
-                // Build arrays of 1D N and dN pointers
-                const std::vector<double>& Nu  = sg_u.N[gu];
+                // Get pre-computed basis functions and their derivatives
+                const std::vector<double>& Nu = sg_u.N[gu];
                 const std::vector<double>& dNu = sg_u.dN[gu];
-                const std::vector<double>& Nv  = sg_v.N[gv];
+                const std::vector<double>& Nv = sg_v.N[gv];
                 const std::vector<double>& dNv = sg_v.dN[gv];
 
-                // Compute R, dR/du and dR/dv
+                // Compute R, dR/du, dR/dv
                 std::vector<double> R(nb_loc_);
                 std::vector<double> dRdu(nb_loc_);
                 std::vector<double> dRdv(nb_loc_);
@@ -117,7 +129,6 @@ std::vector<ElementMatrix> IGAAssembler2D::assemble_stiffness() const {
                 // Compute geometry mapping
                 double J11 = 0.0, J12 = 0.0, J21 = 0.0, J22 = 0.0;
                 double Xx = 0.0, Yy = 0.0;
-
 
                 for (int a = 0; a < nb_loc_; ++a) {
                     const double* P = pts[a];
@@ -139,10 +150,10 @@ std::vector<ElementMatrix> IGAAssembler2D::assemble_stiffness() const {
                     continue;
                 }
 
-                double invJ11 =  J22 / detJ;
+                double invJ11 = J22 / detJ;
                 double invJ12 = -J12 / detJ;
                 double invJ21 = -J21 / detJ;
-                double invJ22 =  J11 / detJ;
+                double invJ22 = J11 / detJ;
 
 
                 // Local gradient of basis function wrto physical coords
@@ -152,23 +163,23 @@ std::vector<ElementMatrix> IGAAssembler2D::assemble_stiffness() const {
                     grads[a][0] = invJ11 * dRdu[a] + invJ21 * dRdv[a]; // dR/dx
                     grads[a][1] = invJ12 * dRdu[a] + invJ22 * dRdv[a]; // dR/dy
                 }
-                idx = 0;
-
-
-                // Fill K_loc: K_ab += (grad_a . grad_b) * w * detJ
-                const double weight = w * std::abs(detJ);
-
                 for (int a = 0; a < nb_loc_; ++a) {
-                    for (int b = 0; b < nb_loc_; ++b) {
-                        const double dot = grads[a][0]*grads[b][0] + grads[a][1]*grads[b][1];
-                        E.K[a*nb_loc_ + b] += dot * weight;
+                    Eigen::Matrix<double, 3, 12> B;
+                    B.setZero();
+                    for (int a = 0; a < nb_loc_; ++a) {
+                        B(0, 2*a)   = grads[a][0];  // dN/dx for u_x
+                        B(1, 2*a+1) = grads[a][1];  // dN/dy for u_y
+                        B(2, 2*a)   = grads[a][1];  // dN/dy for shear (u_x)
+                        B(2, 2*a+1) = grads[a][0];  // dN/dx for shear (u_y)
                     }
+
+                    // Local contribution : B^T * D * B * w * detJ
+                    K_loc += B.transpose() * D * B * w * std::abs(detJ);
                 }
             }
         }
-
+        E.K = K_loc;
         elems.push_back(std::move(E));
-
     }
     return elems;
 }

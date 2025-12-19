@@ -268,9 +268,11 @@ void Patch::Test()
 
     for (auto e : elems) {
         std::cout << e.nb_loc << "\n";
-        for (auto v : e.K)
-            std::cout << v << ' ';
-        std::cout << "\n";
+        for (auto i : e.global_indices)
+            std::cout << i << "\t";
+        std::cout << std::endl;
+        std::cout << e.K << std::endl;
+
 
     }
 
