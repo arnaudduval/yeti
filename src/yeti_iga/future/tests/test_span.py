@@ -3,7 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build"))
 
 
 import numpy as np
-from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch
+from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch, IGABasis1D, IGAAssembler2D
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -233,6 +233,20 @@ def test_test_test():
     mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
     local_shape = [5, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
+
+    # Create 1D basis
+    basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
+    basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
+
+    # Assembler
+    assembler = IGAAssembler2D(patch, basis_u, basis_v)
+
+    elems = assembler.assemble_stiffness()
+
+    for elem in elems:
+        print(elem.global_indices)
+        print(elem.get_K_as_numpy())
+
 
     patch.test()
 
