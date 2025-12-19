@@ -5,6 +5,7 @@
 #include "ControlPointManager.hpp"
 #include "Patch.hpp"
 #include "SpanNDIterator.hpp"
+#include "IGAAssembler.hpp"
 
 
 namespace py = pybind11;
@@ -125,4 +126,32 @@ PYBIND11_MODULE(bspline, m)
         .def("size", &SpanNDIterator::size)
         .def("current", &SpanNDIterator::current)
         .def("next", &SpanNDIterator::next);
+
+
+    py::class_<ElementMatrix>(m, "ElementMatrix")
+        .def_property_readonly("nb_loc", [](const ElementMatrix& self) {return self.nb_loc;})
+        .def_property_readonly("global_indices", [](const ElementMatrix& self) {return self.global_indices;})
+        .def("get_K_as_numpy", [](const ElementMatrix& self) {
+            py::array_t<double> arr({self.nb_loc * 2, self.nb_loc * 2});
+            double* data = arr.mutable_data();
+            Eigen::Map<Eigen::MatrixXd> K_map(data, self.nb_loc * 2, self.nb_loc * 2);
+            K_map = self.K;
+            return arr;
+        });
+        // .def_property_readonly("K", [](const ElementMatrix& self) {return self.K;});
+
+    py::class_<SpanGauss1D>(m, "SpanGauss1D")
+        .def_property_readonly("u_param", [](const SpanGauss1D& self) { return self.u_param;})
+        .def_property_readonly("weight", [](const SpanGauss1D& self) { return self.weight;})
+        .def_property_readonly("N", [](const SpanGauss1D& self) {return self.N;})
+        .def_property_readonly("dN", [](const SpanGauss1D& self) {return self.dN;});
+
+    py::class_<IGABasis1D>(m, "IGABasis1D")
+        .def_property_readonly("spans", [](const IGABasis1D& self) {return self.spans;})
+        .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"));
+
+
+    py::class_<IGAAssembler2D>(m, "IGAAssembler2D")
+        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>())
+        .def("assemble_stiffness", &IGAAssembler2D::assemble_stiffness);
 }
