@@ -26,7 +26,7 @@ jobs:
 
       - name: Build wheels (all target Pythons)
         env:
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
           CIBW_SKIP: "cp38-* *musllinux*"
         run: |
           echo "CIBW-BUILD=$CIBW_BUILD"
@@ -36,14 +36,14 @@ jobs:
         with:
           name: wheels
           path: wheelhouse/*.whl
-        
+
   test:
     name: Test wheel on multiple Pythons
     needs: build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
@@ -52,7 +52,7 @@ jobs:
         with:
           name: wheels
           path: dist
-      
+
       - name: Set up Python for test
         uses: actions/setup-python@v5
         with:
@@ -68,7 +68,7 @@ jobs:
           # Install wheel with this tag
           pip install dist/*${PYTAG}*.whl
           pytest benchs
-    
+
 
   publish:
     name: Publish to PyPI
