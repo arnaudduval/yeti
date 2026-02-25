@@ -34,7 +34,7 @@ build.verbose = true
 logging.level =  "INFO"
 
 [tool.cibuildwheel]
-build = "cp39-* cp310-* cp311-* cp312-*"
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "cp36-* cp37-* cp38-*   *musllinux*"
 archs = ["x86_64"]    #, "aarch64"]           # installer qemu-user-static pour l'arm64
 manylinux-x86_64-image = "manylinux_2_28" # "manylinux2014"
