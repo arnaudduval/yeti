@@ -261,15 +261,23 @@ class AbaqusParser(Parser):
     def _assignValueToParameters(self):
         line = self._file.readline()
         savedef = True if len(self._design_parameters) else False
+        exec_locals = {}
         while not line.startswith('*'):
-            exec(line)
-            paramName = line.split('=')[0].strip()
-            if savedef:
-                if not ('<'+paramName+'>' in self._design_parameters.keys()):
-                    self._parameters_def += line
-                else:
-                    self._design_parameters['<'+paramName+'>'] = eval(paramName)
-            self._parameters[paramName] = eval(paramName)
+            print(f"Executing line : {line.strip()}")
+            exec(line, globals(), exec_locals)
+
+            # Extract parameter name
+            if '=' in line:
+                paramName = line.split('=')[0].strip()
+                # Update parameters dict
+                if savedef:
+                    if f'<{paramName}>' not in self._design_parameters.keys():
+                        self._parameters_def += line
+                    else:
+                        self._design_parameters[f'<{paramName}>'] = exec_locals[paramName]
+                self._parameters[paramName] = exec_locals[paramName]
+
+            # Next line
             line = self._file.readline()
 
     def _read_distributions(self):

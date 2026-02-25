@@ -2510,11 +2510,17 @@ class IGAparametrization:
         if not hasattr(self, '_design_parameters'):
             return None
         if len(self._design_parameters) > 0:
+            # Create a dictionnary for local variables storage
+            exec_locals = {}
+
+            # define design parameters in exec_locals
             for key, value in self._design_parameters.items():
                 paramname = key.translate({ord('<'): None, ord('>'): None})
-                exec("%s=%s" % (paramname, value))
-            exec(self._shapeparametrization_def, locals())
-            coords_coarse = eval('coords').T
+                exec(f"{paramname} = {value}", globals(), exec_locals)
+
+            exec(self._shapeparametrization_def, globals(), exec_locals)
+
+            coords_coarse = eval('coords', globals(), exec_locals).T
             coords_fine = self._updateNodalField(coords_coarse)
             self._COORDS[:, :] = coords_fine.T
 
