@@ -12,11 +12,18 @@ V = np.array([0., 0., 0., 0.2, 0.4, 0.6, 0.8, 1., 1., 1.])
 W = np.array([0., 0., 0., 0., 0.3, 0.4, 0.8, 0.9, 1., 1., 1., 1.])
 
 def test_BSpline_getters():
+    """
+    Test getters of knot vector and degree for a 1D BSpline parametric space
+    """
     b1 = BSpline(2, U)
     assert (b1.knot_vector == np.array([0., 0., 0.,0.33, 0.66, 1., 1., 1.])).all()
     assert b1.degree == 2
 
 def test_ND_BSpline():
+    """
+    Test build of BSpline 2D and 3D poarametric space by tensor product of 1D BSplines
+    Tets span search and function computation on 2D and 3D space
+    """
     b1 = BSpline(2, U)
     b2 = BSpline(2, V)
     b3 = BSpline(3, W)
@@ -55,6 +62,13 @@ def test_ND_BSpline():
 
 
 def test_cp_manager():
+    """
+    Test control points manager :
+     - build a CP manager
+     - test getter of CP coordinates
+     - build a Patch with 2D param space, CP manager and a connectivity table
+     - test view on patch CP coordinates
+    """
 
     mgr = ControlPointManager(dim=2)
 
@@ -85,6 +99,9 @@ def test_cp_manager():
                        rtol=1.e-9)
 
 def test_evaluation():
+    """
+    Test single and multiple evaluation of points on a Patch
+    """
     mgr = ControlPointManager(dim=2)
     mgr.add_point([0.0, 0.0])
     mgr.add_point([3.0, 0.0])
@@ -129,7 +146,7 @@ def test_evaluation():
 
 def test_evaluation_low_continuity():
     """
-    Test patch evaluation when knot vector contained repeated inner nodes
+    Test multiple evaluation on a Patch when knot vector contains repeated inner knots
     """
     mgr = ControlPointManager(dim=2)
     mgr.add_point([0.0, 0.0])
@@ -163,6 +180,9 @@ def test_evaluation_low_continuity():
 
 
 def test_span_iterator():
+    """
+    Test iterator on span of a 2D patch
+    """
     mgr = ControlPointManager(dim=2)
     mgr.add_point([0.0, 0.0])
     mgr.add_point([0.75, 0.0])
@@ -184,20 +204,22 @@ def test_span_iterator():
 
     u = np.array([0.5, 1.0])
 
+    # In 2D, this patch has only 2 spans (2 in u, 1 in v)
     ref_spans = np.array([[2, 1], [4, 1]])
     for i, span in enumerate(patch.spans()):
         assert (span == ref_spans[i]).all()
 
+    # get CPs for a given span
     pts = patch.control_points_for_span(np.array([4, 1]))
     pts = pts.reshape([3, 2, 2])
 
     assert (pts[1, 1] == [2.25, 1.]).all()
     assert (pts[2, 1] == [3., 1.]).all()
-    # assert np.allaclose(patch.control_points_for_span(span)
-
-    # patch.test()
 
 def test_functions_derivatives():
+    """
+    Test functions 1st derivative, compared with reference finite differences value
+    """
     b = BSpline(3, W)
     u_list = [0.1, 1./3., 0.5, 8./9.]
 
@@ -213,6 +235,54 @@ def test_functions_derivatives():
         val_plus = b.basis_funs(span, u + eps)
 
         assert np.allclose(dfuns[1, :], (val_plus - val_minus)/(2.*eps), rtol = 1.e-6)
+
+def test_integration():
+    """
+    Test Gauss integration over a Patch
+    """
+
+    # Basic demo patch
+    # TODO Should be vectorized
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([0.75, 0.0])
+    mgr.add_point([1.5, 0.0])
+    mgr.add_point([2.25, 0.0])
+    mgr.add_point([3.0, 0.0])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([0.75, 1.0])
+    mgr.add_point([1.5, 1.0])
+    mgr.add_point([2.25, 1.0])
+    mgr.add_point([3.0, 1.0])
+
+    su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
+    sv = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
+    local_shape = [5, 2]
+    patch = Patch(surf, mgr, mapping.tolist(), local_shape)
+
+    # Create 1D basis
+    basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
+    basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
+
+    print(basis_u.gauss_spans)
+    print(basis_v.gauss_spans)
+    for sp in basis_u.gauss_spans:
+        print(sp.u_param)
+        print(sp.weight)
+        print(sp.N)
+        print(sp.dN)
+
+    print('---------')
+
+    for sp in basis_v.gauss_spans:
+        print(sp.u_param)
+        print(sp.weight)
+        print(sp.N)
+        print(sp.dN)
+
+
 
 def test_test_test():
     mgr = ControlPointManager(dim=2)
@@ -238,6 +308,14 @@ def test_test_test():
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
 
+    print(basis_u.spans)
+    print(len(basis_u.spans))
+    print(basis_u.spans[0].u_param)
+    print(basis_u.spans[1].u_param)
+    print(len(basis_v.spans))
+    print(basis_v.spans[0].u_param)
+
+
     # Assembler
     assembler = IGAAssembler2D(patch, basis_u, basis_v)
 
@@ -252,7 +330,8 @@ def test_test_test():
 
 
 if __name__ == '__main__':
-    test_test_test()
+    test_integration()
+    # test_test_test()
     exit()
     test_BSpline_getters()
     test_ND_BSpline()

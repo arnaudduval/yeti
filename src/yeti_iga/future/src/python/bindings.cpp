@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/eigen.h>
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
@@ -143,11 +144,29 @@ PYBIND11_MODULE(bspline, m)
     py::class_<SpanGauss1D>(m, "SpanGauss1D")
         .def_property_readonly("u_param", [](const SpanGauss1D& self) { return self.u_param;})
         .def_property_readonly("weight", [](const SpanGauss1D& self) { return self.weight;})
-        .def_property_readonly("N", [](const SpanGauss1D& self) {return self.N;})
-        .def_property_readonly("dN", [](const SpanGauss1D& self) {return self.dN;});
+        .def_property_readonly("N", [](const SpanGauss1D& self) {
+            std::vector<py::array_t<double>> arrays;
+            for (const auto& vec : self.N) {
+                py::array_t<double> arr(vec.size());
+                Eigen::Map<Eigen::VectorXd>(arr.mutable_data(), vec.size()) = vec;
+                arrays.push_back(arr);
+            }
+            return arrays;
+        })
+        .def_property_readonly("dN", [](const SpanGauss1D& self) {
+            std::vector<py::array_t<double>> arrays;
+            for (const auto& vec : self.dN) {
+                py::array_t<double> arr(vec.size());
+                Eigen::Map<Eigen::VectorXd>(arr.mutable_data(), vec.size()) = vec;
+                arrays.push_back(arr);
+            }
+            return arrays;
+        });
+        // .def_property_readonly("N", [](const SpanGauss1D& self) {return self.N;})
+        // .def_property_readonly("dN", [](const SpanGauss1D& self) {return self.dN;});
 
     py::class_<IGABasis1D>(m, "IGABasis1D")
-        .def_property_readonly("spans", [](const IGABasis1D& self) {return self.spans;})
+        .def_property_readonly("gauss_spans", [](const IGABasis1D& self) {return self.gauss_spans;})
         .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"));
 
 

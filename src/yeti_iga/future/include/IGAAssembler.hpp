@@ -7,6 +7,7 @@
 
 
 struct MaterialProperties {
+    // TODO Generalize it
     double E;
     double nu;
     double thickness;   // Thickness (for plane problems)
