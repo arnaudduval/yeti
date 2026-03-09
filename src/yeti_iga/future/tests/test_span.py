@@ -3,7 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build"))
 
 
 import numpy as np
-from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch, IGABasis1D, IGAAssembler2D
+from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch, IGABasis1D, IGAAssembler2D, PatchDOFManager
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -260,7 +260,11 @@ def test_integration():
     surf = BSplineSurface(su, sv)
     mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
     local_shape = [5, 2]
-    patch = Patch(surf, mgr, mapping.tolist(), local_shape)
+
+    dof_manager_patch = PatchDOFManager(dofs_per_control_point=2, n_control_points=10, global_dof_offset=0)
+
+
+    patch = Patch(surf, mgr, mapping.tolist(), local_shape, dof_manager_patch)
 
     # Create 1D basis
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span

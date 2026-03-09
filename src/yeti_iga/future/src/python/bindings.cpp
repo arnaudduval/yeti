@@ -4,6 +4,7 @@
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
+#include "PatchDOFManager.hpp"
 #include "Patch.hpp"
 #include "SpanNDIterator.hpp"
 #include "IGAAssembler.hpp"
@@ -76,9 +77,15 @@ PYBIND11_MODULE(bspline, m)
             return py::array_t<double>(shape, strides, self.coords.data(), capsule);
         });
 
+    py::class_<PatchDOFManager, std::shared_ptr<PatchDOFManager>>(m, "PatchDOFManager")
+        .def(py::init<int, size_t, size_t>(),
+             py::arg("dofs_per_control_point"), py::arg("n_control_points"), py::arg("global_dof_offset"))
+        .def("get_local_dof_indices", &PatchDOFManager::get_local_dof_indices, py::arg("control_point_idx"))
+        .def("get_global_dof_indices", &PatchDOFManager::get_global_dof_indices, py::arg("control_point_idx"));
+
     py::class_<Patch>(m, "Patch")
-        .def(py::init<const BSplineTensor&, ControlPointManager*, const std::vector<size_t>&, const std::vector<size_t>&>(),
-             py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"))
+        .def(py::init<const BSplineTensor&, ControlPointManager*, const std::vector<size_t>&, const std::vector<size_t>&, std::shared_ptr<PatchDOFManager>>(),
+             py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"), py::arg("dof_manager"))
         .def("local_cp_ptr", static_cast<double*(Patch::*)(size_t)>(&Patch::local_cp_ptr),
              py::arg("i_local"),
              "Return pointer to local control point (as int or PyCapsule for Python?)")
