@@ -4,6 +4,7 @@
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
+#include "PatchDOFManager.hpp"
 #include "SpanNDIterator.hpp"
 
 namespace py = pybind11;
@@ -19,12 +20,14 @@ struct Patch {
     std::vector<size_t> local_shape;
 
     ControlPointManager* cp_manager = nullptr;
+    std::shared_ptr<PatchDOFManager> dof_manager;
 
     Patch(const BSplineTensor& t,
           ControlPointManager* mgr,
           const std::vector<size_t>& mapping,
-          const std::vector<size_t>& local_shape_)
-        : tensor(t), global_indices(mapping), local_shape(local_shape_), cp_manager(mgr) {}
+          const std::vector<size_t>& local_shape_,
+          std::shared_ptr<PatchDOFManager> dof_mgr)
+        : tensor(t), global_indices(mapping), local_shape(local_shape_), cp_manager(mgr), dof_manager(dof_mgr) {}
 
     // get view (zero copy) to coordinates of local control point i_local
     double* local_cp_ptr(size_t i_local);
@@ -49,3 +52,4 @@ struct Patch {
 
     void Test();
 };
+
