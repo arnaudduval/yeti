@@ -4,7 +4,7 @@
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
-#include "PatchDOFManager.hpp"
+#include "DOFManager.hpp"
 #include "SpanNDIterator.hpp"
 
 namespace py = pybind11;
@@ -21,6 +21,13 @@ struct Patch {
 
     ControlPointManager* cp_manager = nullptr;
     std::shared_ptr<PatchDOFManager> dof_manager;
+
+    // Constructor with DOF manager for geometry purpose
+    Patch(const BSplineTensor& t,
+          ControlPointManager* mgr,
+          const std::vector<size_t>& mapping,
+          const std::vector<size_t>& local_shape_)
+        : tensor(t), global_indices(mapping), local_shape(local_shape_), cp_manager(mgr), dof_manager(nullptr) {}
 
     Patch(const BSplineTensor& t,
           ControlPointManager* mgr,

@@ -18,6 +18,7 @@ struct SpanGauss1D {
 // Object handling precomputed values for all spans of a 1D BSpline parametric space
 struct IGABasis1D {
     std::vector<SpanGauss1D> gauss_spans;
+    std::unordered_map<int, int> span_indices;
 
 
     // Build from a BSpline object
@@ -31,9 +32,12 @@ struct IGABasis1D {
         std::vector<double> gauss_points, gauss_weights;
         gauss_legendre_table(ngauss, gauss_points, gauss_weights);
 
-        // find valid spans: span in [p .. m-p-1] where kv[span] < kv[span+1]
+        // find valid spans and create indices map
+        int span_count = 0;
         for (int span = p; span <= m - p - 1; ++span) {
             if (!(kv[span+1] > kv[span])) continue;
+            out.span_indices[span] = span_count;
+            span_count++;
 
             SpanGauss1D sg;
             sg.u_param.reserve(ngauss);

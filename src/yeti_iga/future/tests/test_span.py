@@ -3,7 +3,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build"))
 
 
 import numpy as np
-from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch, IGABasis1D, IGAAssembler2D, PatchDOFManager
+from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch
+from bspline import IGABasis1D, IGAAssembler2D, PatchDOFManager, GlobalDOFManager
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -236,9 +237,74 @@ def test_functions_derivatives():
 
         assert np.allclose(dfuns[1, :], (val_plus - val_minus)/(2.*eps), rtol = 1.e-6)
 
+
+def test_coupling_strong():
+    """
+    2 patchs with string coupling (common control points)
+    1 extra patch without coupling but with different number of DOF/CP
+    """
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])    # index : 0
+    mgr.add_point([4.0, 0.0])    # index : 1
+    mgr.add_point([10.0, 0.0])    # index : 2
+    mgr.add_point([0.0, 4.0])    # index : 3
+    mgr.add_point([4.0, 4.0])    # index : 4
+    mgr.add_point([10.0, 4.0])    # index : 5
+
+    mgr.add_point([0.0, 0.0])   # index : 6
+    mgr.add_point([10.0, 0.0])  # index : 7
+    mgr.add_point([0.0, 4.0])   # index : 8
+    mgr.add_point([10.0, 4.0])  # index : 9
+
+    # parametric space patch 1
+    su1 = BSpline(1, np.array([0., 0., 1., 1.]))
+    sv1 = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf1 = BSplineSurface(su1, sv1)
+    # parametric space patch2
+    su2 = BSpline(1, np.array([0., 0., 1., 1.]))
+    sv2 = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf2 = BSplineSurface(su2, sv2)
+    # parametric space patch3
+    su3 = BSpline(1, np.array([0., 0., 1., 1.]))
+    sv3 = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf2 = BSplineSurface(su3, sv3)
+
+    # create DOF manager
+    dofs_per_control_point = [2, 2, 2, 2, 2, 2, 1, 1, 1, 1]
+    global_dof_manager = GlobalDOFManager(dofs_per_control_point)
+
+    # mapping patch 1
+    mapping1 = [0, 1, 3, 4]
+    local_shape1 = [2, 2]
+    dof_manager1 = PatchDOFManager(dofs_per_control_point=2, control_points=mapping1, global_dof_manager=global_dof_manager)
+    # mapping patch 2
+    mapping2 = [1, 2, 4, 5]
+    local_shape2 = [2, 2]
+    dof_manager2 = PatchDOFManager(dofs_per_control_point=2, control_points=mapping2, global_dof_manager=global_dof_manager)
+    # mapping patch 3
+    mapping3 = [6, 7, 8, 9]
+    local_shape3 = [2, 2]
+    dof_manager3 = PatchDOFManager(dofs_per_control_point=1, control_points=mapping3, global_dof_manager=global_dof_manager)
+
+
+    patch1 = Patch(surf1, mgr, mapping1, local_shape1, dof_manager1)
+    patch2 = Patch(surf2, mgr, mapping2, local_shape2, dof_manager2)
+    patch3 = Patch(surf2, mgr, mapping3, local_shape3, dof_manager3)
+
+    assert patch1.dof_manager.get_global_dof_indices(1) == [2, 3]
+    assert patch1.dof_manager.get_global_dof_indices(2) == [6, 7]
+
+    assert patch2.dof_manager.get_global_dof_indices(0) == [2,3]
+    assert patch2.dof_manager.get_global_dof_indices(3) == [10, 11]
+
+    assert patch3.dof_manager.get_global_dof_indices(0) == [12]
+    assert patch3.dof_manager.get_global_dof_indices(3) == [15]
+
+
 def test_integration():
     """
     Test Gauss integration over a Patch
+    WARNING : unfinished
     """
 
     # Basic demo patch
@@ -255,18 +321,21 @@ def test_integration():
     mgr.add_point([2.25, 1.0])
     mgr.add_point([3.0, 1.0])
 
+    dofs_per_control_point = [2 for _ in range(mgr.n_points)]
+    dof_manager = GlobalDOFManager(dofs_per_control_point)
+
     su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
-    mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
+    mapping = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     local_shape = [5, 2]
 
-    dof_manager_patch = PatchDOFManager(dofs_per_control_point=2, n_control_points=10, global_dof_offset=0)
 
+    dof_manager_patch = PatchDOFManager(2, mapping, dof_manager)
 
-    patch = Patch(surf, mgr, mapping.tolist(), local_shape, dof_manager_patch)
+    patch = Patch(surf, mgr, mapping, local_shape, dof_manager_patch)
 
-    # Create 1D basis
+    # Create 1D integration basis
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
 
@@ -285,6 +354,11 @@ def test_integration():
         print(sp.weight)
         print(sp.N)
         print(sp.dN)
+
+    # Get global DOF indices of 1st control point
+    print(dof_manager_patch.get_global_dof_indices(0))
+
+
 
 
 
@@ -344,5 +418,6 @@ if __name__ == '__main__':
     test_evaluation_low_continuity()
     test_span_iterator()
     test_functions_derivatives()
-
+    test_coupling_strong()
+    print("All tests finshed !!!")
 
