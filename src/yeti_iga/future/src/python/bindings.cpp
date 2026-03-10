@@ -4,7 +4,7 @@
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
-#include "PatchDOFManager.hpp"
+#include "DOFManager.hpp"
 #include "Patch.hpp"
 #include "SpanNDIterator.hpp"
 #include "IGAAssembler.hpp"
@@ -77,13 +77,18 @@ PYBIND11_MODULE(bspline, m)
             return py::array_t<double>(shape, strides, self.coords.data(), capsule);
         });
 
-    py::class_<PatchDOFManager, std::shared_ptr<PatchDOFManager>>(m, "PatchDOFManager")
-        .def(py::init<int, size_t, size_t>(),
-             py::arg("dofs_per_control_point"), py::arg("n_control_points"), py::arg("global_dof_offset"))
-        .def("get_local_dof_indices", &PatchDOFManager::get_local_dof_indices, py::arg("control_point_idx"))
-        .def("get_global_dof_indices", &PatchDOFManager::get_global_dof_indices, py::arg("control_point_idx"));
+    py::class_<GlobalDOFManager>(m, "GlobalDOFManager")
+        .def(py::init<const std::vector<int>&>(), py::arg("dofs_per_control_point"))
+        .def("get_dof_indices", &GlobalDOFManager::get_dof_indices, py::arg("control_point_idx"));
 
-    py::class_<Patch>(m, "Patch")
+    py::class_<PatchDOFManager, std::shared_ptr<PatchDOFManager>>(m, "PatchDOFManager")
+        .def(py::init<int, const std::vector<size_t>&, const GlobalDOFManager&>(),
+             py::arg("dofs_per_control_point"), py::arg("control_points"), py::arg("global_dof_manager"))
+        .def("get_global_dof_indices", &PatchDOFManager::get_global_dof_indices, py::arg("local_control_point_idx"));
+
+    py::class_<Patch, std::shared_ptr<Patch>>(m, "Patch")
+        .def(py::init<const BSplineTensor&, ControlPointManager*, const std::vector<size_t>&, const std::vector<size_t>&>(),
+             py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"))
         .def(py::init<const BSplineTensor&, ControlPointManager*, const std::vector<size_t>&, const std::vector<size_t>&, std::shared_ptr<PatchDOFManager>>(),
              py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"), py::arg("dof_manager"))
         .def("local_cp_ptr", static_cast<double*(Patch::*)(size_t)>(&Patch::local_cp_ptr),
@@ -117,7 +122,8 @@ PYBIND11_MODULE(bspline, m)
 
                 return arr;
             })
-        .def("test", &Patch::Test);
+        .def("test", &Patch::Test)
+        .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; });
 
 
     py::class_<SpanNDIterator>(m, "SpanIterator")
@@ -136,17 +142,17 @@ PYBIND11_MODULE(bspline, m)
         .def("next", &SpanNDIterator::next);
 
 
-    py::class_<ElementMatrix>(m, "ElementMatrix")
-        .def_property_readonly("nb_loc", [](const ElementMatrix& self) {return self.nb_loc;})
-        .def_property_readonly("global_indices", [](const ElementMatrix& self) {return self.global_indices;})
-        .def("get_K_as_numpy", [](const ElementMatrix& self) {
-            py::array_t<double> arr({self.nb_loc * 2, self.nb_loc * 2});
-            double* data = arr.mutable_data();
-            Eigen::Map<Eigen::MatrixXd> K_map(data, self.nb_loc * 2, self.nb_loc * 2);
-            K_map = self.K;
-            return arr;
-        });
-        // .def_property_readonly("K", [](const ElementMatrix& self) {return self.K;});
+    // py::class_<ElementMatrix>(m, "ElementMatrix")
+    //     .def_property_readonly("nb_loc", [](const ElementMatrix& self) {return self.nb_loc;})
+    //     .def_property_readonly("global_indices", [](const ElementMatrix& self) {return self.global_indices;})
+    //     .def("get_K_as_numpy", [](const ElementMatrix& self) {
+    //         py::array_t<double> arr({self.nb_loc * 2, self.nb_loc * 2});
+    //         double* data = arr.mutable_data();
+    //         Eigen::Map<Eigen::MatrixXd> K_map(data, self.nb_loc * 2, self.nb_loc * 2);
+    //         K_map = self.K;
+    //         return arr;
+    //     });
+    //     // .def_property_readonly("K", [](const ElementMatrix& self) {return self.K;});
 
     py::class_<SpanGauss1D>(m, "SpanGauss1D")
         .def_property_readonly("u_param", [](const SpanGauss1D& self) { return self.u_param;})
@@ -177,7 +183,7 @@ PYBIND11_MODULE(bspline, m)
         .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"));
 
 
-    py::class_<IGAAssembler2D>(m, "IGAAssembler2D")
-        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>())
-        .def("assemble_stiffness", &IGAAssembler2D::assemble_stiffness);
+    // py::class_<IGAAssembler2D>(m, "IGAAssembler2D")
+    //     .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>())
+    //     .def("assemble_stiffness", &IGAAssembler2D::assemble_stiffness);
 }

@@ -261,41 +261,41 @@ void Patch::Test()
     IGABasis1D basis_u = IGABasis1D::build(this->tensor.components[0], ngauss_u);
     IGABasis1D basis_v = IGABasis1D::build(this->tensor.components[1], ngauss_v);
 
-    // Assembler
-    IGAAssembler2D assembler(*this, basis_u, basis_v);
-    auto elems = assembler.assemble_stiffness();
-    std::cout << elems.size() << "\n";
+    // // Assembler
+    // IGAAssembler2D assembler(*this, basis_u, basis_v);
+    // auto elems = assembler.assemble_stiffness();
+    // std::cout << elems.size() << "\n";
 
-    for (auto e : elems) {
-        std::cout << e.nb_loc << "\n";
-        for (auto i : e.global_indices)
-            std::cout << i << "\t";
-        std::cout << std::endl;
-        std::cout << e.K << std::endl;
-
-
-    }
-
-    return;
+    // for (auto e : elems) {
+    //     std::cout << e.nb_loc << "\n";
+    //     for (auto i : e.global_indices)
+    //         std::cout << i << "\t";
+    //     std::cout << std::endl;
+    //     std::cout << e.K << std::endl;
 
 
-    SpanNDIterator it(tensor);
-    // while(!it.is_done()) {
-    //     auto span = it.current();
-    //     std::cout << "boucle finale : " << span[0] << "\t" << span[1] << "\n";
-    //     it.next();
     // }
-    std::cout << it.size() << "\n";
 
-    for (auto span : it) {
-        auto pts = this->control_points_for_span(span);
-        std::cout << "Span: ";
-        for (auto s : span) std::cout << s << " ";
-        std::cout << " --> " << pts.size() << " active points\n";
-        for (auto pt : pts)
-            std::cout << pt[0] << "\t" << pt[1] << "\n";
+    // return;
 
-    }
+
+    // SpanNDIterator it(tensor);
+    // // while(!it.is_done()) {
+    // //     auto span = it.current();
+    // //     std::cout << "boucle finale : " << span[0] << "\t" << span[1] << "\n";
+    // //     it.next();
+    // // }
+    // std::cout << it.size() << "\n";
+
+    // for (auto span : it) {
+    //     auto pts = this->control_points_for_span(span);
+    //     std::cout << "Span: ";
+    //     for (auto s : span) std::cout << s << " ";
+    //     std::cout << " --> " << pts.size() << " active points\n";
+    //     for (auto pt : pts)
+    //         std::cout << pt[0] << "\t" << pt[1] << "\n";
+
+    // }
 
 }
 
