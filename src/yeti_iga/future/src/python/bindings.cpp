@@ -121,7 +121,10 @@ PYBIND11_MODULE(bspline, m)
                     std::memcpy(data + i*dim, pts[i], dim * sizeof(double));
 
                 return arr;
-            })
+            },
+            py::arg("span"),
+            "Return array containing control points coordinates for a given span. Warning : data is return as stored in memory and need to be reshaped/transposed for proper use"
+        )
         .def("test", &Patch::Test)
         .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; });
 
@@ -181,6 +184,11 @@ PYBIND11_MODULE(bspline, m)
     py::class_<IGABasis1D>(m, "IGABasis1D")
         .def_property_readonly("gauss_spans", [](const IGABasis1D& self) {return self.gauss_spans;})
         .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"));
+
+    py::class_<PatchIntegrator>(m, "PatchIntegrator")
+        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>(),
+             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"))
+        .def("integrate", &PatchIntegrator::integrate);
 
 
     // py::class_<IGAAssembler2D>(m, "IGAAssembler2D")

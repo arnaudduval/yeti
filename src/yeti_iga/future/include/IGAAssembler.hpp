@@ -41,7 +41,7 @@ private:
 
                 // get basis functions and derivatives
                 const Eigen::VectorXd& Nu = sg_u.N[gu];
-                const Eigen::VectorXd& dNu = sg_u.N[gu];
+                const Eigen::VectorXd& dNu = sg_u.dN[gu];
                 const Eigen::VectorXd& Nv = sg_v.N[gv];
                 const Eigen::VectorXd& dNv = sg_v.dN[gv];
 
@@ -50,10 +50,14 @@ private:
                 std::vector<double> dRdu(nb_loc);
                 std::vector<double> dRdv(nb_loc);
 
-                for (size_t i=0; i < nb_loc; ++i) {
-                    R[i] = Nu(i) * Nv(i);
-                    dRdu[i] = dNu(i) * Nv(i);
-                    dRdv[i] = Nu(i) * dNv(i);
+                size_t idx = 0;
+                for (size_t jv = 0; jv < Nv.size(); ++jv) {
+                    for (size_t iu = 0; iu < Nu.size(); ++iu) {
+                        R[idx] = Nu(iu) * Nv(jv);
+                        dRdu[idx] = dNu(iu) * Nv(jv);
+                        dRdv[idx] = Nu(iu) * dNv(jv);
+                        ++idx;
+                    }
                 }
 
                 // Compute mapping
@@ -67,6 +71,7 @@ private:
                     J21 += dRdu[a] * py;
                     J12 += dRdv[a] * px;
                     J22 += dRdv[a] * py;
+
                 }
 
                 double detJ = J11*J22 - J12*J21;
@@ -74,10 +79,10 @@ private:
                     continue;
                 }
 
-                double invJ11 = J22 / detJ;
-                double invJ12 = - J12 / detJ;
-                double invJ21 = - J21 / detJ;
-                double invJ22 = J11 / detJ;
+                double invJ11 = J22 / detJ;         // du/dx
+                double invJ12 = - J12 / detJ;       // du/dy
+                double invJ21 = - J21 / detJ;       // dv/dx
+                double invJ22 = J11 / detJ;         // dv/dy
 
                 // Compute gradients
                 std::vector<std::array<double, 2>> grads(nb_loc);
@@ -127,22 +132,54 @@ private:
         std::vector<size_t> local_to_global = buildLocalToGlobalMapping(patch_, span);
 
         // Assemble local contribution into global matrix
-        for (size_t i = 0; i < 2 * nb_loc; ++i) {
-            for (size_t j = 0; j < 2 * nb_loc; ++j) {
-                // TODO check the utility of [i / 2] and [i % 2]. Is the number of DOF per CP is taken into account according to data structure ?
-                size_t global_i = patch_.dof_manager->get_global_dof_indices(local_to_global[i / 2])[i % 2];
-                size_t global_j = patch_.dof_manager->get_global_dof_indices(local_to_global[j / 2])[j % 2];
+        for (size_t i = 0; i < local_contribution.rows(); ++i) {
+            for (size_t j = 0; j < local_contribution.cols(); ++j) {
+                size_t local_control_point_i = i / patch_.dof_manager->dofs_per_control_point;
+                size_t local_dof_i = i % patch_.dof_manager->dofs_per_control_point;
+                size_t local_control_point_j = j / patch_.dof_manager->dofs_per_control_point;
+                size_t local_dof_j = j % patch_.dof_manager->dofs_per_control_point;
+
+                size_t global_i = patch_.dof_manager->get_global_dof_indices(local_to_global[local_control_point_i])[local_dof_i];
+                size_t global_j = patch_.dof_manager->get_global_dof_indices(local_to_global[local_control_point_j])[local_dof_j];
+
                 tripletList.emplace_back(global_i, global_j, local_contribution(i, j));
             }
         }
     }
 
-    // Build local to global mapping
     std::vector<size_t> buildLocalToGlobalMapping(const Patch& patch, const std::vector<int>& span) const {
+        // TODO This function could be improved AND VERIFIED
+
         std::vector<size_t> local_to_global;
-        for (size_t i = 0; i < span.size(); ++i) {
-            local_to_global.push_back(span[i]);
+
+        // Get degrees
+        int p_u = patch.tensor.components[0].getDegree();
+        int p_v = patch.tensor.components[1].getDegree();
+
+        // Get start index for current span
+        int start_u = span[0] - p_u;
+        int start_v = span[1] - p_v;
+
+        // Get local dimensions of patch
+        ssize_t n_u = patch.local_shape[0];
+        ssize_t n_v = patch.local_shape[1];
+
+        // Compute number of control points for curent patch
+        size_t nb_loc = (p_u + 1) * (p_v + 1);
+
+        // Fill local to global mapping patch.global_indices
+        for (int jv = 0; jv <= p_v; ++jv) {
+            int lv = start_v + jv;
+            for (int iu = 0; iu <= p_u; ++iu) {
+                int lu = start_u + iu;
+                // Compute local linear index
+                size_t local_linear = static_cast<size_t>(lv * n_u + lu);
+                // Get global index
+                size_t global_index = patch.global_indices[local_linear];
+                local_to_global.push_back(global_index);
+            }
         }
+
         return local_to_global;
     }
 
@@ -150,55 +187,37 @@ public:
     PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v)
         : patch_(patch), basis_u_(basis_u), basis_v_(basis_v) {}
 
+    Eigen::SparseMatrix<double> integrate() {
+        std::vector<Eigen::Triplet<double>> tripletList;
+        SpanNDIterator it = patch_.spans();
+
+        for (auto span : it) {
+            int span_u = span[0];
+            int span_v = span[1];
+
+            // Find spans indices in pre-computed basis
+            int idx_u = basis_u_.span_indices.at(span_u);
+            int idx_v = basis_v_.span_indices.at(span_v);
+
+            const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+            const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+            // Compute local contribution
+            Eigen::MatrixXd local_contribution = computeLocalContribution(patch_, sg_u, sg_v, span);
+
+            // Assemble local contribution into global matrix
+            assembleLocalContribution(local_contribution, span, tripletList);
+        }
+
+        // Set size of global matrix
+        size_t total_dofs = patch_.dof_manager->get_global_dof_indices(patch_.global_indices.back()).back() + 1;
+
+        // build sparse matrix from triplets
+        Eigen::SparseMatrix<double> stiffness_matrix(total_dofs, total_dofs);
+        stiffness_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
+
+        return stiffness_matrix;
+    }
+
 };
 
-
-
-
-
-// struct ElementMatrix {
-//     // global indices for the local basis
-//     std::vector<size_t> global_indices;
-//     // dense local stiffness
-//     Eigen::MatrixXd K;
-//     size_t nb_loc = 0;
-
-//     // Constructor (initialize K with required shape)
-//     ElementMatrix(size_t size) : nb_loc(size), K(2*size, 2*size) {
-//         K.setZero();
-//     }
-// };
-
-// class IGAAssembler2D {
-// public:
-//     // Construct with the patch and pre-computed per-direction IGABasis1D
-//     IGAAssembler2D(const Patch& patch,
-//                    const IGABasis1D& basis_u,
-//                    const IGABasis1D& basis_v)
-//         : patch_(patch), basis_u_(basis_u), basis_v_(basis_v)
-//     {
-//         // sanity checks
-//         assert(patch_.local_shape.size() == 2);
-//         p_u_ = patch_.tensor.components[0].getDegree();
-//         p_v_ = patch_.tensor.components[1].getDegree();
-//         nb_loc_ = (p_u_+1) * (p_v_+1);
-
-//         // Hard coding of material properties, TODO : should be set properly
-//         material_.E = 210000.;
-//         material_.nu = 0.3;
-//     }
-
-//     // Assemble per-element stiffness blocks and return them
-//     // (it DOES NOT assemble into a global sparse matrix)
-//     std::vector<ElementMatrix> assemble_stiffness() const;
-
-//     Eigen::Matrix3d computeConstitutiveMatrix() const;
-
-// private:
-//     const Patch& patch_;
-//     const IGABasis1D& basis_u_;
-//     const IGABasis1D& basis_v_;
-//     int p_u_, p_v_;
-//     size_t nb_loc_;
-//     MaterialProperties material_;       // Should be defined as a member of patch ?
-// };
