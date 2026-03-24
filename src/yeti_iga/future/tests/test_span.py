@@ -306,7 +306,7 @@ def test_coupling_strong():
 
 def test_integration_1elt_lin_square_1():
     """
-    Tets Gauss integration over a single patch, degree 1, dimension 1x1
+    Test Gauss integration over a single patch, degree 1, dimension 1x1
     """
 
         # Compare with legacy YETI overlay
@@ -334,6 +334,62 @@ def test_integration_1elt_lin_square_1():
     mgr.add_point([1., 0.0])
     mgr.add_point([0.0, 1.0])
     mgr.add_point([1.0, 1.0])
+
+    dofs_per_control_point = [2 for _ in range(mgr.n_points)]
+    dof_manager = GlobalDOFManager(dofs_per_control_point)
+
+    su = BSpline(1, np.array([0., 0., 1., 1.]))
+    sv = BSpline(1, np.array([0., 0., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = [0, 1, 2, 3]
+    local_shape = [2, 2]
+
+    dof_manager_patch = PatchDOFManager(2, mapping, dof_manager)
+
+    patch = Patch(surf, mgr, mapping, local_shape, dof_manager_patch)
+
+    # Create 1D integration basis
+    basis_u = IGABasis1D.build(su, 2)   # 3 Gauss points per span
+    basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
+
+    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    stiffness_matrix = integrator.integrate()
+
+    print("stiffness_matrix", stiffness_matrix)
+    print(stiff_tot)
+
+    assert np.allclose(stiffness_matrix.toarray(), stiff_tot.toarray(), rtol=1.e-5, atol=1.e-8)
+
+def test_integration_1elt_lin_rect():
+    """
+    Test Gauss integration over a single patch, degree 1, dimension 1x3
+    """
+
+        # Compare with legacy YETI overlay
+    from yeti_iga.preprocessing.igaparametrization import IGAparametrization
+    from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static \
+        as build_stiffmatrix
+    import scipy.sparse as sp
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    iga_model = IGAparametrization(
+        filename=f'{script_dir}/1_elt_lin_rect')
+    data, row, col, rhs = build_stiffmatrix(
+        *iga_model.get_inputs4system_elemStorage())
+
+    stiff_side = sp.coo_matrix(
+        (data, (row, col)),
+        shape=(iga_model.nb_dof_tot, iga_model.nb_dof_tot),
+        dtype='float64').tocsc()
+    stiff_tot = stiff_side + stiff_side.transpose()
+
+    print("==========")
+
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([3., 0.0])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([3.0, 1.0])
 
     dofs_per_control_point = [2 for _ in range(mgr.n_points)]
     dof_manager = GlobalDOFManager(dofs_per_control_point)
@@ -481,10 +537,11 @@ def test_test_test():
 
 
 if __name__ == '__main__':
-    test_integration_1elt_lin_square_1()
+    test_integration_1elt_lin_rect()
     # test_integration_2_elements_C0()
     # test_test_test()
     exit()
+    test_integration_1elt_lin_square_1()
     test_BSpline_getters()
     test_ND_BSpline()
     test_cp_manager()
