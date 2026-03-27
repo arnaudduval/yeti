@@ -144,19 +144,6 @@ PYBIND11_MODULE(bspline, m)
         .def("current", &SpanNDIterator::current)
         .def("next", &SpanNDIterator::next);
 
-
-    // py::class_<ElementMatrix>(m, "ElementMatrix")
-    //     .def_property_readonly("nb_loc", [](const ElementMatrix& self) {return self.nb_loc;})
-    //     .def_property_readonly("global_indices", [](const ElementMatrix& self) {return self.global_indices;})
-    //     .def("get_K_as_numpy", [](const ElementMatrix& self) {
-    //         py::array_t<double> arr({self.nb_loc * 2, self.nb_loc * 2});
-    //         double* data = arr.mutable_data();
-    //         Eigen::Map<Eigen::MatrixXd> K_map(data, self.nb_loc * 2, self.nb_loc * 2);
-    //         K_map = self.K;
-    //         return arr;
-    //     });
-    //     // .def_property_readonly("K", [](const ElementMatrix& self) {return self.K;});
-
     py::class_<SpanGauss1D>(m, "SpanGauss1D")
         .def_property_readonly("u_param", [](const SpanGauss1D& self) { return self.u_param;})
         .def_property_readonly("weight", [](const SpanGauss1D& self) { return self.weight;})
@@ -185,13 +172,18 @@ PYBIND11_MODULE(bspline, m)
         .def_property_readonly("gauss_spans", [](const IGABasis1D& self) {return self.gauss_spans;})
         .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"));
 
+    py::class_<MaterialProperties>(m, "MaterialProperties")
+        .def(py::init<double, double, double>(),
+             py::arg("E"), py::arg("nu"), py::arg("thickness") = 1.0)
+        .def_readwrite("E", &MaterialProperties::E)
+        .def_readwrite("nu", &MaterialProperties::nu)
+        .def_readwrite("thickness", &MaterialProperties::thickness);
+
     py::class_<PatchIntegrator>(m, "PatchIntegrator")
-        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>(),
-             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"))
+        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const MaterialProperties&>(),
+             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("material_properties"))
         .def("integrate", &PatchIntegrator::integrate);
 
 
-    // py::class_<IGAAssembler2D>(m, "IGAAssembler2D")
-    //     .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>())
-    //     .def("assemble_stiffness", &IGAAssembler2D::assemble_stiffness);
+
 }
