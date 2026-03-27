@@ -21,6 +21,7 @@ private:
     // TODO: generalize it for N dimensions
     const IGABasis1D& basis_u_;
     const IGABasis1D& basis_v_;
+    MaterialProperties material_properties_;
 
     // Compute local contrinution for a given span
     Eigen::MatrixXd computeLocalContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
@@ -30,8 +31,8 @@ private:
     std::vector<size_t> buildLocalToGlobalMapping(const Patch& patch, const std::vector<int>& span) const;
 
 public:
-    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v)
-        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v) {}
+    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v, const MaterialProperties& material_properties)
+        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), material_properties_(material_properties) {}
 
     Eigen::SparseMatrix<double> integrate() {
         std::vector<Eigen::Triplet<double>> tripletList;

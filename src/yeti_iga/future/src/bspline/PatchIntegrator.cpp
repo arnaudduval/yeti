@@ -73,7 +73,6 @@ Eigen::MatrixXd PatchIntegrator::computeLocalContribution(const Patch& patch, co
             // TODO implement B free ...
             Eigen::MatrixXd B = Eigen::MatrixXd::Zero(3, 2 * nb_loc);
             for (size_t a = 0; a < nb_loc; ++a) {
-                // TODO : those affectation must be verified (Voigt convention ?)
                 B(0, 2*a) = grads[a][0];            // dN/dx for u_x
                 B(1, 2*a + 1) = grads[a][1];        // dN/dy for u_y
                 B(2, 2*a) = grads[a][1];            // dN/dy for shear (u_x)
@@ -81,11 +80,10 @@ Eigen::MatrixXd PatchIntegrator::computeLocalContribution(const Patch& patch, co
             }
 
             // Constitutive matrix D
-            // TODO : verify if Voigt convention is enforced
             Eigen::Matrix3d D;
             // TODO : handle material properties with proper dedicated object
-            double E = 210000.0;
-            double nu = 0.3;
+            double E = material_properties_.E;
+            double nu = material_properties_.nu;
             double factor = E / (1.0 - nu*nu);
             D <<
             factor, factor * nu, 0.0,
@@ -126,8 +124,6 @@ void PatchIntegrator::assembleLocalContribution(const Eigen::MatrixXd& local_con
 }
 
 std::vector<size_t> PatchIntegrator::buildLocalToGlobalMapping(const Patch& patch, const std::vector<int>& span) const {
-    // TODO This function could be improved AND VERIFIED
-
     std::vector<size_t> local_to_global;
 
     // Get degrees
@@ -141,9 +137,6 @@ std::vector<size_t> PatchIntegrator::buildLocalToGlobalMapping(const Patch& patc
     // Get local dimensions of patch
     ssize_t n_u = patch.local_shape[0];
     ssize_t n_v = patch.local_shape[1];
-
-    // Compute number of control points for curent patch
-    size_t nb_loc = (p_u + 1) * (p_v + 1);
 
     // Fill local to global mapping patch.global_indices
     for (int jv = 0; jv <= p_v; ++jv) {

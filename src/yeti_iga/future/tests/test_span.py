@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "build"))
 
 import numpy as np
 from bspline import BSpline, BSplineSurface, BSplineVolume, ControlPointManager, Patch
-from bspline import IGABasis1D, PatchDOFManager, GlobalDOFManager, PatchIntegrator#, IGAAssembler2D
+from bspline import IGABasis1D, PatchDOFManager, GlobalDOFManager, PatchIntegrator, MaterialProperties
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -359,7 +359,7 @@ def test_integration_1elt_lin_square_1():
     basis_u = IGABasis1D.build(su, 2)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
     stiffness_matrix = integrator.integrate()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -396,7 +396,7 @@ def test_integration_1elt_lin_rect():
     basis_u = IGABasis1D.build(su, 2)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
     stiffness_matrix = integrator.integrate()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -438,7 +438,7 @@ def test_integration_1elt_d2_square_1():
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
     stiffness_matrix = integrator.integrate()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -480,7 +480,7 @@ def test_integration_1elt_d2_rect():
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
     stiffness_matrix = integrator.integrate()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -530,7 +530,7 @@ def test_integration_2_elements_C0():
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
     stiffness_matrix = integrator.integrate()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -576,7 +576,7 @@ def test_integration_2_elements_C1():
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
     basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
     stiffness_matrix = integrator.integrate()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -628,10 +628,10 @@ def test_test_test():
 
 
 if __name__ == '__main__':
-    test_integration_2_elements_C1()
+
 
     # test_test_test()
-    exit()
+    # exit()
 
     test_BSpline_getters()
     test_ND_BSpline()
@@ -646,5 +646,6 @@ if __name__ == '__main__':
     test_integration_1elt_d2_square_1()
     test_integration_1elt_d2_rect()
     test_integration_2_elements_C0()
+    test_integration_2_elements_C1()
     print("All tests finshed !!!")
 
