@@ -536,6 +536,50 @@ def test_integration_2_elements_C0():
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
 
+def test_integration_2_elements_C1():
+    """
+    Test Gauss integration over a Patch
+    """
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    stiff_legacy = stiffness_matrix_legagy(f'{script_dir}/2_elts_C1_d2_rect')
+
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([1.5, 0.0])
+    mgr.add_point([4.5, 0.0])
+    mgr.add_point([6.0, 0.0])
+    mgr.add_point([0.0, 0.5])
+    mgr.add_point([1.5, 0.5])
+    mgr.add_point([4.5, 0.5])
+    mgr.add_point([6.0, 0.5])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([1.5, 1.0])
+    mgr.add_point([4.5, 1.0])
+    mgr.add_point([6.0, 1.0])
+
+    dofs_per_control_point = [2 for _ in range(mgr.n_points)]
+    dof_manager = GlobalDOFManager(dofs_per_control_point)
+
+    su = BSpline(2, np.array([0., 0., 0., 0.5, 1., 1., 1.]))
+    sv = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    local_shape = [4, 3]
+
+
+    dof_manager_patch = PatchDOFManager(2, mapping, dof_manager)
+
+    patch = Patch(surf, mgr, mapping, local_shape, dof_manager_patch)
+
+    # Create 1D integration basis
+    basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
+    basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
+
+    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    stiffness_matrix = integrator.integrate()
+
+    assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
 
 def test_test_test():
@@ -584,10 +628,10 @@ def test_test_test():
 
 
 if __name__ == '__main__':
-    # test_integration_1elt_d2_rect()
+    test_integration_2_elements_C1()
 
     # test_test_test()
-    # exit()
+    exit()
 
     test_BSpline_getters()
     test_ND_BSpline()
