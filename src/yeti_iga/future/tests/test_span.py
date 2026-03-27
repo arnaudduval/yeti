@@ -303,31 +303,38 @@ def test_coupling_strong():
     assert patch3.dof_manager.get_global_dof_indices(0) == [12]
     assert patch3.dof_manager.get_global_dof_indices(3) == [15]
 
-
-def test_integration_1elt_lin_square_1():
+def stiffness_matrix_legagy(filename):
     """
-    Test Gauss integration over a single patch, degree 1, dimension 1x1
+    Return stiffness matrix computed by legacy function
+    Parameters
+    ----------
+        filename : str
+            Path to input files .inp and .NB (no extension, just base name)
     """
 
-        # Compare with legacy YETI overlay
     from yeti_iga.preprocessing.igaparametrization import IGAparametrization
     from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static \
         as build_stiffmatrix
     import scipy.sparse as sp
 
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    iga_model = IGAparametrization(
-        filename=f'{script_dir}/1_elt_lin')
-    data, row, col, rhs = build_stiffmatrix(
+    iga_model = IGAparametrization(filename=filename)
+    data, row, col, _ = build_stiffmatrix(
         *iga_model.get_inputs4system_elemStorage())
 
     stiff_side = sp.coo_matrix(
         (data, (row, col)),
         shape=(iga_model.nb_dof_tot, iga_model.nb_dof_tot),
         dtype='float64').tocsc()
-    stiff_tot = stiff_side + stiff_side.transpose()
+    return stiff_side + stiff_side.transpose()
 
-    print("==========")
+
+def test_integration_1elt_lin_square_1():
+    """
+    Test Gauss integration over a single patch, degree 1, dimension 1x1
+    """
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    stiff_legacy = stiffness_matrix_legagy(f'{script_dir}/1_elt_lin')
 
     mgr = ControlPointManager(dim=2)
     mgr.add_point([0.0, 0.0])
@@ -355,35 +362,16 @@ def test_integration_1elt_lin_square_1():
     integrator = PatchIntegrator(patch, basis_u, basis_v)
     stiffness_matrix = integrator.integrate()
 
-    print("stiffness_matrix", stiffness_matrix)
-    print(stiff_tot)
-
-    assert np.allclose(stiffness_matrix.toarray(), stiff_tot.toarray(), rtol=1.e-5, atol=1.e-8)
+    assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
 def test_integration_1elt_lin_rect():
     """
     Test Gauss integration over a single patch, degree 1, dimension 1x3
     """
 
-        # Compare with legacy YETI overlay
-    from yeti_iga.preprocessing.igaparametrization import IGAparametrization
-    from yeti_iga.stiffmtrx_elemstorage import sys_linmat_lindef_static \
-        as build_stiffmatrix
-    import scipy.sparse as sp
-
     script_dir = os.path.dirname(os.path.realpath(__file__))
-    iga_model = IGAparametrization(
-        filename=f'{script_dir}/1_elt_lin_rect')
-    data, row, col, rhs = build_stiffmatrix(
-        *iga_model.get_inputs4system_elemStorage())
+    stiff_legacy = stiffness_matrix_legagy(f'{script_dir}/1_elt_lin_rect')
 
-    stiff_side = sp.coo_matrix(
-        (data, (row, col)),
-        shape=(iga_model.nb_dof_tot, iga_model.nb_dof_tot),
-        dtype='float64').tocsc()
-    stiff_tot = stiff_side + stiff_side.transpose()
-
-    print("==========")
 
     mgr = ControlPointManager(dim=2)
     mgr.add_point([0.0, 0.0])
@@ -411,10 +399,91 @@ def test_integration_1elt_lin_rect():
     integrator = PatchIntegrator(patch, basis_u, basis_v)
     stiffness_matrix = integrator.integrate()
 
-    print("stiffness_matrix", stiffness_matrix)
-    print(stiff_tot)
+    assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
-    assert np.allclose(stiffness_matrix.toarray(), stiff_tot.toarray(), rtol=1.e-5, atol=1.e-8)
+def test_integration_1elt_d2_square_1():
+    """
+    Test Gauss integration over a single patch, degree 2 in both directions, dimension 1x1
+    """
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    stiff_legacy = stiffness_matrix_legagy(f'{script_dir}/1_elt_d2')
+
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([0.5, 0.0])
+    mgr.add_point([1.0, 0.0])
+    mgr.add_point([0.0, 0.5])
+    mgr.add_point([0.5, 0.5])
+    mgr.add_point([1.0, 0.5])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([0.5, 1.0])
+    mgr.add_point([1.0, 1.0])
+
+
+    dofs_per_control_point = [2 for _ in range(mgr.n_points)]
+    dof_manager = GlobalDOFManager(dofs_per_control_point)
+
+    su = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
+    sv = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    local_shape = [3, 3]
+
+    dof_manager_patch = PatchDOFManager(2, mapping, dof_manager)
+
+    patch = Patch(surf, mgr, mapping, local_shape, dof_manager_patch)
+
+    # Create 1D integration basis
+    basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
+    basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
+
+    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    stiffness_matrix = integrator.integrate()
+
+    assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
+
+def test_integration_1elt_d2_rect():
+    """
+    Test Gauss integration over a single patch, degree 2 in both directions, dimension 3x1
+    """
+
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    stiff_legacy = stiffness_matrix_legagy(f'{script_dir}/1_elt_d2_rect')
+
+    mgr = ControlPointManager(dim=2)
+    mgr.add_point([0.0, 0.0])
+    mgr.add_point([1.5, 0.0])
+    mgr.add_point([3.0, 0.0])
+    mgr.add_point([0.0, 0.5])
+    mgr.add_point([1.5, 0.5])
+    mgr.add_point([3.0, 0.5])
+    mgr.add_point([0.0, 1.0])
+    mgr.add_point([1.5, 1.0])
+    mgr.add_point([3.0, 1.0])
+
+
+    dofs_per_control_point = [2 for _ in range(mgr.n_points)]
+    dof_manager = GlobalDOFManager(dofs_per_control_point)
+
+    su = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
+    sv = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
+    surf = BSplineSurface(su, sv)
+    mapping = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    local_shape = [3, 3]
+
+    dof_manager_patch = PatchDOFManager(2, mapping, dof_manager)
+
+    patch = Patch(surf, mgr, mapping, local_shape, dof_manager_patch)
+
+    # Create 1D integration basis
+    basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
+    basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
+
+    integrator = PatchIntegrator(patch, basis_u, basis_v)
+    stiffness_matrix = integrator.integrate()
+
+    assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
 
 def test_integration_2_elements_C0():
@@ -423,28 +492,34 @@ def test_integration_2_elements_C0():
     WARNING : unfinished
     """
 
-    # Basic demo patch
-    # TODO Should be vectorized
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    stiff_legacy = stiffness_matrix_legagy(f'{script_dir}/2_elts_C0_d2_rect')
+
     mgr = ControlPointManager(dim=2)
     mgr.add_point([0.0, 0.0])
-    mgr.add_point([0.75, 0.0])
     mgr.add_point([1.5, 0.0])
-    mgr.add_point([2.25, 0.0])
     mgr.add_point([3.0, 0.0])
+    mgr.add_point([4.5, 0.0])
+    mgr.add_point([6.0, 0.0])
+    mgr.add_point([0.0, 0.5])
+    mgr.add_point([1.5, 0.5])
+    mgr.add_point([3.0, 0.5])
+    mgr.add_point([4.5, 0.5])
+    mgr.add_point([6.0, 0.5])
     mgr.add_point([0.0, 1.0])
-    mgr.add_point([0.75, 1.0])
     mgr.add_point([1.5, 1.0])
-    mgr.add_point([2.25, 1.0])
     mgr.add_point([3.0, 1.0])
+    mgr.add_point([4.5, 1.0])
+    mgr.add_point([6.0, 1.0])
 
     dofs_per_control_point = [2 for _ in range(mgr.n_points)]
     dof_manager = GlobalDOFManager(dofs_per_control_point)
 
     su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
-    sv = BSpline(1, np.array([0., 0., 1., 1.]))
+    sv = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
     surf = BSplineSurface(su, sv)
-    mapping = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    local_shape = [5, 2]
+    mapping = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    local_shape = [5, 3]
 
 
     dof_manager_patch = PatchDOFManager(2, mapping, dof_manager)
@@ -453,40 +528,12 @@ def test_integration_2_elements_C0():
 
     # Create 1D integration basis
     basis_u = IGABasis1D.build(su, 3)   # 3 Gauss points per span
-    basis_v = IGABasis1D.build(sv, 2)   # 2 Gauss points per span
-
-    print(basis_u.gauss_spans)
-    print(basis_v.gauss_spans)
-    for sp in basis_u.gauss_spans:
-        print(f"{sp.u_param = }")
-        print(f"{sp.weight}")
-        print(f"{sp.N}")
-        print(f"{sp.dN}")
-
-    print('---------')
-
-    for sp in basis_v.gauss_spans:
-        print(sp.u_param)
-        print(sp.weight)
-        print(sp.N)
-        print(sp.dN)
-
-    # Get global DOF indices of 1st control point
-    # print(dof_manager_patch.get_global_dof_indices(0))
-    # print(dof_manager_patch.get_global_dof_indices(1))
-    # print(dof_manager_patch.get_global_dof_indices(2))
-    # print(dof_manager_patch.get_global_dof_indices(3))
-    # print(dof_manager_patch.get_global_dof_indices(4))
-    # print(dof_manager_patch.get_global_dof_indices(5))
-    # print(dof_manager_patch.get_global_dof_indices(6))
-    # print(dof_manager_patch.get_global_dof_indices(7))
-    # print(dof_manager_patch.get_global_dof_indices(8))
-    # print(dof_manager_patch.get_global_dof_indices(9))
+    basis_v = IGABasis1D.build(sv, 3)   # 3 Gauss points per span
 
     integrator = PatchIntegrator(patch, basis_u, basis_v)
     stiffness_matrix = integrator.integrate()
 
-    print("stiffness_matrix", stiffness_matrix)
+    assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
 
 
@@ -537,11 +584,11 @@ def test_test_test():
 
 
 if __name__ == '__main__':
-    test_integration_1elt_lin_rect()
-    # test_integration_2_elements_C0()
+    # test_integration_1elt_d2_rect()
+
     # test_test_test()
-    exit()
-    test_integration_1elt_lin_square_1()
+    # exit()
+
     test_BSpline_getters()
     test_ND_BSpline()
     test_cp_manager()
@@ -550,5 +597,10 @@ if __name__ == '__main__':
     test_span_iterator()
     test_functions_derivatives()
     test_coupling_strong()
+    test_integration_1elt_lin_rect()
+    test_integration_1elt_lin_square_1()
+    test_integration_1elt_d2_square_1()
+    test_integration_1elt_d2_rect()
+    test_integration_2_elements_C0()
     print("All tests finshed !!!")
 

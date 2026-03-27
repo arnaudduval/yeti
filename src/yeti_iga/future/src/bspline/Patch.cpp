@@ -1,7 +1,7 @@
 #include "Patch.hpp"
 #include "SpanNDIterator.hpp"
 #include "IGABasis1D.hpp"
-#include "IGAAssembler.hpp"
+#include "PatchIntegrator.hpp"
 #include <algorithm>
 #include <iostream> // temp for debug
 
