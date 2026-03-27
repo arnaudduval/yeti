@@ -88,6 +88,7 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
 endif()
 
 subdirs(src)
+add_subdirectory(src/yeti_iga/future)
 
 if(LEGACY)
     enable_testing()
