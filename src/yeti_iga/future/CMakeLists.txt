@@ -23,8 +23,9 @@ if(Eigen3_VERSION VERSION_LESS 3.3.0)
     message(WARNING "Eigen version < 3.3.0 may not support all features")
 endif()
 
+set(MODULE_NAME bspline)
 
-pybind11_add_module(bspline
+pybind11_add_module(${MODULE_NAME}
     src/bspline/BSpline.cpp
     src/bspline/BSplineTensor.cpp
     src/bspline/Patch.cpp
@@ -53,3 +54,7 @@ target_compile_options(bspline PRIVATE
         -mtune=native
     >
 )
+
+install(TARGETS ${MODULE_NAME}
+    LIBRARY DESTINATION ${SKBUILD_PROJECT_NAME}/future
+    COMPONENT python_module)
