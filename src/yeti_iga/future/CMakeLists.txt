@@ -28,7 +28,7 @@ pybind11_add_module(bspline
     src/bspline/BSpline.cpp
     src/bspline/BSplineTensor.cpp
     src/bspline/Patch.cpp
-    src/bspline/IGAAssembler.cpp
+    src/bspline/PatchIntegrator.cpp
     src/python/bindings.cpp)
 
 target_include_directories(bspline PRIVATE

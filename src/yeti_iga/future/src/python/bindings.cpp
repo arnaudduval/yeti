@@ -7,7 +7,7 @@
 #include "DOFManager.hpp"
 #include "Patch.hpp"
 #include "SpanNDIterator.hpp"
-#include "IGAAssembler.hpp"
+#include "PatchIntegrator.hpp"
 
 
 namespace py = pybind11;
