@@ -230,55 +230,6 @@ std::vector<const double*> Patch::control_points_for_span(const std::vector<int>
 }
 
 
-
-// std::vector<const double*> Patch::control_points_for_span(const std::vector<int>& span) const {
-//     const ssize_t n_dims = tensor.components.size();
-//     const ssize_t dim_phys = cp_manager->dim_phys;
-
-//     // 1D lists of active local indices in each parametric direction
-//     std::vector<std::vector<size_t>> active_idx(n_dims);
-
-//     for (ssize_t d = 0; d < n_dims; ++d) {
-//                 int deg = tensor.components[d].getDegree();
-//         int s = span[d];
-
-//         ssize_t start = std::max(0, s - deg);
-//         ssize_t end   = std::min(int(local_shape[d]-1), s);
-
-//         active_idx[d].resize(end - start + 1);
-//         for (ssize_t i = 0; i <= end - start; ++i)
-//             active_idx[d][i] = start + i;
-//     }
-
-//     // Build tensor-product of local indices
-//     std::vector<size_t> idx(n_dims, 0);
-//     std::vector<const double*> pts;
-//     ssize_t total_size = 1;
-//     for (auto& v : active_idx) total_size *= v.size();
-//     pts.reserve(total_size);
-
-//     for (ssize_t n = 0; n < total_size; ++n) {
-//         // compute linear index in local ordering
-//         ssize_t lin_idx = 0;
-//         ssize_t stride = 1;
-//     for (ssize_t d = 0; d < n_dims; ++d) {
-//         lin_idx += active_idx[d][idx[d]] * stride;
-//         stride *= local_shape[d];
-//     }
-
-//         pts.push_back(local_cp_ptr(lin_idx));
-
-//         // increment multi-dim index
-//         for (ssize_t d = n_dims - 1; d >= 0; --d) {
-//             if (++idx[d] < active_idx[d].size())
-//                 break;
-//             idx[d] = 0;
-//         }
-//     }
-
-//     return pts;
-// }
-
 void Patch::Test()
 {
     int ngauss_u = this->tensor.components[0].getDegree() + 1;
