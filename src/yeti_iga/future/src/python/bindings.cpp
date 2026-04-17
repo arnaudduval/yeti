@@ -8,6 +8,7 @@
 #include "Patch.hpp"
 #include "SpanNDIterator.hpp"
 #include "PatchIntegrator.hpp"
+#include "PatchAssembly.hpp"
 
 
 namespace py = pybind11;
@@ -184,6 +185,39 @@ PYBIND11_MODULE(bspline, m)
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("material_properties"))
         .def("integrate", &PatchIntegrator::integrate);
 
-
-
+    py::class_<PatchAssembly>(m, "PatchAssembly")
+        .def(py::init<>())
+        .def("add_patch", &PatchAssembly::addPatch, py::arg("patch"))
+        .def("detect_shared_control_points", &PatchAssembly::detectSharedControlPoints)
+        .def("get_patchs_sharing_control_points", &PatchAssembly::getPatchsSharingControlPoints, py::arg("global_cp_index"))
+        .def("get_shared_control_poins", [](const PatchAssembly& self, const Patch& patch1, const Patch& patch2) {
+                return self.getSharedControlPoints(patch1, patch2);
+            }, py::arg("patch1"), py::arg("patch2"))
+        .def("get_control_points_for_patch", &PatchAssembly::getControlPointsForPatch, py::arg("patch_index"))
+        .def("apply_transformation_to_control_points", [](const PatchAssembly& self, const std::vector<Eigen::VectorXd>& old_control_points, size_t patch_index) {
+                return self.applyTransformationToControlPoints(old_control_points, patch_index);
+            }, py::arg("old_control_points"), py::arg("patch_index")
+        )
+        .def("apply_transformation_to_dofs", [](const PatchAssembly& self, const Eigen::VectorXd& old_dofs, size_t patch_index, size_t dim_phys) {
+                return self.applyTransformationToDOFs(old_dofs, patch_index, dim_phys);
+            }, py::arg("old_dofs"), py::arg("patch_index"), py::arg("dim_phys")
+        )
+        .def("set_transformation_matrix", [](PatchAssembly& self, size_t patch_index, const Eigen::MatrixXd matrix) {
+                    return self.setTransformationMatrix(patch_index, matrix);
+            }, py::arg("patch_index"), py::arg("matrix")
+        )
+        .def("get_patchs", &PatchAssembly::getPatchs)
+        .def("get_shared_control_points_map", [](const PatchAssembly& self) {
+                const auto& shared_map = self.getSharedControlPoints();
+                py::dict result;
+                for (const auto& [cp_idx, patch_indices] : shared_map) {
+                    py::list patch_list;
+                    for (size_t idx : patch_indices) {
+                        patch_list.append(py::cast(idx));
+                    }
+                    result[py::cast(cp_idx)] = patch_list;
+                }
+                return result;
+            })
+        .def("get_transformation_matrices", &PatchAssembly::getTransformationMatrices);
 }
