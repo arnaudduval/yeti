@@ -5,6 +5,8 @@ venv
 *.mod
 *.save
 *.pyc
+*.o
+*.o.d
 *.log
 .vscode/cmake-kits.json
 benchs/*/results/*.vtu
