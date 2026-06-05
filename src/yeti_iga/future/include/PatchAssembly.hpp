@@ -20,7 +20,7 @@ private:
 
 public:
     PatchAssembly() = default;
-    
+
     // Add a patch to assembly
     void addPatch(const std::shared_ptr<Patch>& patch) {
         patches_.push_back(patch);
@@ -36,7 +36,7 @@ public:
         for (size_t i = 0; i < patches_.size(); ++i) {
             for (size_t j = i+1; j < patches_.size(); ++j) {
                 const auto& patch_i = patches_[i];
-                const auto& patch_j = patches_[j]; 
+                const auto& patch_j = patches_[j];
                 std::unordered_set<size_t> global_indices_i(
                     patch_i->global_indices.begin(),
                     patch_i->global_indices.end()
@@ -66,7 +66,7 @@ public:
         std::vector<size_t> shared;
         std::unordered_set<size_t> indices_patch1(
             patch1.global_indices.begin(),
-            patch2.global_indices.end()
+            patch1.global_indices.end()
         );
         for (size_t idx : patch2.global_indices) {
             if (indices_patch1.count(idx)) {
@@ -90,7 +90,7 @@ public:
         const std::vector<Eigen::VectorXd>& old_control_points,
         size_t patch_index
     ) const {
-        if (patch_index >= transformation_matrices_[patch_index].size()) {
+        if (patch_index >= transformation_matrices_.size()) {
             throw std::out_of_range("Invalid atch index for transformation matrix.");
         }
         const auto& matrix = transformation_matrices_[patch_index];
@@ -146,7 +146,7 @@ public:
 
         return new_dofs;
     }
-    
+
     // Update transformation matrix for a given patch
     void setTransformationMatrix(size_t patch_index, const Eigen::MatrixXd& matrix) {
         if (patch_index >= transformation_matrices_.size()) {

@@ -9,6 +9,8 @@
 #include "SpanNDIterator.hpp"
 #include "PatchIntegrator.hpp"
 #include "PatchAssembly.hpp"
+#include "refinement/RefinementOperator.hpp"
+#include "refinement/HRefiner.hpp"
 
 
 namespace py = pybind11;
@@ -63,7 +65,7 @@ PYBIND11_MODULE(bspline, m)
         .def(py::init<const BSpline&, const BSpline&, const BSpline&>(),
              py::arg("su"), py::arg("sv"), py::arg("sw"));
 
-    py::class_<ControlPointManager>(m, "ControlPointManager")
+    py::class_<ControlPointManager, std::shared_ptr<ControlPointManager>>(m, "ControlPointManager")
         .def(py::init<int>(), py::arg("dim")=3)
         .def_property_readonly("dim_phys", [](const ControlPointManager& mgr) {return mgr.dim_phys; })
         .def("add_point", &ControlPointManager::add_point)
@@ -88,9 +90,9 @@ PYBIND11_MODULE(bspline, m)
         .def("get_global_dof_indices", &PatchDOFManager::get_global_dof_indices, py::arg("local_control_point_idx"));
 
     py::class_<Patch, std::shared_ptr<Patch>>(m, "Patch")
-        .def(py::init<const BSplineTensor&, ControlPointManager*, const std::vector<size_t>&, const std::vector<size_t>&>(),
+        .def(py::init<const BSplineTensor&, std::shared_ptr<ControlPointManager>, const std::vector<size_t>&, const std::vector<size_t>&>(),
              py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"))
-        .def(py::init<const BSplineTensor&, ControlPointManager*, const std::vector<size_t>&, const std::vector<size_t>&, std::shared_ptr<PatchDOFManager>>(),
+        .def(py::init<const BSplineTensor&, std::shared_ptr<ControlPointManager>, const std::vector<size_t>&, const std::vector<size_t>&, std::shared_ptr<PatchDOFManager>>(),
              py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"), py::arg("dof_manager"))
         .def("local_cp_ptr", static_cast<double*(Patch::*)(size_t)>(&Patch::local_cp_ptr),
              py::arg("i_local"),
@@ -220,4 +222,22 @@ PYBIND11_MODULE(bspline, m)
                 return result;
             })
         .def("get_transformation_matrices", &PatchAssembly::getTransformationMatrices);
+
+    py::class_<RefinementOperator, std::shared_ptr<RefinementOperator>>(m, "RefinementOperator")
+        .def("get_type", &RefinementOperator::getType)
+        .def("refine", [](const RefinementOperator& self, const Patch& patch) {
+            Eigen::MatrixXd T;
+            auto new_patch = self.refine(patch, T);
+            return py::make_tuple(new_patch, T);
+        }, py::arg("patch"),
+           "Refine a patch. Returns (new_patch, transition_matrix).");
+
+    py::class_<HRefiner, RefinementOperator, std::shared_ptr<HRefiner>>(m, "HRefiner")
+        .def(py::init<int, double>(), py::arg("direction"), py::arg("knot"))
+        .def("refine", [](const HRefiner& self, const Patch& patch) {
+            Eigen::MatrixXd T;
+            auto new_patch = self.refine(patch, T);
+            return py::make_tuple(new_patch, T);
+        }, py::arg("patch"),
+           "Insert knot in given direction (h-refinement). Returns (new_patch, transition_matrix).");
 }

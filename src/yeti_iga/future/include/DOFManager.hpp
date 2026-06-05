@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <vector>
 #include <memory>
 
@@ -54,6 +55,20 @@ struct PatchDOFManager {
                 local_to_global_dofs[i*dofs_per_control_point + j] = global_dofs[j];
             }
         }
+    }
+
+    // Build a refined DOF manager: copy old mapping, assign new consecutive DOFs for extra CPs
+    PatchDOFManager(const PatchDOFManager& old_manager, const std::vector<size_t>& new_global_indices)
+        : dofs_per_control_point(old_manager.dofs_per_control_point) {
+        local_to_global_dofs.resize(new_global_indices.size() * dofs_per_control_point);
+        size_t nb_old = old_manager.local_to_global_dofs.size();
+        for (size_t i = 0; i < nb_old; ++i)
+            local_to_global_dofs[i] = old_manager.local_to_global_dofs[i];
+        size_t next_dof = nb_old == 0 ? 0 :
+            *std::max_element(old_manager.local_to_global_dofs.begin(),
+                              old_manager.local_to_global_dofs.end()) + 1;
+        for (size_t i = nb_old; i < local_to_global_dofs.size(); ++i)
+            local_to_global_dofs[i] = next_dof++;
     }
 
     // Get global dofs indices of a given local control point

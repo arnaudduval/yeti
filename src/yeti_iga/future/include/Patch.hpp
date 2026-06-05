@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <memory>
 #include <pybind11/numpy.h>
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
@@ -19,22 +20,22 @@ struct Patch {
     // dimensions nu, nv, nw (for indexing)
     std::vector<size_t> local_shape;
 
-    ControlPointManager* cp_manager = nullptr;
+    std::shared_ptr<ControlPointManager> cp_manager;
     std::shared_ptr<PatchDOFManager> dof_manager;
 
-    // Constructor with DOF manager for geometry purpose
+    // Constructor without DOF manager (geometry only)
     Patch(const BSplineTensor& t,
-          ControlPointManager* mgr,
+          std::shared_ptr<ControlPointManager> mgr,
           const std::vector<size_t>& mapping,
           const std::vector<size_t>& local_shape_)
-        : tensor(t), global_indices(mapping), local_shape(local_shape_), cp_manager(mgr), dof_manager(nullptr) {}
+        : tensor(t), global_indices(mapping), local_shape(local_shape_), cp_manager(std::move(mgr)), dof_manager(nullptr) {}
 
     Patch(const BSplineTensor& t,
-          ControlPointManager* mgr,
+          std::shared_ptr<ControlPointManager> mgr,
           const std::vector<size_t>& mapping,
           const std::vector<size_t>& local_shape_,
           std::shared_ptr<PatchDOFManager> dof_mgr)
-        : tensor(t), global_indices(mapping), local_shape(local_shape_), cp_manager(mgr), dof_manager(dof_mgr) {}
+        : tensor(t), global_indices(mapping), local_shape(local_shape_), cp_manager(std::move(mgr)), dof_manager(dof_mgr) {}
 
     // get view (zero copy) to coordinates of local control point i_local
     double* local_cp_ptr(size_t i_local);
