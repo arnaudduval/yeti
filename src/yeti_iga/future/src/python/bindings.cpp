@@ -129,6 +129,7 @@ PYBIND11_MODULE(bspline, m)
             "Return array containing control points coordinates for a given span. Warning : data is return as stored in memory and need to be reshaped/transposed for proper use"
         )
         .def("test", &Patch::Test)
+        .def_readonly("tensor", &Patch::tensor)
         .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; });
 
 
