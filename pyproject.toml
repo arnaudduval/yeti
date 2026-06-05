@@ -20,6 +20,9 @@ classifiers = [
 ]
 dependencies = ["numpy>=2", "scipy>=1.13", "nlopt>=2"]
 
+[project.optional-dependencies]
+dev = ["nbstripout", "jupyter", "matplotlib"]
+
 [project.urls]
 Homepage = "https://lamcosplm.insa-lyon.fr/projects/yeti"
 Issues = "https://lamcosplm.insa-lyon.fr/plugins/tracker/?tracker=626"
