@@ -7,9 +7,10 @@ public:
     ~HRefiner() override = default;
     HRefiner(int direction, double knot) : direction_(direction), knot_(knot) {}
 
-    // Refine a single patch by inserting one knot (h-refinement / Boehm's algorithm)
-    std::shared_ptr<Patch> refine(
-        const Patch& patch,
+    // Refine patch in-place by inserting one knot (h-refinement / Boehm's algorithm).
+    // Only the p blended CPs per line are added to cp_manager — unchanged CPs are reused.
+    void refine(
+        Patch& patch,
         Eigen::MatrixXd& transition_matrix
     ) const override;
 
@@ -18,15 +19,4 @@ public:
 private:
     int direction_;
     double knot_;
-
-    void refine1DLine(
-        const Patch& patch,
-        int k,
-        size_t line_start_old,
-        size_t line_stride_old,
-        size_t line_start_new,
-        size_t line_stride_new,
-        std::vector<std::vector<double>>& new_control_points,
-        Eigen::MatrixXd& transition_matrix
-    ) const;
 };

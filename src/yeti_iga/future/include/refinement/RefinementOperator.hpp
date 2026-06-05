@@ -7,10 +7,10 @@ class RefinementOperator {
 public:
     virtual ~RefinementOperator() = default;
 
-    // Refine a patch
-    // transtion matrix : (nb_new_cp x nb_old_cp)
-    virtual std::shared_ptr<Patch> refine(
-        const Patch& patch,
+    // Refine a patch in-place.
+    // transition_matrix : (nb_new_cp x nb_old_cp)
+    virtual void refine(
+        Patch& patch,
         Eigen::MatrixXd& transition_matrix
     ) const = 0;
 

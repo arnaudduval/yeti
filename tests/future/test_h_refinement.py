@@ -74,7 +74,7 @@ def test_hrefiner_transition_matrix_shape():
     )
 
     # Insert knot in u: nu 2 → 3, nv unchanged
-    _, T = HRefiner(direction=0, knot=0.5).refine(patch)
+    T = HRefiner(direction=0, knot=0.5).refine(patch)
     assert T.shape == (3 * nv, nu * nv), (
         f"Expected T shape ({3 * nv}, {nu * nv}), got {T.shape}"
     )
@@ -91,7 +91,7 @@ def test_hrefiner_transition_matrix_properties():
                    [0., 1.], [1., 1.]]
     )
 
-    _, T = HRefiner(direction=0, knot=0.5).refine(patch)
+    T = HRefiner(direction=0, knot=0.5).refine(patch)
 
     assert np.all(T >= -1e-14), f"T has negative entries:\n{T}"
     row_sums = T.sum(axis=1)
@@ -117,8 +117,8 @@ def test_hrefiner_geometry_preservation_d1():
     )
 
     old_coords = get_cp_coords(patch, 4)
-    new_patch, T = HRefiner(direction=0, knot=0.5).refine(patch)
-    new_coords = get_cp_coords(new_patch, 6)
+    T = HRefiner(direction=0, knot=0.5).refine(patch)  # patch modified in-place
+    new_coords = get_cp_coords(patch, 6)
 
     # Geometry preservation: new_cp == T @ old_cp
     assert np.allclose(new_coords, T @ old_coords, atol=1e-12), (
@@ -150,8 +150,8 @@ def test_hrefiner_direction_v():
     )
 
     old_coords = get_cp_coords(patch, 4)
-    new_patch, T = HRefiner(direction=1, knot=0.5).refine(patch)
-    new_coords = get_cp_coords(new_patch, 6)
+    T = HRefiner(direction=1, knot=0.5).refine(patch)  # patch modified in-place
+    new_coords = get_cp_coords(patch, 6)
 
     assert T.shape == (nu * 3, nu * nv), (
         f"Expected T shape ({nu * 3}, {nu * nv}), got {T.shape}"
@@ -190,9 +190,9 @@ def test_hrefiner_geometry_preservation_d2():
     )
 
     old_coords = get_cp_coords(patch, 9)
-    new_patch, T = HRefiner(direction=0, knot=0.5).refine(patch)
+    T = HRefiner(direction=0, knot=0.5).refine(patch)  # patch modified in-place
     # Insert in u: nu 3 → 4, nv stays 3 → 12 new CPs
-    new_coords = get_cp_coords(new_patch, 12)
+    new_coords = get_cp_coords(patch, 12)
 
     assert T.shape == (12, 9), f"Expected (12, 9), got {T.shape}"
     assert np.all(T >= -1e-14)

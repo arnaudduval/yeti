@@ -226,19 +226,19 @@ PYBIND11_MODULE(bspline, m)
 
     py::class_<RefinementOperator, std::shared_ptr<RefinementOperator>>(m, "RefinementOperator")
         .def("get_type", &RefinementOperator::getType)
-        .def("refine", [](const RefinementOperator& self, const Patch& patch) {
+        .def("refine", [](const RefinementOperator& self, Patch& patch) {
             Eigen::MatrixXd T;
-            auto new_patch = self.refine(patch, T);
-            return py::make_tuple(new_patch, T);
+            self.refine(patch, T);
+            return T;
         }, py::arg("patch"),
-           "Refine a patch. Returns (new_patch, transition_matrix).");
+           "Refine patch in-place. Returns transition_matrix (nb_new_cp x nb_old_cp).");
 
     py::class_<HRefiner, RefinementOperator, std::shared_ptr<HRefiner>>(m, "HRefiner")
         .def(py::init<int, double>(), py::arg("direction"), py::arg("knot"))
-        .def("refine", [](const HRefiner& self, const Patch& patch) {
+        .def("refine", [](const HRefiner& self, Patch& patch) {
             Eigen::MatrixXd T;
-            auto new_patch = self.refine(patch, T);
-            return py::make_tuple(new_patch, T);
+            self.refine(patch, T);
+            return T;
         }, py::arg("patch"),
-           "Insert knot in given direction (h-refinement). Returns (new_patch, transition_matrix).");
+           "Insert knot in-place (h-refinement). Returns transition_matrix (nb_new_cp x nb_old_cp).");
 }
