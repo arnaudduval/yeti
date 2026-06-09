@@ -8,20 +8,9 @@ BSpline::BSpline(int degree_, py::array_t<double> kvector_) : degree(degree_) {
     }
 
 py::array_t<double> BSpline::kvView() const {
-    const ssize_t n = kvector.size();
-    const double* data = kvector.data();
-
-    // create dummy capsule to handle lifetime
-    auto capsule = py::capsule((void*)data, [](void*) {
-        // do nothing, memroy belongs to std::vector
-    });
-
-    return py::array_t<double>(
-        {n},
-        {sizeof(double)},
-        data,
-        capsule
-    );
+    py::array_t<double> result(static_cast<ssize_t>(kvector.size()));
+    std::copy(kvector.begin(), kvector.end(), result.mutable_data());
+    return result;
 }
 
 int BSpline::FindSpan(double u) const {

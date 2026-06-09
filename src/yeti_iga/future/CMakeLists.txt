@@ -31,6 +31,7 @@ pybind11_add_module(${MODULE_NAME}
     src/bspline/Patch.cpp
     src/bspline/PatchIntegrator.cpp
     src/bspline/refinement/HRefiner.cpp
+    src/bspline/refinement/SubdivisionRefiner.cpp
     src/python/bindings.cpp)
 
 target_include_directories(bspline PRIVATE

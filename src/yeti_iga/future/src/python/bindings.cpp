@@ -11,6 +11,7 @@
 #include "PatchAssembly.hpp"
 #include "refinement/RefinementOperator.hpp"
 #include "refinement/HRefiner.hpp"
+#include "refinement/SubdivisionRefiner.hpp"
 
 
 namespace py = pybind11;
@@ -241,4 +242,13 @@ PYBIND11_MODULE(bspline, m)
             return T;
         }, py::arg("patch"),
            "Insert knot in-place (h-refinement). Returns transition_matrix (nb_new_cp x nb_old_cp).");
+
+    py::class_<SubdivisionRefiner, RefinementOperator, std::shared_ptr<SubdivisionRefiner>>(m, "SubdivisionRefiner")
+        .def(py::init<int, int>(), py::arg("direction"), py::arg("n_levels") = 1)
+        .def("refine", [](const SubdivisionRefiner& self, Patch& patch) {
+            Eigen::MatrixXd T;
+            self.refine(patch, T);
+            return T;
+        }, py::arg("patch"),
+           "Bisect all knot spans in-place (subdivision). Returns composed transition_matrix (nb_final_cp x nb_initial_cp).");
 }
