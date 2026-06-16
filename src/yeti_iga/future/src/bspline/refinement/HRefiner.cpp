@@ -33,17 +33,18 @@ void HRefiner::refine(
             : patch.local_shape[d];
     }
 
-    // Strides (u-fastest: stride[0]=1, stride[d]=product(local_shape[0..d-1]))
+    // u-fastest strides: direction 0 fastest (stride[0]=1)
     std::vector<size_t> old_stride(ndim), new_local_shape(patch.local_shape);
+    new_local_shape[direction_] += 1;
+
     old_stride[0] = 1;
     for (size_t d = 1; d < ndim; ++d)
-        old_stride[d] = old_stride[d - 1] * patch.local_shape[d - 1];
+        old_stride[d] = old_stride[d-1] * patch.local_shape[d-1];
 
-    new_local_shape[direction_] += 1;
     std::vector<size_t> new_stride(ndim);
     new_stride[0] = 1;
     for (size_t d = 1; d < ndim; ++d)
-        new_stride[d] = new_stride[d - 1] * new_local_shape[d - 1];
+        new_stride[d] = new_stride[d-1] * new_local_shape[d-1];
 
     size_t nb_lines = nb_old_cp / patch.local_shape[direction_];
     int n = static_cast<int>(patch.local_shape[direction_]);
@@ -160,32 +161,24 @@ void HRefiner::refine(
         );
     }
 
-    // --- Compact cp_manager: remove CPs no longer referenced by this patch ---
-    // After Boehm's algorithm, p-1 "interior blending" CPs are absorbed into
-    // the new blended CPs and are no longer referenced.
+    // --- Compact cp_manager: rebuild coords in u-fastest flat order ---
+    // This ensures mgr.coords_view() always reflects the u-fastest ordering
+    // of the patch (mgr[i] == patch.control_point(i) after compaction).
     {
         std::lock_guard<std::mutex> lock(patch.cp_manager->mtx);
         size_t dim = patch.cp_manager->dim_phys;
 
-        // Sorted unique global indices still in use
-        std::vector<size_t> used(patch.global_indices);
-        std::sort(used.begin(), used.end());
-        used.erase(std::unique(used.begin(), used.end()), used.end());
-
-        // Build compact coords (only referenced CPs, in sorted index order)
+        // Build compact coords in flat (u-fastest) order
         std::vector<double> new_coords;
-        new_coords.reserve(used.size() * dim);
-        for (size_t gid : used) {
+        new_coords.reserve(nb_new_cp * dim);
+        for (size_t flat = 0; flat < nb_new_cp; ++flat) {
+            size_t gid = patch.global_indices[flat];
             const double* src = patch.cp_manager->coords.data() + gid * dim;
             new_coords.insert(new_coords.end(), src, src + dim);
         }
 
-        // Remap global_indices: old gid → position in `used`
-        for (size_t& gid : patch.global_indices) {
-            gid = static_cast<size_t>(
-                std::lower_bound(used.begin(), used.end(), gid) - used.begin()
-            );
-        }
+        // Sequential mapping: mgr[i] == flat i
+        std::iota(patch.global_indices.begin(), patch.global_indices.end(), 0);
 
         patch.cp_manager->coords = std::move(new_coords);
     }
