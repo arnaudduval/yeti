@@ -32,7 +32,10 @@ pybind11_add_module(${MODULE_NAME}
     src/bspline/PatchIntegrator.cpp
     src/bspline/refinement/HRefiner.cpp
     src/bspline/refinement/SubdivisionRefiner.cpp
-    src/python/bindings.cpp)
+    src/bspline/refinement/PRefiner.cpp
+    src/bspline/refinement/BezierExtractor.cpp
+    src/python/bindings.cpp
+    )
 
 target_include_directories(bspline PRIVATE
     ${PROJECT_SOURCE_DIR}/include
