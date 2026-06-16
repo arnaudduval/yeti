@@ -138,14 +138,12 @@ std::vector<size_t> PatchIntegrator::buildLocalToGlobalMapping(const Patch& patc
     ssize_t n_u = patch.local_shape[0];
     ssize_t n_v = patch.local_shape[1];
 
-    // Fill local to global mapping patch.global_indices
+    // u-fastest: direction 0 (u) fastest
     for (int jv = 0; jv <= p_v; ++jv) {
         int lv = start_v + jv;
         for (int iu = 0; iu <= p_u; ++iu) {
             int lu = start_u + iu;
-            // Compute local linear index
             size_t local_linear = static_cast<size_t>(lv * n_u + lu);
-            // Get global index
             size_t global_index = patch.global_indices[local_linear];
             local_to_global.push_back(global_index);
         }

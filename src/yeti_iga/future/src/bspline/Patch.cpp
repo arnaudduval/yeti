@@ -77,17 +77,13 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
         for (auto s : sizes) total_size *= s;
 
         for (ssize_t n = 0; n < total_size; ++n) {
-            // linear index = j*n_u + i
+            // u-fastest linear index: direction 0 fastest (stride = 1)
             ssize_t lin_idx = 0;
             ssize_t stride = 1;
             for (ssize_t d = 0; d < n_dims; ++d) {
-                // lin_idx += idx[d] * stride;
-                // stride *= sizes[d];
                 int p = tensor.components[d].getDegree();
                 int global_idx = (span_ptr[d] - p) + idx[d];
-
                 lin_idx += global_idx * stride;
-                // stride *= sizes[d];
                 stride *= local_shape[d];
             }
 
@@ -161,20 +157,15 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
             // loop over tensor-product basis
             for (ssize_t n = 0; n < total_size; ++n)
             {
-                // compute linear index (row-major: [d] least significant)
+                // u-fastest linear index: direction 0 fastest (stride = 1)
                 ssize_t lin_idx = 0;
                 ssize_t stride = 1;
-
                 for (ssize_t d = 0; d < n_dims; ++d)
                 {
-                    // lin_idx += idx[d] * stride;
-                    // stride *= sizes[d];
                     int p = tensor.components[d].getDegree();
                     int global_idx = (span_ptr[d] - p) + idx[d];
-
                     lin_idx += global_idx * stride;
                     stride *= local_shape[d];
-
                 }
 
                 const double b = basis_vals[n];
@@ -216,7 +207,7 @@ std::vector<const double*> Patch::control_points_for_span(const std::vector<int>
     // Réserver de l'espace pour les pointeurs
     pts.reserve((p_u + 1) * (p_v + 1));
 
-    // Remplir les pointeurs des points de contrôle dans l'ordre souhaité (d'abord suivant y, puis suivant x)
+    // u-fastest: direction 0 (u) fastest
     for (int jv = 0; jv <= p_v; ++jv) {
         int lv = start_v + jv;
         for (int iu = 0; iu <= p_u; ++iu) {
