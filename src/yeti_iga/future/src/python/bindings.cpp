@@ -12,6 +12,8 @@
 #include "refinement/RefinementOperator.hpp"
 #include "refinement/HRefiner.hpp"
 #include "refinement/SubdivisionRefiner.hpp"
+#include "refinement/PRefiner.hpp"
+#include "refinement/BezierExtractor.hpp"
 
 
 namespace py = pybind11;
@@ -131,6 +133,10 @@ PYBIND11_MODULE(bspline, m)
         )
         .def("test", &Patch::Test)
         .def_readonly("tensor", &Patch::tensor)
+        .def_property_readonly("n_cp", [](const Patch& self) { return self.global_indices.size(); },
+            "Number of control points in the mapping (= product of local_shape).")
+        .def_property_readonly("local_shape", [](const Patch& self) { return self.local_shape; },
+            "Number of basis functions per parametric direction [n_u, n_v, ...].")
         .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; });
 
 
@@ -251,4 +257,100 @@ PYBIND11_MODULE(bspline, m)
             return T;
         }, py::arg("patch"),
            "Bisect all knot spans in-place (subdivision). Returns composed transition_matrix (nb_final_cp x nb_initial_cp).");
+
+    py::class_<PRefiner, RefinementOperator, std::shared_ptr<PRefiner>>(m, "PRefiner")
+        .def(py::init<int, int>(), py::arg("direction"), py::arg("n_elevations") = 1)
+        .def("refine", [](const PRefiner& self, Patch& patch) {
+            Eigen::MatrixXd T;
+            self.refine(patch, T);
+            return T;
+        }, py::arg("patch"),
+           "Elevate degree by 1 in-place (P&T A5.9). Returns transition_matrix (nb_new_cp x nb_old_cp).");
+
+    py::class_<BezierElementND>(m, "BezierElementND",
+        R"pbdoc(
+        Result of BezierExtractor.extract_nd() for one tensor-product element.
+
+        Attributes
+        ----------
+        C : ndarray, shape (n_local, n_local)
+            Extraction matrix: N_active(xi) = C @ B_nd(xi_hat)
+            where n_local = prod_d(p_d + 1).
+        active_indices : list[int]
+            u-fastest flat CP indices of the active B-spline functions.
+            Use patch.control_point(i) for i in active_indices.
+        elem_index : list[int]
+            0-based element multi-index (e_0, e_1, ...).
+        )pbdoc")
+        .def_readonly("C", &BezierElementND::C)
+        .def_property_readonly("active_indices",
+            [](const BezierElementND& self) { return self.active; })
+        .def_property_readonly("elem_index",
+            [](const BezierElementND& self) { return self.elem_index; });
+
+    py::class_<BezierExtractor>(m, "BezierExtractor",
+        R"pbdoc(
+        Bézier extraction operator (Borden et al. 2011).
+
+        For a B-spline of degree p with ne elements, returns ne matrices C^e of
+        shape (p+1, p+1) such that:
+
+            N_active_e(xi) = C^e @ B^p(xi_hat)
+
+        where N_active_e are the p+1 active B-spline basis functions on element e,
+        B^p are the Bernstein polynomials on [0,1], and xi_hat is the local
+        coordinate mapped to [0,1].
+
+        For a 2D patch, the element operator is the Kronecker product of 1D operators:
+            C_element = np.kron(Ce_v[ev], Ce_u[eu])
+
+        Parameters
+        ----------
+        direction : int
+            Parametric direction (0 = u, 1 = v, 2 = w).
+
+        Example
+        -------
+        Ce_u = BezierExtractor(direction=0).extract(patch)  # list of (p_u+1, p_u+1) matrices
+        Ce_v = BezierExtractor(direction=1).extract(patch)  # list of (p_v+1, p_v+1) matrices
+        spans_u = BezierExtractor.spans(patch, direction=0) # span index per element
+        )pbdoc")
+        .def(py::init<int>(), py::arg("direction"))
+        .def("extract", [](const BezierExtractor& self, const Patch& patch) -> py::list {
+            auto Ce = self.extract(patch);
+            py::list result;
+            for (const auto& mat : Ce)
+                result.append(mat);
+            return result;
+        }, py::arg("patch"),
+           "Return list of (p+1, p+1) extraction matrices, one per element.")
+        .def_static("extract_1d", [](const BSpline& spline) -> py::list {
+            auto Ce = BezierExtractor::extract_1d(spline);
+            py::list result;
+            for (const auto& mat : Ce)
+                result.append(mat);
+            return result;
+        }, py::arg("spline"),
+           "1D extraction: list of (p+1, p+1) matrices for a single BSpline.")
+        .def_static("element_spans", [](const BSpline& spline) {
+            return BezierExtractor::element_spans(spline);
+        }, py::arg("spline"),
+           "Return span index k (in the knot vector) for each element.")
+        .def_static("extract_nd", &BezierExtractor::extract_nd,
+           py::arg("patch"),
+           R"pbdoc(
+           ND Bézier extraction: one BezierElementND per tensor-product element.
+
+           Elements are returned in u-fastest order (direction 0 varies fastest).
+           The extraction matrix C satisfies N_active(xi) = C @ B_nd(xi_hat)
+           where B_nd is the tensor-product Bernstein basis (u-fastest).
+
+           Parameters
+           ----------
+           patch : Patch
+
+           Returns
+           -------
+           list[BezierElementND]
+           )pbdoc");
 }

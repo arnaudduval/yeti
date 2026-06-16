@@ -29,11 +29,13 @@ def test_assembly_creation():
     su1 = BSpline(1, np.array([0., 0., 1., 1.]))
     sv1 = BSpline(1, np.array([0., 0., 1., 1.]))
     surf1 = BSplineSurface(su1, sv1)
+    # u-fastest mapping (nu=2, nv=2): (iu=0,iv=0)→0,(iu=1,iv=0)→1,(iu=0,iv=1)→3,(iu=1,iv=1)→4
     mapping1 = [0, 1, 3, 4]
 
     su2 = BSpline(1, np.array([0., 0., 1., 1.]))
     sv2 = BSpline(1, np.array([0., 0., 1., 1.]))
     surf2 = BSplineSurface(su2, sv2)
+    # u-fastest mapping: (iu=0,iv=0)→1,(iu=1,iv=0)→2,(iu=0,iv=1)→4,(iu=1,iv=1)→5
     mapping2 = [1, 2, 4, 5]
 
     local_shape = [2, 2]

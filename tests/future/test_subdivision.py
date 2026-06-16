@@ -16,6 +16,7 @@ from yeti_iga.future.bspline import (
 # ---------------------------------------------------------------------------
 
 def build_surface_patch(p_u, p_v, kv_u, kv_v, cp_coords):
+    """cp_coords in u-fastest order: index = iu + iv*nu."""
     kv_u = np.asarray(kv_u, dtype=float)
     kv_v = np.asarray(kv_v, dtype=float)
     nu = len(kv_u) - p_u - 1
@@ -50,6 +51,7 @@ def test_subdivision_doubles_elements():
         1, 1,
         kv_u=[0., 0., 1., 1.],
         kv_v=[0., 0., 1., 1.],
+        # u-fastest: (u=0,v=0),(u=1,v=0),(u=0,v=1),(u=1,v=1)
         cp_coords=[[0., 0.], [1., 0.],
                    [0., 1.], [1., 1.]]
     )
@@ -69,6 +71,7 @@ def test_subdivision_transition_matrix_properties():
         2, 1,
         kv_u=[0., 0., 0., 1., 1., 1.],
         kv_v=[0., 0., 1., 1.],
+        # u-fastest: iv=0,1; for each iv: iu=0,1,2
         cp_coords=[[i, j] for j in range(2) for i in range(3)]
     )
 
@@ -82,7 +85,12 @@ def test_subdivision_transition_matrix_properties():
 
 
 def test_subdivision_geometry_preservation():
-    """new_coords == T @ old_coords for a degree-1 bilinear patch."""
+    """new_coords == T @ old_coords for a degree-1 bilinear patch.
+
+    After inserting u=0.5 (nu: 2→3, nv=2), u-fastest new CPs:
+      iv=0: (0,0),(1,0),(2,0)   ← inserted midpoint at iu=1
+      iv=1: (0,1),(1,1),(2,1)
+    """
     patch, _, _ = build_surface_patch(
         1, 1,
         kv_u=[0., 0., 1., 1.],
@@ -93,19 +101,15 @@ def test_subdivision_geometry_preservation():
 
     old_coords = get_cp_coords(patch, 4)
     T = SubdivisionRefiner(direction=0, n_levels=1).refine(patch)
-    new_coords = get_cp_coords(patch, patch.tensor.components[0].knot_vector.shape[0]
-                                      - patch.tensor.components[0].degree - 1
-                                      # nu_new
-                                      )
-
-    # nu_new * nv = 3*2 = 6
     new_coords = get_cp_coords(patch, 6)
+
     assert np.allclose(new_coords, T @ old_coords, atol=1e-12), (
         f"Geometry not preserved\n  T@old:\n{T @ old_coords}\n  actual:\n{new_coords}"
     )
+    # u-fastest order: iv=0,1; iu=0,1,2 for each iv
     expected = np.array([
-        [0., 0.], [1., 0.], [2., 0.],
-        [0., 1.], [1., 1.], [2., 1.]
+        [0., 0.], [1., 0.], [2., 0.],  # iv=0
+        [0., 1.], [1., 1.], [2., 1.]   # iv=1
     ])
     assert np.allclose(new_coords, expected, atol=1e-12), (
         f"Wrong CP positions\n  expected:\n{expected}\n  got:\n{new_coords}"
@@ -140,7 +144,10 @@ def test_subdivision_two_levels():
 
 
 def test_subdivision_multi_element_patch():
-    """Patch with 2 initial elements: subdivision must give 4 elements."""
+    """Patch with 2 initial elements: subdivision must give 4 elements.
+
+    u-fastest cp_coords for nu=3, nv=2: iv=0,1; iu=0,1,2 for each iv.
+    """
     patch, nu, nv = build_surface_patch(
         1, 1,
         kv_u=[0., 0., 0.5, 1., 1.],

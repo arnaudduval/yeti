@@ -40,11 +40,12 @@ def test_cp_manager():
     su = BSpline(1, np.array([0., 0., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
+    # u-fastest mapping: flat 0=(u=0,v=0)→0, flat 1=(u=1,v=0)→1, flat 2=(u=0,v=1)→3, flat 3=(u=1,v=1)→2
     mapping = np.array([0, 1, 3, 2], dtype=np.int64)
     local_shape = [2, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
 
-    # Test view to local control point
+    # Test view to local control point (u-fastest: flat 0=(0,0), flat 1=(1,0), flat 2=(0,1), flat 3=(1,1))
     assert np.allclose(patch.control_point(0), np.array([0., 0.]), rtol=1.e-9)
     assert np.allclose(patch.control_point(2), np.array([0., 1.]), rtol=1.e-9)
     # View to CP coordinates using mapping (zero-copy)
@@ -69,6 +70,10 @@ def test_evaluation():
     su = BSpline(2, np.array([0., 0., 0., 1., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
+    # u-fastest mapping (nu=3, nv=2): flat = iu + iv*nu
+    #   flat 0=(iu=0,iv=0)→(0,0)=mgr[0], flat 1=(iu=1,iv=0)→(1.5,0)=mgr[4]
+    #   flat 2=(iu=2,iv=0)→(3,0)=mgr[1], flat 3=(iu=0,iv=1)→(0,1)=mgr[2]
+    #   flat 4=(iu=1,iv=1)→(1.5,1)=mgr[5], flat 5=(iu=2,iv=1)→(3,1)=mgr[3]
     mapping = np.array([0, 4, 1, 2, 5, 3], dtype=np.int64)
     local_shape = [3, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
@@ -80,8 +85,8 @@ def test_evaluation():
     local_pts = patch.local_control_point_view()[mapping, :]
     dim_u, dim_v = tensor_basis.shape
 
-    local_pts_reshaped = local_pts.reshape(
-        (dim_v, dim_u, mgr.dim_phys)).transpose(1, 0, 2)
+    # u-fastest: reshape as (nv, nu, dim_phys) then transpose to (nu, nv, dim_phys)
+    local_pts_reshaped = local_pts.reshape((dim_v, dim_u, mgr.dim_phys)).transpose(1, 0, 2)
     surface_pt = np.tensordot(tensor_basis,
                               local_pts_reshaped,
                               axes=([0, 1], [0, 1]))
@@ -126,6 +131,9 @@ def test_evaluation_low_continuity():
     su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
+    # u-fastest mapping (nu=5, nv=2): flat = iu + iv*nu
+    #   flat 0=(iu=0,iv=0)→mgr[0], flat 1=(iu=1,iv=0)→mgr[1], ...
+    #   flat 5=(iu=0,iv=1)→mgr[5], flat 6=(iu=1,iv=1)→mgr[6], ...
     mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
     local_shape = [5, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
@@ -161,6 +169,9 @@ def test_span_iterator():
     su = BSpline(2, np.array([0., 0., 0., 0.5, 0.5, 1., 1., 1.]))
     sv = BSpline(1, np.array([0., 0., 1., 1.]))
     surf = BSplineSurface(su, sv)
+    # u-fastest mapping (nu=5, nv=2): flat = iu + iv*nu
+    #   flat 0=(iu=0,iv=0)→mgr[0], ..., flat 4=(iu=4,iv=0)→mgr[4]
+    #   flat 5=(iu=0,iv=1)→mgr[5], ..., flat 9=(iu=4,iv=1)→mgr[9]
     mapping = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.int64)
     local_shape = [5, 2]
     patch = Patch(surf, mgr, mapping.tolist(), local_shape)
@@ -170,9 +181,8 @@ def test_span_iterator():
     for i, span in enumerate(patch.spans()):
         assert (span == ref_spans[i]).all()
 
-    # get CPs for a given span
+    # get CPs for a given span (returned jv-outer, iu-inner)
     pts = patch.control_points_for_span(np.array([4, 1]))
-    # pts is return as stored in memory. It must be set in proper order
     pts = pts.reshape([2, 3, 2]).transpose(1, 0, 2)
 
     assert (pts[1, 1] == [2.25, 1.]).all()
@@ -214,19 +224,20 @@ def test_coupling_strong():
     dofs_per_control_point = [2, 2, 2, 2, 2, 2, 1, 1, 1, 1]
     global_dof_manager = GlobalDOFManager(dofs_per_control_point)
 
-    # mapping patch 1
+    # u-fastest mappings (nu=2, nv=2): flat = iu + iv*nu
+    # patch 1: CPs (0,0),(4,0),(0,4),(4,4) → mgr indices 0,1,3,4
     mapping1 = [0, 1, 3, 4]
     local_shape1 = [2, 2]
     dof_manager1 = PatchDOFManager(dofs_per_control_point=2,
                                    control_points=mapping1,
                                    global_dof_manager=global_dof_manager)
-    # mapping patch 2
+    # patch 2: CPs (4,0),(10,0),(4,4),(10,4) → mgr indices 1,2,4,5
     mapping2 = [1, 2, 4, 5]
     local_shape2 = [2, 2]
     dof_manager2 = PatchDOFManager(dofs_per_control_point=2,
                                    control_points=mapping2,
                                    global_dof_manager=global_dof_manager)
-    # mapping patch 3
+    # patch 3: CPs (0,0),(10,0),(0,4),(10,4) → mgr indices 6,7,8,9
     mapping3 = [6, 7, 8, 9]
     local_shape3 = [2, 2]
     dof_manager3 = PatchDOFManager(dofs_per_control_point=1,
@@ -237,7 +248,9 @@ def test_coupling_strong():
     patch2 = Patch(surf2, mgr, mapping2, local_shape2, dof_manager2)
     patch3 = Patch(surf2, mgr, mapping3, local_shape3, dof_manager3)
 
+    # local CP 1 = global CP 1 (at (4,0)) → DOFs 2,3
     assert patch1.dof_manager.get_global_dof_indices(1) == [2, 3]
+    # local CP 2 = global CP 3 (at (0,4)) → DOFs 6,7
     assert patch1.dof_manager.get_global_dof_indices(2) == [6, 7]
 
     assert patch2.dof_manager.get_global_dof_indices(0) == [2, 3]
