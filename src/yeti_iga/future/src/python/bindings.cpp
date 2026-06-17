@@ -179,9 +179,56 @@ PYBIND11_MODULE(bspline, m)
         // .def_property_readonly("N", [](const SpanGauss1D& self) {return self.N;})
         // .def_property_readonly("dN", [](const SpanGauss1D& self) {return self.dN;});
 
-    py::class_<IGABasis1D>(m, "IGABasis1D")
+    py::class_<IGABasis1D>(m, "IGABasis1D",
+        R"doc(
+Precomputed Gauss quadrature data for a 1D B-spline parametric direction.
+
+For each non-empty knot span, stores the physical Gauss-point coordinates,
+the integration weights (already multiplied by the span Jacobian), and the
+values of the (p+1) active B-spline basis functions and their first
+parametric derivatives at every Gauss point.
+
+Building this object once and reusing it across assembly calls avoids
+redundant evaluations of the basis functions.
+
+Attributes
+----------
+gauss_spans : list[SpanGauss1D]
+    One entry per non-empty knot span, in knot-vector order.  Each entry
+    contains ``u_param``, ``weight``, ``N`` and ``dN`` arrays of length
+    ``gauss_n``.
+
+See Also
+--------
+PatchIntegrator : uses two IGABasis1D objects (one per parametric direction)
+    to assemble stiffness / mass matrices over a 2-D patch.
+        )doc")
         .def_property_readonly("gauss_spans", [](const IGABasis1D& self) {return self.gauss_spans;})
-        .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"));
+        .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"),
+            R"doc(
+Build an IGABasis1D from a BSpline and a Gauss-point count.
+
+Iterates over every non-empty knot span ``[U[i], U[i+1]]``, maps the
+``gauss_n`` Gauss-Legendre reference points from ``[-1, 1]`` into the span,
+and evaluates both the B-spline basis functions and their first derivatives
+there via de Boor's algorithm.
+
+Parameters
+----------
+b : BSpline
+    The 1-D B-spline whose spans are to be precomputed.
+gauss_n : int
+    Number of Gauss-Legendre quadrature points per span.  For an
+    order-``p`` B-spline, ``gauss_n = p + 1`` integrates polynomials of
+    degree ``2p`` exactly (sufficient for the stiffness matrix of a
+    Laplacian-like bilinear form).
+
+Returns
+-------
+IGABasis1D
+    Object whose ``gauss_spans[k]`` holds the precomputed data for the
+    k-th non-empty span.
+            )doc");
 
     py::class_<MaterialProperties>(m, "MaterialProperties")
         .def(py::init<double, double, double>(),
