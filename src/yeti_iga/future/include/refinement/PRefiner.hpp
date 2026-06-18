@@ -12,6 +12,9 @@ public:
 
     void refine(Patch& patch, Eigen::MatrixXd& transition_matrix) const override;
 
+    // Fast path: compose only the 1D transition matrix for `direction_`.
+    void refine_1d(Patch& patch, Eigen::MatrixXd& T_1d) const;
+
     std::string getType() const override { return "p"; }
 
 private:

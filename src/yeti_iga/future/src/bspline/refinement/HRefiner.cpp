@@ -1,5 +1,6 @@
 #include <memory>
 #include <algorithm>
+#include <numeric>
 #include <pybind11/numpy.h>
 #include "refinement/HRefiner.hpp"
 #include "BSplineTensor.hpp"
@@ -182,4 +183,143 @@ void HRefiner::refine(
 
         patch.cp_manager->coords = std::move(new_coords);
     }
+}
+
+
+// ---------------------------------------------------------------------------
+// Static helpers
+// ---------------------------------------------------------------------------
+
+void HRefiner::compute_1d_transition(
+    const BSpline& spline, double knot,
+    Eigen::MatrixXd& T_1d,
+    std::vector<double>& new_kv)
+{
+    const auto& kv = spline.getKnotVector();
+    int p = spline.getDegree();
+    int n = static_cast<int>(kv.size()) - p - 2;  // last old CP index (n+1 CPs)
+    int k = spline.FindSpan(knot);
+
+    T_1d = Eigen::MatrixXd::Zero(n + 2, n + 1);
+
+    for (int i = 0; i <= k - p; ++i)
+        T_1d(i, i) = 1.0;
+
+    for (int i = k - p + 1; i <= k; ++i) {
+        double denom = kv[i + p] - kv[i];
+        double alpha = (denom > 1e-14) ? (knot - kv[i]) / denom : 0.0;
+        T_1d(i, i)     = alpha;
+        T_1d(i, i - 1) = 1.0 - alpha;
+    }
+
+    for (int i = k + 1; i <= n + 1; ++i)
+        T_1d(i, i - 1) = 1.0;
+
+    new_kv = kv;
+    new_kv.insert(std::lower_bound(new_kv.begin(), new_kv.end(), knot), knot);
+}
+
+
+void HRefiner::apply_1d_cp_update(
+    Patch& patch, int direction,
+    const Eigen::MatrixXd& T_1d)
+{
+    size_t ndim     = patch.tensor.components.size();
+    size_t dim_phys = patch.cp_manager->dim_phys;
+    size_t n_old    = patch.local_shape[direction];
+    size_t n_new    = static_cast<size_t>(T_1d.rows());
+
+    std::vector<size_t> new_local_shape(patch.local_shape);
+    new_local_shape[direction] = n_new;
+
+    size_t nb_old_cp = patch.global_indices.size();
+    size_t nb_new_cp = 1;
+    for (size_t s : new_local_shape) nb_new_cp *= s;
+
+    std::vector<size_t> old_stride(ndim), new_stride(ndim);
+    old_stride[0] = new_stride[0] = 1;
+    for (size_t d = 1; d < ndim; ++d) {
+        old_stride[d] = old_stride[d-1] * patch.local_shape[d-1];
+        new_stride[d] = new_stride[d-1] * new_local_shape[d-1];
+    }
+
+    size_t nb_lines = nb_old_cp / n_old;
+    std::vector<double> new_coords(nb_new_cp * dim_phys, 0.0);
+    std::vector<size_t> other_idx(ndim, 0);
+
+    for (size_t line = 0; line < nb_lines; ++line) {
+        size_t ls_old = 0, ls_new = 0;
+        for (size_t d = 0; d < ndim; ++d) {
+            if (d != static_cast<size_t>(direction)) {
+                ls_old += other_idx[d] * old_stride[d];
+                ls_new += other_idx[d] * new_stride[d];
+            }
+        }
+
+        for (size_t ni = 0; ni < n_new; ++ni) {
+            size_t nf = ls_new + ni * new_stride[direction];
+            for (size_t oi = 0; oi < n_old; ++oi) {
+                double coeff = T_1d(ni, oi);
+                if (std::abs(coeff) < 1e-15) continue;
+                size_t of = ls_old + oi * old_stride[direction];
+                const double* src = patch.local_cp_ptr(of);
+                for (size_t d = 0; d < dim_phys; ++d)
+                    new_coords[nf * dim_phys + d] += coeff * src[d];
+            }
+        }
+
+        for (int d = static_cast<int>(ndim) - 1; d >= 0; --d) {
+            if (d == direction) continue;
+            if (++other_idx[d] < patch.local_shape[d]) break;
+            other_idx[d] = 0;
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(patch.cp_manager->mtx);
+        patch.cp_manager->coords = std::move(new_coords);
+    }
+    patch.global_indices.resize(nb_new_cp);
+    std::iota(patch.global_indices.begin(), patch.global_indices.end(), 0);
+    patch.local_shape = std::move(new_local_shape);
+
+    if (patch.dof_manager) {
+        patch.dof_manager = std::make_shared<PatchDOFManager>(
+            *patch.dof_manager, patch.global_indices);
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// nd_transition_from_1d  (Kronecker product utility)
+// ---------------------------------------------------------------------------
+
+static Eigen::MatrixXd kron_2(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B) {
+    Eigen::MatrixXd R(A.rows() * B.rows(), A.cols() * B.cols());
+    for (int i = 0; i < A.rows(); ++i)
+        for (int j = 0; j < A.cols(); ++j)
+            R.block(i * B.rows(), j * B.cols(), B.rows(), B.cols()) = A(i, j) * B;
+    return R;
+}
+
+Eigen::MatrixXd nd_transition_from_1d(
+    const Eigen::MatrixXd& T_1d,
+    int direction,
+    const std::vector<size_t>& shape_before,
+    const std::vector<size_t>& shape_after)
+{
+    size_t ndim = shape_before.size();
+
+    // n_below = product of dimensions with index < direction (same before/after)
+    size_t n_below = 1;
+    for (int d = 0; d < direction; ++d) n_below *= shape_after[d];
+
+    // n_above = product of dimensions with index > direction (unchanged)
+    size_t n_above = 1;
+    for (size_t d = direction + 1; d < ndim; ++d) n_above *= shape_before[d];
+
+    // T_nd = kron(I_above, kron(T_1d, I_below))
+    Eigen::MatrixXd I_below = Eigen::MatrixXd::Identity(n_below, n_below);
+    Eigen::MatrixXd I_above = Eigen::MatrixXd::Identity(n_above, n_above);
+    return kron_2(I_above, kron_2(T_1d, I_below));
 }

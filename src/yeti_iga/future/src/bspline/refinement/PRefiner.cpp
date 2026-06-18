@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <pybind11/numpy.h>
 #include "refinement/PRefiner.hpp"
+#include "refinement/HRefiner.hpp"
 #include "BSplineTensor.hpp"
 
 
@@ -275,4 +276,36 @@ void PRefiner::apply_one_elevation(Patch& patch, Eigen::MatrixXd& transition_mat
         patch.dof_manager = std::make_shared<PatchDOFManager>(
             *patch.dof_manager, patch.global_indices);
     }
+}
+
+
+// ---------------------------------------------------------------------------
+// PRefiner::refine_1d  — fast path: no full nD matrix
+// ---------------------------------------------------------------------------
+
+void PRefiner::refine_1d(Patch& patch, Eigen::MatrixXd& T_1d) const
+{
+    if (direction_ < 0 || direction_ >= static_cast<int>(patch.tensor.components.size()))
+        throw std::invalid_argument("Invalid direction for degree elevation.");
+
+    // Track the evolving 1D spline locally — no CP update per step.
+    BSpline spline_1d = patch.tensor.components[direction_];
+    int n = static_cast<int>(patch.local_shape[direction_]);
+    T_1d = Eigen::MatrixXd::Identity(n, n);
+
+    for (int elev = 0; elev < n_elevations_; ++elev) {
+        int p = spline_1d.getDegree();
+        Eigen::MatrixXd T_step;
+        std::vector<double> new_kv;
+        elevate_1d(p, spline_1d.getKnotVector(), T_step, new_kv);
+        spline_1d = BSpline(p + 1, py::cast(new_kv));
+        T_1d = T_step * T_1d;
+    }
+
+    // Apply composed T_1d to patch CPs once.
+    HRefiner::apply_1d_cp_update(patch, direction_, T_1d);
+
+    std::vector<BSpline> new_components = patch.tensor.components;
+    new_components[direction_] = spline_1d;
+    patch.tensor = BSplineTensor(new_components);
 }

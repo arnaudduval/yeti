@@ -1,5 +1,7 @@
 #include "refinement/SubdivisionRefiner.hpp"
 #include "refinement/HRefiner.hpp"
+#include "BSplineTensor.hpp"
+#include <pybind11/numpy.h>
 
 
 void SubdivisionRefiner::refine(
@@ -31,4 +33,38 @@ void SubdivisionRefiner::refine(
             transition_matrix = T_local * transition_matrix;
         }
     }
+}
+
+
+void SubdivisionRefiner::refine_1d(Patch& patch, Eigen::MatrixXd& T_1d) const {
+    if (direction_ < 0 || direction_ >= static_cast<int>(patch.tensor.components.size()))
+        throw std::invalid_argument("Invalid direction for subdivision.");
+
+    // Track the evolving knot vector locally — no CP update per step.
+    BSpline spline_1d = patch.tensor.components[direction_];
+    int n = static_cast<int>(patch.local_shape[direction_]);
+    T_1d = Eigen::MatrixXd::Identity(n, n);
+
+    for (int level = 0; level < n_levels_; ++level) {
+        const auto& kv = spline_1d.getKnotVector();
+        std::vector<double> midpoints;
+        for (size_t i = 0; i + 1 < kv.size(); ++i)
+            if (kv[i + 1] - kv[i] > 1e-14)
+                midpoints.push_back(0.5 * (kv[i] + kv[i + 1]));
+
+        for (double mid : midpoints) {
+            Eigen::MatrixXd T_step;
+            std::vector<double> new_kv;
+            HRefiner::compute_1d_transition(spline_1d, mid, T_step, new_kv);
+            spline_1d = BSpline(spline_1d.getDegree(), py::cast(new_kv));
+            T_1d = T_step * T_1d;
+        }
+    }
+
+    // Apply composed T_1d to patch CPs once (instead of once per insertion).
+    HRefiner::apply_1d_cp_update(patch, direction_, T_1d);
+
+    std::vector<BSpline> new_components = patch.tensor.components;
+    new_components[direction_] = spline_1d;
+    patch.tensor = BSplineTensor(new_components);
 }

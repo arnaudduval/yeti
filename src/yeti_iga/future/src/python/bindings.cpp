@@ -303,7 +303,14 @@ IGABasis1D
             self.refine(patch, T);
             return T;
         }, py::arg("patch"),
-           "Bisect all knot spans in-place (subdivision). Returns composed transition_matrix (nb_final_cp x nb_initial_cp).");
+           "Bisect all knot spans in-place (subdivision). Returns composed transition_matrix (nb_final_cp x nb_initial_cp).")
+        .def("refine_1d", [](const SubdivisionRefiner& self, Patch& patch) {
+            Eigen::MatrixXd T;
+            self.refine_1d(patch, T);
+            return T;
+        }, py::arg("patch"),
+           "Fast path: refine in-place, return only the 1D transition matrix (n_new_1d x n_old_1d). "
+           "Use nd_transition_from_1d() to build the full nD matrix if needed.");
 
     py::class_<PRefiner, RefinementOperator, std::shared_ptr<PRefiner>>(m, "PRefiner")
         .def(py::init<int, int>(), py::arg("direction"), py::arg("n_elevations") = 1)
@@ -312,7 +319,25 @@ IGABasis1D
             self.refine(patch, T);
             return T;
         }, py::arg("patch"),
-           "Elevate degree by 1 in-place (P&T A5.9). Returns transition_matrix (nb_new_cp x nb_old_cp).");
+           "Elevate degree by 1 in-place (P&T A5.9). Returns transition_matrix (nb_new_cp x nb_old_cp).")
+        .def("refine_1d", [](const PRefiner& self, Patch& patch) {
+            Eigen::MatrixXd T;
+            self.refine_1d(patch, T);
+            return T;
+        }, py::arg("patch"),
+           "Fast path: elevate in-place, return only the 1D transition matrix (n_new_1d x n_old_1d). "
+           "Use nd_transition_from_1d() to build the full nD matrix if needed.");
+
+    m.def("nd_transition_from_1d",
+        [](const Eigen::MatrixXd& T_1d, int direction,
+           const std::vector<size_t>& shape_before,
+           const std::vector<size_t>& shape_after) {
+            return nd_transition_from_1d(T_1d, direction, shape_before, shape_after);
+        },
+        py::arg("T_1d"), py::arg("direction"),
+        py::arg("shape_before"), py::arg("shape_after"),
+        "Build the full nD transition matrix from a 1D one via Kronecker products.\n"
+        "shape_before/after are the local_shape of the patch before/after refinement.");
 
     py::class_<BezierElementND>(m, "BezierElementND",
         R"pbdoc(
