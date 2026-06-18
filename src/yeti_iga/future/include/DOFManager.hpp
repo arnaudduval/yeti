@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 #include <memory>
 
@@ -29,6 +30,11 @@ struct GlobalDOFManager {
 
     // Get DOF indices for a given control point
     std::vector<size_t> get_dof_indices(size_t control_point_idx) const {
+        if (control_point_idx + 1 >= offsets.size())
+            throw std::out_of_range(
+                "GlobalDOFManager::get_dof_indices: control_point_idx out of range "
+                "(this manager was sized for " + std::to_string(offsets.size() - 1) +
+                " control points; it is not automatically grown by patch refinement).");
         std::vector<size_t> dof_indices;
         size_t start = offsets[control_point_idx];
         size_t end = offsets[control_point_idx + 1];
@@ -71,12 +77,23 @@ struct PatchDOFManager {
             local_to_global_dofs[i] = next_dof++;
     }
 
-    // Get global dofs indices of a given local control point
+    // Get global dofs indices of a given local control point.
+    // Checked (throws on out-of-range) — use in high-level / Python-facing code.
     std::vector<size_t> get_global_dof_indices(size_t local_control_point_idx) const {
+        if ((local_control_point_idx + 1) * dofs_per_control_point > local_to_global_dofs.size())
+            throw std::out_of_range(
+                "PatchDOFManager::get_global_dof_indices: local_control_point_idx out of range.");
         std::vector<size_t> dof_indices(dofs_per_control_point);
         for (int i = 0; i < dofs_per_control_point; ++i) {
             dof_indices[i] = local_to_global_dofs[local_control_point_idx * dofs_per_control_point + i];
         }
         return dof_indices;
+    }
+
+    // Single-DOF accessor, no heap allocation — use in hot assembly loops
+    // (e.g. PatchIntegrator::assembleLocalContribution). No bounds check:
+    // caller (internal C++ code with already-validated indices) is trusted.
+    size_t get_global_dof(size_t local_control_point_idx, int local_dof_idx) const {
+        return local_to_global_dofs[local_control_point_idx * dofs_per_control_point + local_dof_idx];
     }
 };

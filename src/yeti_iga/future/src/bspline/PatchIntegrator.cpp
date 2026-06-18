@@ -115,8 +115,8 @@ void PatchIntegrator::assembleLocalContribution(const Eigen::MatrixXd& local_con
             size_t local_control_point_j = j / patch_.dof_manager->dofs_per_control_point;
             size_t local_dof_j = j % patch_.dof_manager->dofs_per_control_point;
 
-            size_t global_i = patch_.dof_manager->get_global_dof_indices(local_to_global[local_control_point_i])[local_dof_i];
-            size_t global_j = patch_.dof_manager->get_global_dof_indices(local_to_global[local_control_point_j])[local_dof_j];
+            size_t global_i = patch_.dof_manager->get_global_dof(local_to_global[local_control_point_i], local_dof_i);
+            size_t global_j = patch_.dof_manager->get_global_dof(local_to_global[local_control_point_j], local_dof_j);
 
             tripletList.emplace_back(global_i, global_j, local_contribution(i, j));
         }
