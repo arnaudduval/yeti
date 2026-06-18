@@ -38,7 +38,7 @@ from yeti_iga.stiffmtrx_elemstorage_omp import sys_linmat_lindef_static_omp \
     as build_stiffmatrix_omp
 
 
-def test_build_stoffmatrix_omp():
+def test_build_stiffmatrix_omp():
     """
     Test built matrix and vector
     """
@@ -74,4 +74,4 @@ def test_build_stoffmatrix_omp():
 
 
 if __name__ == '__main__':
-    test_build_stoffmatrix_omp()
+    test_build_stiffmatrix_omp()
