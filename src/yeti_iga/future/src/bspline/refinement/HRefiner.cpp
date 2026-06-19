@@ -222,7 +222,8 @@ void HRefiner::compute_1d_transition(
 
 void HRefiner::apply_1d_cp_update(
     Patch& patch, int direction,
-    const Eigen::MatrixXd& T_1d)
+    const Eigen::MatrixXd& T_1d,
+    const std::unordered_set<size_t>& protected_global_ids)
 {
     size_t ndim     = patch.tensor.components.size();
     size_t dim_phys = patch.cp_manager->dim_phys;
@@ -244,8 +245,14 @@ void HRefiner::apply_1d_cp_update(
     }
 
     size_t nb_lines = nb_old_cp / n_old;
-    std::vector<double> new_coords(nb_new_cp * dim_phys, 0.0);
     std::vector<size_t> other_idx(ndim, 0);
+
+    // new_global_indices[nf] is filled directly for protected (untouched)
+    // positions; private positions are resolved afterwards (fast path:
+    // sequential renumbering; general path: fresh dense block).
+    std::vector<size_t> new_global_indices(nb_new_cp, SIZE_MAX);
+    std::vector<size_t> private_flat;            // nf, in visiting order
+    std::vector<std::vector<double>> private_pt;  // coords, parallel to private_flat
 
     for (size_t line = 0; line < nb_lines; ++line) {
         size_t ls_old = 0, ls_new = 0;
@@ -258,14 +265,42 @@ void HRefiner::apply_1d_cp_update(
 
         for (size_t ni = 0; ni < n_new; ++ni) {
             size_t nf = ls_new + ni * new_stride[direction];
+
+            // Identify nonzero entries of this T_1d row.
+            int nnz = 0;
+            size_t single_oi = 0;
+            for (size_t oi = 0; oi < n_old; ++oi) {
+                if (std::abs(T_1d(ni, oi)) > 1e-15) {
+                    ++nnz;
+                    single_oi = oi;
+                    if (nnz > 1) break;
+                }
+            }
+            bool pure_copy = (nnz == 1) && (std::abs(T_1d(ni, single_oi) - 1.0) < 1e-12);
+
+            if (pure_copy && !protected_global_ids.empty()) {
+                size_t of = ls_old + single_oi * old_stride[direction];
+                size_t old_gid = patch.global_indices[of];
+                if (protected_global_ids.count(old_gid)) {
+                    // Borrowed from another patch: never recomputed/renumbered.
+                    new_global_indices[nf] = old_gid;
+                    continue;
+                }
+            }
+
+            // Private CP (unchanged-but-owned, or genuinely blended): compute
+            // its coordinates and queue it for (re)numbering below.
+            std::vector<double> pt(dim_phys, 0.0);
             for (size_t oi = 0; oi < n_old; ++oi) {
                 double coeff = T_1d(ni, oi);
                 if (std::abs(coeff) < 1e-15) continue;
                 size_t of = ls_old + oi * old_stride[direction];
                 const double* src = patch.local_cp_ptr(of);
                 for (size_t d = 0; d < dim_phys; ++d)
-                    new_coords[nf * dim_phys + d] += coeff * src[d];
+                    pt[d] += coeff * src[d];
             }
+            private_flat.push_back(nf);
+            private_pt.push_back(std::move(pt));
         }
 
         for (int d = static_cast<int>(ndim) - 1; d >= 0; --d) {
@@ -275,12 +310,41 @@ void HRefiner::apply_1d_cp_update(
         }
     }
 
-    {
-        std::lock_guard<std::mutex> lock(patch.cp_manager->mtx);
-        patch.cp_manager->coords = std::move(new_coords);
+    // Visit private CPs in true global u-fastest flat order (the line/ni
+    // nested loop above only guarantees this when direction == 0).
+    std::vector<size_t> order(private_flat.size());
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(),
+        [&](size_t a, size_t b) { return private_flat[a] < private_flat[b]; });
+
+    if (protected_global_ids.empty()) {
+        // Fast path: exclusive ownership assumed -- overwrite cp_manager in
+        // place, sequential ids 0..nb_new_cp-1 (identical to legacy behavior,
+        // zero memory overhead).
+        std::vector<double> new_coords(nb_new_cp * dim_phys, 0.0);
+        for (size_t k : order) {
+            size_t nf = private_flat[k];
+            for (size_t d = 0; d < dim_phys; ++d)
+                new_coords[nf * dim_phys + d] = private_pt[k][d];
+        }
+        {
+            std::lock_guard<std::mutex> lock(patch.cp_manager->mtx);
+            patch.cp_manager->coords = std::move(new_coords);
+        }
+        patch.global_indices.resize(nb_new_cp);
+        std::iota(patch.global_indices.begin(), patch.global_indices.end(), 0);
+    } else {
+        // General path: append private CPs as a fresh dense, u-fastest block.
+        // Borrowed (protected) CPs are left untouched in cp_manager -- old
+        // private ids become orphaned (accepted memory trade-off).
+        // add_point() locks cp_manager->mtx internally -- do not hold it here too.
+        for (size_t k : order) {
+            size_t nf = private_flat[k];
+            new_global_indices[nf] = patch.cp_manager->add_point(private_pt[k]);
+        }
+        patch.global_indices = std::move(new_global_indices);
     }
-    patch.global_indices.resize(nb_new_cp);
-    std::iota(patch.global_indices.begin(), patch.global_indices.end(), 0);
+
     patch.local_shape = std::move(new_local_shape);
 
     if (patch.dof_manager) {

@@ -1,5 +1,6 @@
 #pragma once
 #include "refinement/RefinementOperator.hpp"
+#include <unordered_set>
 #include <vector>
 
 
@@ -33,9 +34,23 @@ public:
     // patch control points.  Updates cp_manager, local_shape, and
     // global_indices in-place; does NOT build the full nD matrix.
     // The caller is responsible for updating patch.tensor afterwards.
+    //
+    // protected_global_ids: global ids that this patch does NOT own (borrowed
+    // from another patch sharing the same cp_manager, e.g. a compatible
+    // patch interface). These CPs are never recomputed, renumbered, or
+    // written to — they keep exactly the id/coordinates they already have.
+    // All other ("private") CPs — whether geometrically unchanged or newly
+    // blended — are (re)assigned a fresh, dense, u-fastest-ordered block of
+    // ids via cp_manager->add_point().
+    //
+    // If protected_global_ids is empty (default), this patch is assumed to
+    // exclusively own its cp_manager range and the update is done in place
+    // (same behavior/cost as before this parameter existed: zero memory
+    // overhead, sequential ids 0..nb_new_cp-1).
     static void apply_1d_cp_update(
         Patch& patch, int direction,
-        const Eigen::MatrixXd& T_1d);
+        const Eigen::MatrixXd& T_1d,
+        const std::unordered_set<size_t>& protected_global_ids = {});
 
 private:
     int direction_;

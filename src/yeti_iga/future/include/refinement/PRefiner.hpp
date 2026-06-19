@@ -1,5 +1,6 @@
 #pragma once
 #include "refinement/RefinementOperator.hpp"
+#include <unordered_set>
 
 
 // Degree elevation along one parametric direction (Piegl & Tiller A5.9).
@@ -13,7 +14,9 @@ public:
     void refine(Patch& patch, Eigen::MatrixXd& transition_matrix) const override;
 
     // Fast path: compose only the 1D transition matrix for `direction_`.
-    void refine_1d(Patch& patch, Eigen::MatrixXd& T_1d) const;
+    // protected_global_ids: see HRefiner::apply_1d_cp_update.
+    void refine_1d(Patch& patch, Eigen::MatrixXd& T_1d,
+                    const std::unordered_set<size_t>& protected_global_ids = {}) const;
 
     std::string getType() const override { return "p"; }
 
