@@ -31,6 +31,12 @@ It offers functionalities for static mechanical analysis and shape optimization.
 
 .. toctree::
    :maxdepth: 2
+   :Caption: future module
+
+   future/index.rst
+
+.. toctree::
+   :maxdepth: 2
    :Caption: Development
 
 ..    usage/install_wsl.rst

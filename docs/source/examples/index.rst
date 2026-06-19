@@ -2,9 +2,7 @@
 Examples
 ========
 
-.. contents:: Table of contents
-    :depth: 1
-    :local:
-    :backlinks: none
+.. toctree::
+    :maxdepth: 1
 
-.. include:: OPT_stiffPanel.rst
+    OPT_stiffPanel

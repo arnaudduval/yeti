@@ -1,3 +1,5 @@
+.. _yeti-installation:
+
 Installation
 ============
 

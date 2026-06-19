@@ -1,3 +1,4 @@
 yeti-iga
 sphinx-rtd-theme
 sphinxcontrib-bibtex
+sphinxcontrib-mermaid

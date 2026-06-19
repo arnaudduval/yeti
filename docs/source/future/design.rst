@@ -1,0 +1,318 @@
+Design choices
+================
+
+.. contents:: Table of Contents
+    :depth: 2
+    :local:
+    :backlinks: none
+
+This page explains *why* the :mod:`yeti_iga.future.bspline` module is built the way it
+is, with a focus on the multipatch assembly machinery (:class:`~yeti_iga.future.bspline.PatchAssembly`
+and the refinement operators). For the precise signature of every class and method, see
+:doc:`api`.
+
+Overview
+----------
+
+``future`` (:file:`src/yeti_iga/future/`) is a C++17 reimplementation of YETI's core
+B-spline/NURBS machinery, exposed to Python through pybind11 as
+:mod:`yeti_iga.future.bspline`. It is developed alongside, not as a replacement (yet)
+for, the legacy Fortran/f2py layer documented under *API reference*. It uses Eigen for
+linear algebra and OpenMP for parallelism, and is built independently of the legacy
+layer (see :file:`src/yeti_iga/future/CMakeLists.txt`).
+
+The rest of this page focuses on a problem that doesn't exist in a single-patch
+B-spline library: several :class:`~yeti_iga.future.bspline.Patch` objects need to share
+some of their control points (a glued/conforming multipatch interface), and every
+operation on one patch — refinement, DOF numbering, memory layout — has to remain
+correct for its neighbors without either patch knowing about the other's internals.
+Everything below is a consequence of that one constraint.
+
+The diagram below summarizes the core classes involved and how they relate; the
+sections that follow explain the *why* behind each relationship.
+
+.. mermaid::
+
+    classDiagram
+        class BSplineTensor {
+            +components : BSpline[]
+            find_span_nd()
+            basis_funs_nd()
+        }
+        class BSplineSurface
+        class BSplineVolume
+        BSplineTensor <|-- BSplineSurface
+        BSplineTensor <|-- BSplineVolume
+
+        class ControlPointManager {
+            +coords
+            add_point()
+            coords_view()
+        }
+
+        class Patch {
+            +global_indices
+            +local_shape
+            spans()
+        }
+        Patch *-- "1" BSplineTensor : tensor
+        Patch --> "1" ControlPointManager : cp_manager (shared pool)
+        Patch --> "0..1" PatchDOFManager : dof_manager
+
+        class GlobalDOFManager {
+            get_dof_indices(cp_id)
+            grow()
+        }
+        class PatchDOFManager {
+            get_global_dof_indices(local_pos)
+        }
+        PatchDOFManager ..> GlobalDOFManager : built from
+
+        class RefinementOperator {
+            <<abstract>>
+            refine()
+            get_type()
+        }
+        class HRefiner
+        class SubdivisionRefiner
+        class PRefiner
+        RefinementOperator <|-- HRefiner
+        RefinementOperator <|-- SubdivisionRefiner
+        RefinementOperator <|-- PRefiner
+        RefinementOperator ..> Patch : refines in-place
+
+        class PatchAssembly {
+            add_patch()
+            detect_shared_control_points()
+            detect_interfaces()
+            refine_with_propagation()
+            update_dof_managers()
+            compact()
+        }
+        PatchAssembly o-- "*" Patch : patches_
+        PatchAssembly ..> GlobalDOFManager : update_dof_managers()
+
+Three relationships are worth noting up front, since they are easy to miss on a first
+read of the diagram: several ``Patch`` instances point ``-->`` (reference, not own) the
+*same* ``ControlPointManager`` — that shared pointer is the entire mechanism behind
+control point sharing; ``PatchDOFManager`` is built ``from`` a ``GlobalDOFManager`` but
+keeps no further link to it, which is precisely what lets it survive
+``PatchAssembly.compact()``; and ``RefinementOperator`` depends on ``Patch`` (it mutates
+one) but a ``Patch`` has no reverse dependency on any refiner.
+
+Shared control points: one pool, integer ids
+-----------------------------------------------
+
+A :class:`~yeti_iga.future.bspline.Patch` does not own its control point coordinates.
+Coordinates live in a single :class:`~yeti_iga.future.bspline.ControlPointManager`
+instance — a contiguous ``[x0, y0, z0, x1, y1, z1, ...]`` buffer — and a patch only
+holds a ``global_indices`` array mapping its *local* control point positions (in
+u-fastest order) to *ids* in that shared pool.
+
+Two patches that are meant to share a boundary are built referencing the **same**
+``ControlPointManager`` instance and the **same** ids for their common control points.
+Sharing is therefore established once, at construction time, by id equality — there is
+no separate "constraint" or "glue" object to keep in sync afterwards.
+:meth:`PatchAssembly.detect_shared_control_points() <yeti_iga.future.bspline.PatchAssembly.detect_shared_control_points>`
+simply looks for ids that appear in more than one patch's ``global_indices``.
+
+This is also why :meth:`ControlPointManager.coords_view() <yeti_iga.future.bspline.ControlPointManager.coords_view>`
+returns a zero-copy NumPy view rather than a fresh array: the buffer is the single
+source of truth for every patch's geometry, and a small ``mutex`` on the manager keeps
+concurrent appends safe.
+
+Refinement of shared patches: protected vs. private control points
+-----------------------------------------------------------------------
+
+The corruption problem
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Refining a single, unshared patch is simple: recompute every control point from the
+knot-insertion or degree-elevation formula and overwrite the pool with the new, dense
+set of ids ``0..n_new-1``. That is unsafe the moment the pool is shared: a neighboring
+patch's ``global_indices`` still point at the *old* ids, which the naive algorithm has
+just renumbered and overwritten out from under it.
+
+Protected vs. private control points
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every refinement operator (:class:`~yeti_iga.future.bspline.HRefiner`,
+:class:`~yeti_iga.future.bspline.SubdivisionRefiner`,
+:class:`~yeti_iga.future.bspline.PRefiner`) therefore accepts a ``protected_global_ids``
+set (see e.g. ``SubdivisionRefiner.refine_1d``) and classifies every control point of
+the refined patch into one of two categories:
+
+- **Protected** — an id *borrowed* from another patch (a shared interface control
+  point). It is never recomputed, renumbered, or written to: it keeps exactly the id
+  and coordinates it already has in the pool.
+- **Private** — everything else, i.e. control points this patch owns exclusively,
+  whether their position is geometrically unchanged by the refinement or genuinely new
+  (blended). Private control points are always (re)assigned to a **fresh, dense block**
+  of new ids via ``cp_manager.add_point()``, even when their coordinates did not
+  actually change.
+
+Concretely, in ``HRefiner::apply_1d_cp_update`` (the shared low-level C++ routine behind
+all three operators' ``refine_1d`` fast path), a row of the 1D transition matrix that is
+a pure copy of one old control point is checked against ``protected_global_ids``: if the
+old id is protected, the new position simply re-uses it unchanged; otherwise it is
+queued for (re)numbering as a private control point.
+
+Why refinement never deletes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Always moving private control points to a fresh block — instead of reusing their old
+slot in place — means repeated refinement of a shared patch leaves old private control
+point slots behind in the pool, unused but still present ("orphaned"). This is a
+deliberate trade-off: at the moment one patch is refined, another patch (or another
+thread) might still be reading the pool through its own, still-valid ``global_indices``.
+Refinement therefore never deletes or reuses a slot in place when the pool might be
+shared; cleanup is a separate, explicit step — see
+:meth:`PatchAssembly.compact() <yeti_iga.future.bspline.PatchAssembly.compact>` below.
+
+The exclusive-ownership fast path
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``protected_global_ids`` is empty (the default), the patch is assumed to
+exclusively own its range of the pool: there is nothing to protect, so the
+implementation falls back to the cheaper, original single-patch behavior — overwrite
+the pool in place with sequential ids ``0..nb_new_cp-1``, with zero extra memory
+overhead. Multipatch awareness therefore costs nothing for patches that don't actually
+share anything.
+
+Two-level DOF management
+---------------------------
+
+Degrees of freedom are split across two cooperating classes
+(:file:`src/yeti_iga/future/include/DOFManager.hpp`), each indexed differently on
+purpose:
+
+- :class:`~yeti_iga.future.bspline.GlobalDOFManager` maps a **control point id** (in the
+  shared pool) to its global dof indices. Because this lookup is a pure function of the
+  id, two patches that reference the *same* id (e.g. a boundary control point merged
+  across a shared interface) automatically resolve to the *same* global dofs — with no
+  explicit bookkeeping of which control points were merged. This is what makes
+  :meth:`PatchAssembly.update_dof_managers() <yeti_iga.future.bspline.PatchAssembly.update_dof_managers>`
+  correct without ever inspecting the merge history.
+- :class:`~yeti_iga.future.bspline.PatchDOFManager` maps a patch's **local control
+  point position** (not its id) to global dof indices. Being position-indexed rather
+  than id-indexed is exactly what lets a ``PatchDOFManager`` survive
+  :meth:`PatchAssembly.compact() <yeti_iga.future.bspline.PatchAssembly.compact>`
+  unchanged, even though ``compact()`` renumbers every control point id: the patch's
+  *positions* don't move, only the ids they point at.
+
+This split is the enabling mechanism behind the assembly's call-order contract below: if
+``PatchDOFManager`` were id-indexed like ``GlobalDOFManager``, ``compact()`` would
+silently desynchronize every patch's dof mapping the moment it renumbers ids.
+
+PatchAssembly's call-order contract
+---------------------------------------
+
+:class:`~yeti_iga.future.bspline.PatchAssembly` orchestrates every multipatch operation,
+and its methods are designed to be called in a specific order, each step depending on
+the result or side effect of the one before it:
+
+1. :meth:`~yeti_iga.future.bspline.PatchAssembly.add_patch` for every patch in the
+   assembly.
+2. :meth:`~yeti_iga.future.bspline.PatchAssembly.detect_shared_control_points` — finds
+   ids common to several patches. Requires patches to already share ids in their
+   ``global_indices`` by construction (see above) — it does not infer sharing from
+   coordinates.
+3. :meth:`~yeti_iga.future.bspline.PatchAssembly.detect_interfaces` — uses the shared-id
+   information to identify, for each pair of compatible 2D patches, which
+   ``(direction, side)`` facet carries the shared edge on each side and the orientation
+   between them (see :ref:`design-crossed-interface` below). It needs step 2's result
+   to know which patches are even candidates for an interface.
+4. :meth:`~yeti_iga.future.bspline.PatchAssembly.refine_with_propagation` — refines one
+   patch and propagates to its neighbors across the interfaces found in step 3, merging
+   the new boundary control points. It needs step 3's interfaces to know *which*
+   neighbors to propagate to and along *which* direction.
+5. :meth:`~yeti_iga.future.bspline.PatchAssembly.update_dof_managers` — grows the global
+   DOF pool and rebuilds every patch's ``PatchDOFManager``. It must run **after** step 4
+   so that the newly merged boundary control points get assigned a *shared* dof, and
+   **before** ``compact()`` (step 6): since ``GlobalDOFManager`` is indexed by control
+   point id, assigning dofs against ids that ``compact()`` is about to renumber would
+   silently desynchronize the mapping.
+6. :meth:`~yeti_iga.future.bspline.PatchAssembly.compact` — once *all* the refinements
+   you need are done (not after every single one), reclaims the control points
+   orphaned by repeated refinements of shared patches (see above): it walks the patches
+   in ``add_patch()`` order, keeps each control point's first-encountered id, and
+   reassigns it a fresh, dense id, reusing that same new id for every later occurrence
+   of the same old id (i.e. for control points shared with an already-processed patch).
+   It leaves every ``PatchDOFManager`` untouched (position-indexed, see above) but
+   invalidates the shared-control-point map and the detected interfaces — call steps 2
+   and 3 again afterwards if you still need them.
+
+.. _design-crossed-interface:
+
+Interface detection and the crossed-interface case
+-------------------------------------------------------
+
+:meth:`~yeti_iga.future.bspline.PatchAssembly.detect_interfaces` only handles 2D
+patches (a 3D volume face interface has two varying directions and isn't supported
+yet — this is an explicit "Phase 1" scope limitation, not an oversight). For each pair
+of patches, it tries every ``(direction, side)`` facet combination on both sides and
+matches the ones whose control point *sets* are equal; it then checks whether the two
+facets, walked in order, agree (direct order) or are reversed (e.g. ``u`` of one patch
+glued to ``v`` of the other, parametrized in opposite senses). It raises if the sets
+match but neither ordering does, since that would violate the "compatible boundary"
+assumption (same knot vector, degree, and control points along the edge).
+
+This *crossed interface* case (the varying direction differs between the two sides) is
+why :meth:`~yeti_iga.future.bspline.PatchAssembly.refine_with_propagation` takes a
+``refine_1d_fn`` callback that receives the refinement ``direction`` as an **explicit
+argument**, rather than the direction being baked into a closure created once for the
+triggering patch: the neighbor generally has to be refined along its *own* matching
+direction, which is not necessarily the same value as the direction given for the patch
+that triggered the propagation.
+
+One-hop propagation limitation
+----------------------------------
+
+``refine_with_propagation`` only propagates to the *direct* neighbors of the patch being
+refined — it does not chain transitively through a neighbor to that neighbor's other
+neighbors. For an assembly with chains of more than two patches sharing edges, this
+means propagation currently has to be triggered explicitly, patch by patch, along the
+chain. This is a documented scope limitation rather than a bug, left for a later phase.
+
+Performance rationale: the 1D fast path
+-------------------------------------------
+
+A naive ND refinement recomputes the full ``(nb_new_cp × nb_old_cp)`` transition matrix
+directly. Instead, every refinement operator exposes a ``refine_1d`` fast path that only
+builds the **1D** transition matrix for the refined direction — much smaller than the
+full ND one — and the free function
+:func:`~yeti_iga.future.bspline.nd_transition_from_1d` reconstructs the full ND matrix
+from it afterwards (via a Kronecker product against identities for the unaffected
+directions), only if and when that full matrix is actually needed.
+
+This "precompute the small/cheap thing once, derive the large/expensive thing from it
+only on demand" pattern shows up again on the integration side:
+:class:`~yeti_iga.future.bspline.IGABasis1D` precomputes Gauss point coordinates,
+weights, and basis function values/derivatives once per 1D parametric direction, and
+:class:`~yeti_iga.future.bspline.PatchIntegrator` reuses that precomputed data across
+every span of a 2D patch rather than re-evaluating basis functions per assembly call.
+
+Bézier extraction's role
+----------------------------
+
+:class:`~yeti_iga.future.bspline.BezierExtractor` implements the Bézier extraction
+operator of :cite:`borden_isogeometric_2011`: for each tensor-product element, it builds
+the matrix ``C`` such that the active B-spline basis functions on that element are a
+linear combination (via ``C``) of the standard Bernstein polynomials on a local
+``[0, 1]`` (or ``[0,1]^ndim``, via Kronecker products of the 1D operators) reference
+element. It operates on the same :class:`~yeti_iga.future.bspline.Patch`/
+:class:`~yeti_iga.future.bspline.BSpline` data structures as the rest of the module, but
+it is not load-bearing for the multipatch assembly workflow described above — it exists
+to provide an alternate, per-element basis representation (e.g. for export/interop with
+finite-element-style tools or alternate assembly strategies), independent of patch
+sharing or refinement propagation.
+
+Worked example
+------------------
+
+A complete, narrated run through every mechanism described on this page — building two
+patches that share control points, safely refining one of them with
+``protected_global_ids``, propagating a refinement across a crossed interface, rebuilding
+the DOF managers, and finally reclaiming orphaned control points with ``compact()`` — is
+available as a Jupyter notebook at :file:`examples/future/05_multipatch.ipynb` in the
+repository.

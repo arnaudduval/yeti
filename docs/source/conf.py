@@ -20,7 +20,8 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinx.ext.mathjax',
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon'       # Handle Numpy or Google style docstrings
+    'sphinx.ext.napoleon',      # Handle Numpy or Google style docstrings
+    'sphinxcontrib.mermaid'
 ]
 
 templates_path = ['_templates']
