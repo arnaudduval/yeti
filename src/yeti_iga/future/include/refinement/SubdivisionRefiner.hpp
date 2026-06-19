@@ -1,5 +1,6 @@
 #pragma once
 #include "refinement/RefinementOperator.hpp"
+#include <unordered_set>
 
 
 // Subdivide all knot spans in one parametric direction by bisection.
@@ -16,7 +17,12 @@ public:
     // Fast path: compose only the 1D transition matrix for `direction_`.
     // T_1d has shape (n_final_1d × n_initial_1d) — much smaller than the full nD.
     // Build the full nD matrix afterwards with nd_transition_from_1d() if needed.
-    void refine_1d(Patch& patch, Eigen::MatrixXd& T_1d) const;
+    //
+    // protected_global_ids: global ids borrowed from another patch (shared
+    // interface) that must never be recomputed/renumbered. See
+    // HRefiner::apply_1d_cp_update for the full contract.
+    void refine_1d(Patch& patch, Eigen::MatrixXd& T_1d,
+                    const std::unordered_set<size_t>& protected_global_ids = {}) const;
 
     std::string getType() const override { return "subdivision"; }
 

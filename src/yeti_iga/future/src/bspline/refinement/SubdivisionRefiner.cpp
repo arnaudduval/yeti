@@ -36,7 +36,8 @@ void SubdivisionRefiner::refine(
 }
 
 
-void SubdivisionRefiner::refine_1d(Patch& patch, Eigen::MatrixXd& T_1d) const {
+void SubdivisionRefiner::refine_1d(Patch& patch, Eigen::MatrixXd& T_1d,
+                                    const std::unordered_set<size_t>& protected_global_ids) const {
     if (direction_ < 0 || direction_ >= static_cast<int>(patch.tensor.components.size()))
         throw std::invalid_argument("Invalid direction for subdivision.");
 
@@ -62,7 +63,7 @@ void SubdivisionRefiner::refine_1d(Patch& patch, Eigen::MatrixXd& T_1d) const {
     }
 
     // Apply composed T_1d to patch CPs once (instead of once per insertion).
-    HRefiner::apply_1d_cp_update(patch, direction_, T_1d);
+    HRefiner::apply_1d_cp_update(patch, direction_, T_1d, protected_global_ids);
 
     std::vector<BSpline> new_components = patch.tensor.components;
     new_components[direction_] = spline_1d;
