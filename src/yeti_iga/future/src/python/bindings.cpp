@@ -1,6 +1,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
+#include <pybind11/stl.h>
+#include <pybind11/functional.h>
 #include "BSpline.hpp"
 #include "BSplineTensor.hpp"
 #include "ControlPointManager.hpp"
@@ -83,11 +85,28 @@ PYBIND11_MODULE(bspline, m)
             return py::array_t<double>(shape, strides, self.coords.data(), capsule);
         });
 
-    py::class_<GlobalDOFManager>(m, "GlobalDOFManager")
+    py::class_<GlobalDOFManager>(m, "GlobalDOFManager",
+        "Pool-wide map from a control-point id (in the shared "
+        "ControlPointManager) to its global dof indices. Since lookup is a "
+        "pure function of cp id, two patches that reference the SAME cp id "
+        "(e.g. a boundary control point merged across a shared interface) "
+        "automatically resolve to the SAME global dofs -- this is what "
+        "makes PatchAssembly.update_dof_managers() work without any "
+        "explicit tracking of which control points were merged.")
         .def(py::init<const std::vector<int>&>(), py::arg("dofs_per_control_point"))
-        .def("get_dof_indices", &GlobalDOFManager::get_dof_indices, py::arg("control_point_idx"));
+        .def("get_dof_indices", &GlobalDOFManager::get_dof_indices, py::arg("control_point_idx"))
+        .def("n_control_points", &GlobalDOFManager::n_control_points,
+            "Number of control points currently covered (ids 0..n-1 are "
+            "valid arguments to get_dof_indices()).")
+        .def("grow", &GlobalDOFManager::grow, py::arg("new_n_cp"), py::arg("dofs_per_cp"),
+            "Grow to cover new_n_cp control points (no-op if already >= that). "
+            "Newly covered control points get dofs_per_cp fresh dofs each.");
 
-    py::class_<PatchDOFManager, std::shared_ptr<PatchDOFManager>>(m, "PatchDOFManager")
+    py::class_<PatchDOFManager, std::shared_ptr<PatchDOFManager>>(m, "PatchDOFManager",
+        "Maps a patch's LOCAL control point position (u-fastest index into "
+        "Patch.global_indices) to global dof indices. Independent of "
+        "control point ids once built, so it survives PatchAssembly.compact() "
+        "(which renumbers ids) unchanged.")
         .def(py::init<int, const std::vector<size_t>&, const GlobalDOFManager&>(),
              py::arg("dofs_per_control_point"), py::arg("control_points"), py::arg("global_dof_manager"))
         .def("get_global_dof_indices", &PatchDOFManager::get_global_dof_indices, py::arg("local_control_point_idx"));
@@ -135,6 +154,9 @@ PYBIND11_MODULE(bspline, m)
         .def_readonly("tensor", &Patch::tensor)
         .def_property_readonly("n_cp", [](const Patch& self) { return self.global_indices.size(); },
             "Number of control points in the mapping (= product of local_shape).")
+        .def_property_readonly("global_indices", [](const Patch& self) { return self.global_indices; },
+            "u-fastest list mapping each local control point index to its global "
+            "id in the shared ControlPointManager pool.")
         .def_property_readonly("local_shape", [](const Patch& self) { return self.local_shape; },
             "Number of basis functions per parametric direction [n_u, n_v, ...].")
         .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; });
@@ -242,15 +264,115 @@ IGABasis1D
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("material_properties"))
         .def("integrate", &PatchIntegrator::integrate);
 
-    py::class_<PatchAssembly>(m, "PatchAssembly")
+    py::class_<PatchAssembly>(m, "PatchAssembly",
+        R"doc(
+Orchestrates multi-patch operations: detecting control points and edges
+shared between patches, propagating refinement across shared edges, and
+keeping DOF numbering consistent across the assembly.
+
+Typical workflow, in order:
+
+1. ``add_patch(patch)`` for every patch in the assembly.
+2. ``detect_shared_control_points()`` -- find control point ids common to
+   several patches (requires patches to already share ids in their
+   ``global_indices``, e.g. by construction).
+3. ``detect_interfaces()`` -- identify which (direction, side) facet of
+   each patch carries a shared edge, and the orientation between them.
+4. ``refine_with_propagation(patch_index, direction, refine_1d_fn)`` --
+   refine one patch and automatically propagate to its neighbors across
+   detected interfaces, merging the new boundary control points.
+5. ``update_dof_managers(global_dof_manager, dofs_per_cp)`` -- grow the
+   global DOF pool and rebuild every patch's PatchDOFManager so merged
+   control points get the same global dofs on every patch.
+6. ``compact()`` -- once ALL needed refinements are done, reclaim memory
+   orphaned by repeated refinements of shared patches. Re-run
+   ``detect_shared_control_points()`` / ``detect_interfaces()`` afterwards
+   if their results are still needed (compact() invalidates both).
+        )doc")
         .def(py::init<>())
-        .def("add_patch", &PatchAssembly::addPatch, py::arg("patch"))
-        .def("detect_shared_control_points", &PatchAssembly::detectSharedControlPoints)
-        .def("get_patchs_sharing_control_points", &PatchAssembly::getPatchsSharingControlPoints, py::arg("global_cp_index"))
-        .def("get_shared_control_poins", [](const PatchAssembly& self, const Patch& patch1, const Patch& patch2) {
+        .def("add_patch", &PatchAssembly::addPatch, py::arg("patch"),
+            "Add a patch to the assembly.")
+        .def("detect_shared_control_points", &PatchAssembly::detectSharedControlPoints,
+            "Detect control point ids shared by two or more patches (a control "
+            "point is shared if the same id appears in more than one patch's "
+            "global_indices). Populates the map returned by "
+            "get_shared_control_points_map().")
+        .def("compact", &PatchAssembly::compact,
+            "Reclaim CPs orphaned by repeated refinements of shared patches. "
+            "Call once, after all needed refinements are done -- rewrites the "
+            "whole shared CP pool and every patch's global_indices. Clears "
+            "any previously detected shared-CP map (call "
+            "detect_shared_control_points() again afterwards if needed).")
+        .def("detect_interfaces", &PatchAssembly::detectInterfaces,
+            "Detect compatible interfaces (shared edges) between all pairs of 2D "
+            "patches. For each match, records which (direction, side) facet of "
+            "each patch carries the edge, the direction to refine on each side "
+            "to propagate refinement (varying_direction_a/b), and whether "
+            "traversal order is reversed between the two patches. Throws if "
+            "two facets share control points but neither direct nor reversed "
+            "order matches.")
+        .def("refine_with_propagation", &PatchAssembly::refineWithPropagation,
+            py::arg("patch_index"), py::arg("direction"), py::arg("refine_1d_fn"),
+            "Refine patches[patch_index] along `direction`, automatically "
+            "propagating the same refinement to every neighbor connected "
+            "through a detected interface (see detect_interfaces()) whose "
+            "varying direction matches, then merging the boundary control "
+            "points created independently on both sides. "
+            "refine_1d_fn(patch, direction, protected_global_ids) must refine "
+            "`patch` in-place along `direction` while leaving "
+            "protected_global_ids untouched. `direction` is passed explicitly "
+            "because on a crossed interface (e.g. u of one patch glued to v "
+            "of the other) the neighbor must be refined along its OWN "
+            "matching direction, not necessarily the one given to "
+            "refine_with_propagation(). Example: "
+            "lambda patch, d, ids: SubdivisionRefiner(d, n_levels).refine_1d(patch, ids). "
+            "Requires detect_interfaces() (and detect_shared_control_points()) "
+            "to have been called first. Does not update any PatchDOFManager "
+            "(see update_dof_managers()).")
+        .def("update_dof_managers", &PatchAssembly::updateDOFManagers,
+            py::arg("global_dof_manager"), py::arg("dofs_per_cp"),
+            "Grow `global_dof_manager` to cover every control point currently "
+            "referenced by the assembly's patches, then rebuild each patch's "
+            "PatchDOFManager from its CURRENT global_indices. Because "
+            "GlobalDOFManager maps dofs by control-point id, two patches "
+            "referencing the same (merged) boundary CP automatically get the "
+            "same global dofs. `dofs_per_cp` only applies to control points "
+            "newly covered by the growth (pre-existing CPs keep their dofs; "
+            "each patch keeps its own already-set dofs_per_control_point). "
+            "Call this AFTER refine_with_propagation() and BEFORE compact() "
+            "-- compact() renumbers control point ids, which would "
+            "desynchronize this cp-id-indexed mapping if dofs were assigned "
+            "first against soon-to-be-stale ids.")
+        .def("get_interfaces", [](const PatchAssembly& self) {
+                py::list result;
+                for (const auto& itf : self.getInterfaces()) {
+                    py::dict d;
+                    d["patch_a"] = itf.patch_a;
+                    d["direction_a"] = itf.direction_a;
+                    d["side_a"] = itf.side_a;
+                    d["varying_direction_a"] = itf.varying_direction_a;
+                    d["patch_b"] = itf.patch_b;
+                    d["direction_b"] = itf.direction_b;
+                    d["side_b"] = itf.side_b;
+                    d["varying_direction_b"] = itf.varying_direction_b;
+                    d["reversed"] = itf.reversed;
+                    result.append(d);
+                }
+                return result;
+            })
+        .def("get_patchs_sharing_control_points", &PatchAssembly::getPatchsSharingControlPoints, py::arg("global_cp_index"),
+            "Return the list of patch indices sharing the given global "
+            "control point id (empty if detect_shared_control_points() "
+            "hasn't found it, or hasn't been called).")
+        .def("get_shared_control_points_between", [](const PatchAssembly& self, const Patch& patch1, const Patch& patch2) {
                 return self.getSharedControlPoints(patch1, patch2);
-            }, py::arg("patch1"), py::arg("patch2"))
-        .def("get_control_points_for_patch", &PatchAssembly::getControlPointsForPatch, py::arg("patch_index"))
+            }, py::arg("patch1"), py::arg("patch2"),
+            "Return the global control point ids common to exactly these two "
+            "patches' global_indices. Computed directly from the two patches "
+            "-- does not require detect_shared_control_points() to have "
+            "been called first.")
+        .def("get_control_points_for_patch", &PatchAssembly::getControlPointsForPatch, py::arg("patch_index"),
+            "Return the number of control points of patches[patch_index].")
         .def("apply_transformation_to_control_points", [](const PatchAssembly& self, const std::vector<Eigen::VectorXd>& old_control_points, size_t patch_index) {
                 return self.applyTransformationToControlPoints(old_control_points, patch_index);
             }, py::arg("old_control_points"), py::arg("patch_index")
@@ -263,7 +385,8 @@ IGABasis1D
                     return self.setTransformationMatrix(patch_index, matrix);
             }, py::arg("patch_index"), py::arg("matrix")
         )
-        .def("get_patchs", &PatchAssembly::getPatchs)
+        .def("get_patchs", &PatchAssembly::getPatchs,
+            "Return the list of patches added to this assembly, in add_patch() order.")
         .def("get_shared_control_points_map", [](const PatchAssembly& self) {
                 const auto& shared_map = self.getSharedControlPoints();
                 py::dict result;
@@ -275,8 +398,12 @@ IGABasis1D
                     result[py::cast(cp_idx)] = patch_list;
                 }
                 return result;
-            })
-        .def("get_transformation_matrices", &PatchAssembly::getTransformationMatrices);
+            },
+            "Return the map {global_cp_id: [patch indices sharing it]} built "
+            "by detect_shared_control_points() (empty if not yet called).")
+        .def("get_transformation_matrices", &PatchAssembly::getTransformationMatrices,
+            "Return the per-patch refinement transformation matrices "
+            "(identity until set_transformation_matrix() is called).");
 
     py::class_<RefinementOperator, std::shared_ptr<RefinementOperator>>(m, "RefinementOperator")
         .def("get_type", &RefinementOperator::getType)
@@ -304,13 +431,17 @@ IGABasis1D
             return T;
         }, py::arg("patch"),
            "Bisect all knot spans in-place (subdivision). Returns composed transition_matrix (nb_final_cp x nb_initial_cp).")
-        .def("refine_1d", [](const SubdivisionRefiner& self, Patch& patch) {
+        .def("refine_1d", [](const SubdivisionRefiner& self, Patch& patch,
+                              const std::unordered_set<size_t>& protected_global_ids) {
             Eigen::MatrixXd T;
-            self.refine_1d(patch, T);
+            self.refine_1d(patch, T, protected_global_ids);
             return T;
-        }, py::arg("patch"),
+        }, py::arg("patch"), py::arg("protected_global_ids") = std::unordered_set<size_t>{},
            "Fast path: refine in-place, return only the 1D transition matrix (n_new_1d x n_old_1d). "
-           "Use nd_transition_from_1d() to build the full nD matrix if needed.");
+           "Use nd_transition_from_1d() to build the full nD matrix if needed. "
+           "protected_global_ids: ids borrowed from another patch (shared interface) that must "
+           "never be recomputed/renumbered; if empty (default), this patch is assumed to "
+           "exclusively own its cp_manager range.");
 
     py::class_<PRefiner, RefinementOperator, std::shared_ptr<PRefiner>>(m, "PRefiner")
         .def(py::init<int, int>(), py::arg("direction"), py::arg("n_elevations") = 1)
@@ -320,13 +451,17 @@ IGABasis1D
             return T;
         }, py::arg("patch"),
            "Elevate degree by 1 in-place (P&T A5.9). Returns transition_matrix (nb_new_cp x nb_old_cp).")
-        .def("refine_1d", [](const PRefiner& self, Patch& patch) {
+        .def("refine_1d", [](const PRefiner& self, Patch& patch,
+                              const std::unordered_set<size_t>& protected_global_ids) {
             Eigen::MatrixXd T;
-            self.refine_1d(patch, T);
+            self.refine_1d(patch, T, protected_global_ids);
             return T;
-        }, py::arg("patch"),
+        }, py::arg("patch"), py::arg("protected_global_ids") = std::unordered_set<size_t>{},
            "Fast path: elevate in-place, return only the 1D transition matrix (n_new_1d x n_old_1d). "
-           "Use nd_transition_from_1d() to build the full nD matrix if needed.");
+           "Use nd_transition_from_1d() to build the full nD matrix if needed. "
+           "protected_global_ids: ids borrowed from another patch (shared interface) that must "
+           "never be recomputed/renumbered; if empty (default), this patch is assumed to "
+           "exclusively own its cp_manager range.");
 
     m.def("nd_transition_from_1d",
         [](const Eigen::MatrixXd& T_1d, int direction,
