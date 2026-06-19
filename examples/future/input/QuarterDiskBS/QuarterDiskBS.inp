@@ -1,0 +1,48 @@
+*HEADING
+** A quarter disk with a hole approximated by BSplines.
+*Part, name=QuarterDiskBS
+*USER ELEMENT, NODES=6, TYPE=U1, COORDINATES=2, INTEGRATION=6, TENSOR=PSTRESS
+1,2
+*Node,nset=AllNode
+    1, 0.0, 1.0, 0.0
+    2, 1.0, 1.0, 0.0
+    3, 1.0, 0.0, 0.0
+    4, 0.0, 2.0, 0.0
+    5, 2.0, 2.0, 0.0
+    6, 2.0, 0.0, 0.0
+*ELement,type=U1,elset=AllEls
+1,  6, 5, 4, 3, 2, 1
+*ELSET,ELSET=EltPatch1,generate
+1,1,1
+*NSET, NSET=CPLeft
+1, 4
+*UEL PROPERTY, ELSET=EltPatch1, MATERIAL=mat
+1
+*ENd Part
+** ASSEMBLY
+*Assembly, name=Assembly
+*Instance, name=I1, part=QuarterDiskBS
+*End Instance
+*End Assembly
+**MATERIAL
+*MATERIAL,NAME=mat
+*Elastic
+210000., 0.3
+*STEP,extrapolation=N0,NLGEOM=NO
+*Static
+** BOUNDARY CONDITIONS
+** Name: DEP Type: Displacement/Rotation
+*Boundary
+I1.CPLeft, 1, 2, 0.
+**
+** CLOAD
+*Cload
+3, 2, -10.0
+**
+** OUTPUT REQUESTS
+*node file, frequency=1
+U,RF,CF
+*el file, frequency=1
+SDV
+*End Step
+
