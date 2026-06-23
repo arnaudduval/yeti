@@ -1,4 +1,6 @@
 #include "PatchIntegrator.hpp"
+#include <algorithm>
+#include <stdexcept>
 
 // Compute local contrinution for a given span
 Eigen::MatrixXd PatchIntegrator::computeLocalContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span) {
@@ -104,8 +106,12 @@ void PatchIntegrator::assembleLocalContribution(const Eigen::MatrixXd& local_con
     std::vector<const double*> pts = patch_.control_points_for_span(span);
     size_t nb_loc = pts.size();
 
-    // Get indices of globel DOFs
-    std::vector<size_t> local_to_global = buildLocalToGlobalMapping(patch_, span);
+    // Patch-LOCAL flat position (u-fastest) of each of this span's active
+    // control points -- this is what PatchDOFManager::get_global_dof()
+    // expects (it maps patch-local position -> global dof; it already
+    // accounts for control points shared with other patches, via the global
+    // ids the PatchDOFManager was built from).
+    std::vector<size_t> span_local_positions = buildSpanLocalIndices(patch_, span);
 
     // Assemble local contribution into global matrix
     for (size_t i = 0; i < local_contribution.rows(); ++i) {
@@ -115,16 +121,16 @@ void PatchIntegrator::assembleLocalContribution(const Eigen::MatrixXd& local_con
             size_t local_control_point_j = j / patch_.dof_manager->dofs_per_control_point;
             size_t local_dof_j = j % patch_.dof_manager->dofs_per_control_point;
 
-            size_t global_i = patch_.dof_manager->get_global_dof(local_to_global[local_control_point_i], local_dof_i);
-            size_t global_j = patch_.dof_manager->get_global_dof(local_to_global[local_control_point_j], local_dof_j);
+            size_t global_i = patch_.dof_manager->get_global_dof(span_local_positions[local_control_point_i], local_dof_i);
+            size_t global_j = patch_.dof_manager->get_global_dof(span_local_positions[local_control_point_j], local_dof_j);
 
             tripletList.emplace_back(global_i, global_j, local_contribution(i, j));
         }
     }
 }
 
-std::vector<size_t> PatchIntegrator::buildLocalToGlobalMapping(const Patch& patch, const std::vector<int>& span) const {
-    std::vector<size_t> local_to_global;
+std::vector<size_t> PatchIntegrator::buildSpanLocalIndices(const Patch& patch, const std::vector<int>& span) const {
+    std::vector<size_t> span_local_positions;
 
     // Get degrees
     int p_u = patch.tensor.components[0].getDegree();
@@ -144,10 +150,51 @@ std::vector<size_t> PatchIntegrator::buildLocalToGlobalMapping(const Patch& patc
         for (int iu = 0; iu <= p_u; ++iu) {
             int lu = start_u + iu;
             size_t local_linear = static_cast<size_t>(lv * n_u + lu);
-            size_t global_index = patch.global_indices[local_linear];
-            local_to_global.push_back(global_index);
+            span_local_positions.push_back(local_linear);
         }
     }
 
-    return local_to_global;
+    return span_local_positions;
+}
+
+Eigen::SparseMatrix<double> PatchIntegrator::assemble(
+    const PatchAssembly& assembly,
+    const std::vector<MaterialProperties>& materials,
+    int gauss_n)
+{
+    const auto& patches = assembly.getPatchs();
+    if (materials.size() != patches.size())
+        throw std::invalid_argument(
+            "PatchIntegrator::assemble: materials.size() must equal the number "
+            "of patches in the assembly (one entry per patch, in add_patch() order).");
+
+    std::vector<Eigen::Triplet<double>> tripletList;
+    size_t total_dofs = 0;
+
+    // Keep one IGABasis1D per patch alive until collectTriplets() has run for
+    // every patch -- PatchIntegrator only stores references to its bases.
+    std::vector<IGABasis1D> bases_u, bases_v;
+    bases_u.reserve(patches.size());
+    bases_v.reserve(patches.size());
+
+    for (size_t p = 0; p < patches.size(); ++p) {
+        const Patch& patch = *patches[p];
+
+        int p_u = patch.tensor.components[0].getDegree();
+        int p_v = patch.tensor.components[1].getDegree();
+        int n_u = (gauss_n > 0) ? gauss_n : p_u + 1;
+        int n_v = (gauss_n > 0) ? gauss_n : p_v + 1;
+
+        bases_u.push_back(IGABasis1D::build(patch.tensor.components[0], n_u));
+        bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v));
+
+        PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), materials[p]);
+        integrator.collectTriplets(tripletList);
+        total_dofs = std::max(total_dofs, integrator.localTotalDofs());
+    }
+
+    Eigen::SparseMatrix<double> stiffness_matrix(total_dofs, total_dofs);
+    stiffness_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
+
+    return stiffness_matrix;
 }
