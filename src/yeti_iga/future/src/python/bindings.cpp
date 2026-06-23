@@ -262,7 +262,17 @@ IGABasis1D
     py::class_<PatchIntegrator>(m, "PatchIntegrator")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const MaterialProperties&>(),
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("material_properties"))
-        .def("integrate", &PatchIntegrator::integrate);
+        .def("integrate", &PatchIntegrator::integrate)
+        .def_static("assemble", &PatchIntegrator::assemble,
+            py::arg("assembly"), py::arg("materials"), py::arg("gauss_n") = 0,
+            "Assemble the global stiffness matrix of a whole PatchAssembly.\n"
+            "materials must have one entry per patch, in assembly.get_patchs() "
+            "(add_patch()) order. Control points shared between patches "
+            "(see PatchAssembly) automatically resolve to the same global dof, "
+            "so contributions from every patch touching a shared boundary are "
+            "summed into the same matrix entry -- no special-casing needed. "
+            "gauss_n: Gauss points per span per direction for every patch; if "
+            "0 (default), each direction of each patch uses its own degree + 1.");
 
     py::class_<PatchAssembly>(m, "PatchAssembly",
         R"doc(
