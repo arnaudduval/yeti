@@ -2,7 +2,49 @@
 #include <algorithm>
 #include <stdexcept>
 
-// Compute local contrinution for a given span
+// Geometry shared by the stiffness and mass kernels at one Gauss point.
+// detJ == 0.0 signals a degenerate point that the caller must skip.
+PatchIntegrator::GaussPointGeometry PatchIntegrator::evaluateGaussPointGeometry(
+    const std::vector<const double*>& pts,
+    const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu,
+    const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv) const
+{
+    size_t nb_loc = pts.size();
+    GaussPointGeometry g;
+    g.R.resize(nb_loc);
+    g.dRdu.resize(nb_loc);
+    g.dRdv.resize(nb_loc);
+
+    size_t idx = 0;
+    for (size_t jv = 0; jv < static_cast<size_t>(Nv.size()); ++jv) {
+        for (size_t iu = 0; iu < static_cast<size_t>(Nu.size()); ++iu) {
+            g.R[idx] = Nu(iu) * Nv(jv);
+            g.dRdu[idx] = dNu(iu) * Nv(jv);
+            g.dRdv[idx] = Nu(iu) * dNv(jv);
+            ++idx;
+        }
+    }
+
+    // Compute mapping
+    g.J11 = 0.0; g.J12 = 0.0; g.J21 = 0.0; g.J22 = 0.0;
+    for (size_t a = 0; a < nb_loc; ++a) {
+        const double* P = pts[a];
+        const double px = P[0];
+        const double py = P[1];
+
+        g.J11 += g.dRdu[a] * px;
+        g.J21 += g.dRdu[a] * py;
+        g.J12 += g.dRdv[a] * px;
+        g.J22 += g.dRdv[a] * py;
+    }
+
+    double detJ = g.J11*g.J22 - g.J12*g.J21;
+    g.detJ = (std::abs(detJ) < 1.e-14) ? 0.0 : detJ;
+
+    return g;
+}
+
+// Compute local stiffness contribution for a given span
 Eigen::MatrixXd PatchIntegrator::computeLocalContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span) {
     int ngauss_u = static_cast<int>(sg_u.u_param.size());
     int ngauss_v = static_cast<int>(sg_v.u_param.size());
@@ -25,44 +67,18 @@ Eigen::MatrixXd PatchIntegrator::computeLocalContribution(const Patch& patch, co
             const Eigen::VectorXd& Nv = sg_v.N[gv];
             const Eigen::VectorXd& dNv = sg_v.dN[gv];
 
-            // Compute R, dR/du, dR/dv
-            std::vector<double> R(nb_loc);
-            std::vector<double> dRdu(nb_loc);
-            std::vector<double> dRdv(nb_loc);
-
-            size_t idx = 0;
-            for (size_t jv = 0; jv < Nv.size(); ++jv) {
-                for (size_t iu = 0; iu < Nu.size(); ++iu) {
-                    R[idx] = Nu(iu) * Nv(jv);
-                    dRdu[idx] = dNu(iu) * Nv(jv);
-                    dRdv[idx] = Nu(iu) * dNv(jv);
-                    ++idx;
-                }
-            }
-
-            // Compute mapping
-            double J11 = 0.0, J12 = 0.0, J21 = 0.0, J22 = 0.0;
-            for (size_t a = 0; a < nb_loc; ++a) {
-                const double* P = pts[a];
-                const double px = P[0];
-                const double py = P[1];
-
-                J11 += dRdu[a] * px;
-                J21 += dRdu[a] * py;
-                J12 += dRdv[a] * px;
-                J22 += dRdv[a] * py;
-            }
-
-            double detJ = J11*J22 - J12*J21;
-
-            if (std::abs(detJ) < 1.e-14) {
+            GaussPointGeometry g = evaluateGaussPointGeometry(pts, Nu, dNu, Nv, dNv);
+            if (g.detJ == 0.0) {
                 continue;
             }
+            const std::vector<double>& dRdu = g.dRdu;
+            const std::vector<double>& dRdv = g.dRdv;
+            double detJ = g.detJ;
 
-            double invJ11 = J22 / detJ;         // du/dx
-            double invJ12 = - J12 / detJ;       // du/dy
-            double invJ21 = - J21 / detJ;       // dv/dx
-            double invJ22 = J11 / detJ;         // dv/dy
+            double invJ11 = g.J22 / detJ;        // du/dx
+            double invJ12 = - g.J12 / detJ;       // du/dy
+            double invJ21 = - g.J21 / detJ;       // dv/dx
+            double invJ22 = g.J11 / detJ;         // dv/dy
 
             // Compute gradients
             std::vector<std::array<double, 2>> grads(nb_loc);
@@ -98,6 +114,45 @@ Eigen::MatrixXd PatchIntegrator::computeLocalContribution(const Patch& patch, co
         }
     }
     return K_loc;
+}
+
+// Compute local mass contribution for a given span
+Eigen::MatrixXd PatchIntegrator::computeLocalMassContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span) {
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd M_loc = Eigen::MatrixXd::Zero(2*nb_loc, 2*nb_loc);
+    double rho = material_properties_.rho;
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+            const Eigen::VectorXd& Nu = sg_u.N[gu];
+            const Eigen::VectorXd& dNu = sg_u.dN[gu];
+            const Eigen::VectorXd& Nv = sg_v.N[gv];
+            const Eigen::VectorXd& dNv = sg_v.dN[gv];
+
+            GaussPointGeometry g = evaluateGaussPointGeometry(pts, Nu, dNu, Nv, dNv);
+            if (g.detJ == 0.0) {
+                continue;
+            }
+
+            // N matrix: same block placement as B, but with shape values
+            // (no gradients/Jacobian inverse needed beyond detJ).
+            Eigen::MatrixXd N = Eigen::MatrixXd::Zero(2, 2 * nb_loc);
+            for (size_t a = 0; a < nb_loc; ++a) {
+                N(0, 2*a) = g.R[a];
+                N(1, 2*a + 1) = g.R[a];
+            }
+
+            M_loc += rho * N.transpose() * N * w * std::abs(g.detJ);
+        }
+    }
+    return M_loc;
 }
 
 // Assemble local contriubution into global matrix
@@ -157,22 +212,24 @@ std::vector<size_t> PatchIntegrator::buildSpanLocalIndices(const Patch& patch, c
     return span_local_positions;
 }
 
-Eigen::SparseMatrix<double> PatchIntegrator::assemble(
+Eigen::SparseMatrix<double> PatchIntegrator::assembleGeneric(
     const PatchAssembly& assembly,
     const std::vector<MaterialProperties>& materials,
-    int gauss_n)
+    int gauss_n,
+    const std::function<void(PatchIntegrator&, std::vector<Eigen::Triplet<double>>&)>& collect)
 {
     const auto& patches = assembly.getPatchs();
     if (materials.size() != patches.size())
         throw std::invalid_argument(
-            "PatchIntegrator::assemble: materials.size() must equal the number "
-            "of patches in the assembly (one entry per patch, in add_patch() order).");
+            "PatchIntegrator::assembleGeneric: materials.size() must equal the "
+            "number of patches in the assembly (one entry per patch, in "
+            "add_patch() order).");
 
     std::vector<Eigen::Triplet<double>> tripletList;
     size_t total_dofs = 0;
 
-    // Keep one IGABasis1D per patch alive until collectTriplets() has run for
-    // every patch -- PatchIntegrator only stores references to its bases.
+    // Keep one IGABasis1D per patch alive until collect() has run for every
+    // patch -- PatchIntegrator only stores references to its bases.
     std::vector<IGABasis1D> bases_u, bases_v;
     bases_u.reserve(patches.size());
     bases_v.reserve(patches.size());
@@ -189,12 +246,30 @@ Eigen::SparseMatrix<double> PatchIntegrator::assemble(
         bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v));
 
         PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), materials[p]);
-        integrator.collectTriplets(tripletList);
+        collect(integrator, tripletList);
         total_dofs = std::max(total_dofs, integrator.localTotalDofs());
     }
 
-    Eigen::SparseMatrix<double> stiffness_matrix(total_dofs, total_dofs);
-    stiffness_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
+    Eigen::SparseMatrix<double> result(total_dofs, total_dofs);
+    result.setFromTriplets(tripletList.begin(), tripletList.end());
 
-    return stiffness_matrix;
+    return result;
+}
+
+Eigen::SparseMatrix<double> PatchIntegrator::assembleStiffness(
+    const PatchAssembly& assembly,
+    const std::vector<MaterialProperties>& materials,
+    int gauss_n)
+{
+    return assembleGeneric(assembly, materials, gauss_n,
+        [](PatchIntegrator& pi, std::vector<Eigen::Triplet<double>>& t) { pi.collectTriplets(t); });
+}
+
+Eigen::SparseMatrix<double> PatchIntegrator::assembleMass(
+    const PatchAssembly& assembly,
+    const std::vector<MaterialProperties>& materials,
+    int gauss_n)
+{
+    return assembleGeneric(assembly, materials, gauss_n,
+        [](PatchIntegrator& pi, std::vector<Eigen::Triplet<double>>& t) { pi.collectMassTriplets(t); });
 }

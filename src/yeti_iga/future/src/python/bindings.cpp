@@ -253,17 +253,22 @@ IGABasis1D
             )doc");
 
     py::class_<MaterialProperties>(m, "MaterialProperties")
-        .def(py::init<double, double, double>(),
-             py::arg("E"), py::arg("nu"), py::arg("thickness") = 1.0)
+        .def(py::init<double, double, double, double>(),
+             py::arg("E"), py::arg("nu"), py::arg("thickness") = 1.0, py::arg("rho") = 0.0)
         .def_readwrite("E", &MaterialProperties::E)
         .def_readwrite("nu", &MaterialProperties::nu)
-        .def_readwrite("thickness", &MaterialProperties::thickness);
+        .def_readwrite("thickness", &MaterialProperties::thickness)
+        .def_readwrite("rho", &MaterialProperties::rho,
+            "Mass density. Must be set (> 0) to use integrate_mass()/assemble_mass().");
 
     py::class_<PatchIntegrator>(m, "PatchIntegrator")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const MaterialProperties&>(),
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("material_properties"))
-        .def("integrate", &PatchIntegrator::integrate)
-        .def_static("assemble", &PatchIntegrator::assemble,
+        .def("integrate_stiffness", &PatchIntegrator::integrateStiffness)
+        .def("integrate_mass", &PatchIntegrator::integrateMass,
+            "Same as integrate_stiffness(), but for the consistent mass matrix of "
+            "this single patch. Requires material_properties.rho > 0.")
+        .def_static("assemble_stiffness", &PatchIntegrator::assembleStiffness,
             py::arg("assembly"), py::arg("materials"), py::arg("gauss_n") = 0,
             "Assemble the global stiffness matrix of a whole PatchAssembly.\n"
             "materials must have one entry per patch, in assembly.get_patchs() "
@@ -272,7 +277,11 @@ IGABasis1D
             "so contributions from every patch touching a shared boundary are "
             "summed into the same matrix entry -- no special-casing needed. "
             "gauss_n: Gauss points per span per direction for every patch; if "
-            "0 (default), each direction of each patch uses its own degree + 1.");
+            "0 (default), each direction of each patch uses its own degree + 1.")
+        .def_static("assemble_mass", &PatchIntegrator::assembleMass,
+            py::arg("assembly"), py::arg("materials"), py::arg("gauss_n") = 0,
+            "Same as assemble_stiffness(), but for the consistent mass matrix of "
+            "the whole PatchAssembly. Every entry in materials must have rho > 0.");
 
     py::class_<PatchAssembly>(m, "PatchAssembly",
         R"doc(
