@@ -1,5 +1,5 @@
 """
-Test multipatch stiffness assembly (PatchIntegrator.assemble)
+Test multipatch stiffness assembly (PatchIntegrator.assemble_stiffness)
 """
 
 import os
@@ -18,7 +18,7 @@ def test_assemble_domain_split_matches_single_patch():
     """
     Splitting a single, legacy-validated patch into two conforming patches
     sharing the interior boundary must not change the assembled physics:
-    PatchIntegrator.assemble() on the 2-patch assembly must reproduce the
+    PatchIntegrator.assemble_stiffness() on the 2-patch assembly must reproduce the
     same global stiffness matrix as the single-patch legacy reference for
     '2_elts_C0_d2_rect' (already validated in test_stiffness.py).
     """
@@ -72,7 +72,7 @@ def test_assemble_domain_split_matches_single_patch():
     assert set(shared_map.keys()) == {2, 7, 12}
 
     material = MaterialProperties(210000, 0.3)
-    stiffness_matrix = PatchIntegrator.assemble(assembly, [material, material])
+    stiffness_matrix = PatchIntegrator.assemble_stiffness(assembly, [material, material])
 
     assert stiffness_matrix.shape == stiff_legacy.shape
     np.testing.assert_allclose(
@@ -81,7 +81,7 @@ def test_assemble_domain_split_matches_single_patch():
 
 def test_assemble_crossed_reversed_interface():
     """
-    Exercise assemble() on a non-axis-aligned topology (u of one patch glued
+    Exercise assemble_stiffness() on a non-axis-aligned topology (u of one patch glued
     to v of the other, reversed traversal order -- see
     test_assembly.py::test_update_dof_managers_merges_shared_dofs for the
     same fixture) after a propagated refinement. Checks basic structural
@@ -125,7 +125,7 @@ def test_assemble_crossed_reversed_interface():
     assembly.update_dof_managers(global_dof_manager, dofs_per_cp=2)
 
     material = MaterialProperties(210000, 0.3)
-    stiffness_matrix = PatchIntegrator.assemble(assembly, [material, material]).toarray()
+    stiffness_matrix = PatchIntegrator.assemble_stiffness(assembly, [material, material]).toarray()
 
     n_dofs = global_dof_manager.get_dof_indices(cp_manager.n_points - 1)[-1] + 1
     assert stiffness_matrix.shape == (n_dofs, n_dofs)
@@ -140,7 +140,7 @@ def test_assemble_crossed_reversed_interface():
     dof = global_dof_manager.get_dof_indices(midpoint_cp)[0]
 
     material_list_a_only = [material, MaterialProperties(0.0, 0.3)]
-    stiffness_a_only = PatchIntegrator.assemble(assembly, material_list_a_only).toarray()
+    stiffness_a_only = PatchIntegrator.assemble_stiffness(assembly, material_list_a_only).toarray()
     assert stiffness_matrix[dof, dof] > stiffness_a_only[dof, dof]
 
 

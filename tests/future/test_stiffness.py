@@ -69,7 +69,7 @@ def test_integration_1elt_lin_square_1():
     basis_v = IGABasis1D.build(sv, 2)
 
     integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
-    stiffness_matrix = integrator.integrate()
+    stiffness_matrix = integrator.integrate_stiffness()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
@@ -106,7 +106,7 @@ def test_integration_1elt_lin_rect():
     basis_v = IGABasis1D.build(sv, 2)
 
     integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
-    stiffness_matrix = integrator.integrate()
+    stiffness_matrix = integrator.integrate_stiffness()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
@@ -148,7 +148,7 @@ def test_integration_1elt_d2_square_1():
     basis_v = IGABasis1D.build(sv, 3)
 
     integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
-    stiffness_matrix = integrator.integrate()
+    stiffness_matrix = integrator.integrate_stiffness()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
@@ -190,7 +190,7 @@ def test_integration_1elt_d2_rect():
     basis_v = IGABasis1D.build(sv, 3)
 
     integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
-    stiffness_matrix = integrator.integrate()
+    stiffness_matrix = integrator.integrate_stiffness()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
@@ -239,7 +239,7 @@ def test_integration_2_elements_C0():
     basis_v = IGABasis1D.build(sv, 3)
 
     integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
-    stiffness_matrix = integrator.integrate()
+    stiffness_matrix = integrator.integrate_stiffness()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
@@ -285,7 +285,7 @@ def test_integration_2_elements_C1():
     basis_v = IGABasis1D.build(sv, 3)
 
     integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
-    stiffness_matrix = integrator.integrate()
+    stiffness_matrix = integrator.integrate_stiffness()
 
     assert np.allclose(stiffness_matrix.toarray(), stiff_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
 
