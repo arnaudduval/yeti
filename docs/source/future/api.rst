@@ -112,6 +112,10 @@ Integration and assembly
     :special-members: __init__
     :members:
 
+.. autoclass:: yeti_iga.future.bspline.LocalOperator
+    :special-members: __init__
+    :members:
+
 Bézier extraction
 --------------------
 
