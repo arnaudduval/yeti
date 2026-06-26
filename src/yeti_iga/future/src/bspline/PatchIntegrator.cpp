@@ -45,7 +45,7 @@ PatchIntegrator::GaussPointGeometry PatchIntegrator::evaluateGaussPointGeometry(
 }
 
 // Compute local stiffness contribution for a given span
-Eigen::MatrixXd PatchIntegrator::computeLocalContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span) {
+Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span) {
     int ngauss_u = static_cast<int>(sg_u.u_param.size());
     int ngauss_v = static_cast<int>(sg_v.u_param.size());
 
@@ -272,4 +272,50 @@ Eigen::SparseMatrix<double> PatchIntegrator::assembleMass(
 {
     return assembleGeneric(assembly, materials, gauss_n,
         [](PatchIntegrator& pi, std::vector<Eigen::Triplet<double>>& t) { pi.collectMassTriplets(t); });
+}
+
+// Standalone orchestration for assembleOperator() -- intentionally does not
+// call assembleGeneric() (which is tied to MaterialProperties), so this
+// development/testing path cannot affect assembleStiffness()/assembleMass().
+Eigen::SparseMatrix<double> PatchIntegrator::assembleOperator(
+    const PatchAssembly& assembly,
+    const std::vector<std::shared_ptr<LocalOperator>>& operators,
+    int gauss_n)
+{
+    const auto& patches = assembly.getPatchs();
+    if (operators.size() != patches.size())
+        throw std::invalid_argument(
+            "PatchIntegrator::assembleOperator: operators.size() must equal the "
+            "number of patches in the assembly (one entry per patch, in "
+            "add_patch() order).");
+
+    std::vector<Eigen::Triplet<double>> tripletList;
+    size_t total_dofs = 0;
+
+    std::vector<IGABasis1D> bases_u, bases_v;
+    bases_u.reserve(patches.size());
+    bases_v.reserve(patches.size());
+
+    MaterialProperties unused_material{0.0, 0.0};
+
+    for (size_t p = 0; p < patches.size(); ++p) {
+        const Patch& patch = *patches[p];
+
+        int p_u = patch.tensor.components[0].getDegree();
+        int p_v = patch.tensor.components[1].getDegree();
+        int n_u = (gauss_n > 0) ? gauss_n : p_u + 1;
+        int n_v = (gauss_n > 0) ? gauss_n : p_v + 1;
+
+        bases_u.push_back(IGABasis1D::build(patch.tensor.components[0], n_u));
+        bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v));
+
+        PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), unused_material);
+        integrator.collectOperatorTriplets(*operators[p], tripletList);
+        total_dofs = std::max(total_dofs, integrator.localTotalDofs());
+    }
+
+    Eigen::SparseMatrix<double> result(total_dofs, total_dofs);
+    result.setFromTriplets(tripletList.begin(), tripletList.end());
+
+    return result;
 }

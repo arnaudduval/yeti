@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <stdexcept>
 #include <vector>
 #include <cstddef>
@@ -9,6 +10,7 @@
 #include "IGABasis1D.hpp"
 #include "Patch.hpp"
 #include "PatchAssembly.hpp"
+#include "LocalOperator.hpp"
 
 
 
@@ -33,7 +35,7 @@ private:
     // Jacobian components and its determinant. Mass only needs R and detJ;
     // stiffness derives invJ/grads/B/D from J11..J22 and dRdu/dRdv on top of
     // this (storing J11..J22 here, instead of just detJ, avoids recomputing
-    // the Jacobian a second time in computeLocalContribution). detJ == 0.0
+    // the Jacobian a second time in computeLocalStiffnessContribution). detJ == 0.0
     // signals a degenerate point to be skipped by the caller (mirrors the
     // previous inline `if (std::abs(detJ) < 1e-14) continue;`).
     struct GaussPointGeometry {
@@ -47,7 +49,7 @@ private:
         const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv) const;
 
     // Compute local stiffness contribution for a given span
-    Eigen::MatrixXd computeLocalContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
+    Eigen::MatrixXd computeLocalStiffnessContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
     // Compute local mass contribution for a given span
     Eigen::MatrixXd computeLocalMassContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
     // Assemble local contriubution into global matrix (shared by stiffness and mass)
@@ -91,7 +93,7 @@ public:
             const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
 
             // Compute local contribution
-            Eigen::MatrixXd local_contribution = computeLocalContribution(patch_, sg_u, sg_v, span);
+            Eigen::MatrixXd local_contribution = computeLocalStiffnessContribution(patch_, sg_u, sg_v, span);
 
             // Assemble local contribution into global matrix
             assembleLocalContribution(local_contribution, span, tripletList);
@@ -191,6 +193,98 @@ public:
     static Eigen::SparseMatrix<double> assembleMass(
         const PatchAssembly& assembly,
         const std::vector<MaterialProperties>& materials,
+        int gauss_n = 0);
+
+    // Same as collectTriplets()/collectMassTriplets(), but the per-Gauss-
+    // point term comes from a caller-supplied LocalOperator instead of a
+    // built-in kernel: PatchIntegrator still does the Gauss-point loop and
+    // the Jacobian/gradient computation (via the shared
+    // evaluateGaussPointGeometry() helper -- same one used by
+    // computeLocalStiffnessContribution()/computeLocalMassContribution()), the
+    // operator only supplies the term to weight and sum. Development/
+    // testing convenience -- does not touch, and is not used by,
+    // collectTriplets()/collectMassTriplets().
+    void collectOperatorTriplets(LocalOperator& op, std::vector<Eigen::Triplet<double>>& tripletList) {
+        SpanNDIterator it = patch_.spans();
+
+        for (auto span : it) {
+            int span_u = span[0];
+            int span_v = span[1];
+
+            int idx_u = basis_u_.span_indices.at(span_u);
+            int idx_v = basis_v_.span_indices.at(span_v);
+
+            const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+            const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+            std::vector<const double*> pts = patch_.control_points_for_span(span);
+            size_t nb_loc = pts.size();
+
+            int ngauss_u = static_cast<int>(sg_u.u_param.size());
+            int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+            Eigen::MatrixXd local_contribution;  // sized from the operator's first returned term
+
+            for (int gu = 0; gu < ngauss_u; ++gu) {
+                for (int gv = 0; gv < ngauss_v; ++gv) {
+                    double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+                    const Eigen::VectorXd& Nu = sg_u.N[gu];
+                    const Eigen::VectorXd& dNu = sg_u.dN[gu];
+                    const Eigen::VectorXd& Nv = sg_v.N[gv];
+                    const Eigen::VectorXd& dNv = sg_v.dN[gv];
+
+                    GaussPointGeometry g = evaluateGaussPointGeometry(pts, Nu, dNu, Nv, dNv);
+                    if (g.detJ == 0.0) {
+                        continue;
+                    }
+
+                    double invJ11 = g.J22 / g.detJ;
+                    double invJ12 = -g.J12 / g.detJ;
+                    double invJ21 = -g.J21 / g.detJ;
+                    double invJ22 = g.J11 / g.detJ;
+
+                    std::vector<double> dRdx(nb_loc), dRdy(nb_loc);
+                    for (size_t a = 0; a < nb_loc; ++a) {
+                        dRdx[a] = invJ11 * g.dRdu[a] + invJ21 * g.dRdv[a];
+                        dRdy[a] = invJ12 * g.dRdu[a] + invJ22 * g.dRdv[a];
+                    }
+
+                    Eigen::MatrixXd term = op.computeIntegrand(g.R, dRdx, dRdy);
+                    if (local_contribution.size() == 0) {
+                        local_contribution = Eigen::MatrixXd::Zero(term.rows(), term.cols());
+                    }
+                    local_contribution += term * w * std::abs(g.detJ);
+                }
+            }
+
+            assembleLocalContribution(local_contribution, span, tripletList);
+        }
+    }
+
+    // Same as integrateStiffness()/integrateMass(), but for a custom
+    // LocalOperator over this single patch.
+    Eigen::SparseMatrix<double> integrateOperator(LocalOperator& op) {
+        std::vector<Eigen::Triplet<double>> tripletList;
+        collectOperatorTriplets(op, tripletList);
+
+        size_t total_dofs = localTotalDofs();
+
+        Eigen::SparseMatrix<double> result(total_dofs, total_dofs);
+        result.setFromTriplets(tripletList.begin(), tripletList.end());
+
+        return result;
+    }
+
+    // Assemble a custom LocalOperator over a whole PatchAssembly. operators
+    // must have one entry per patch, in assembly.get_patchs() (add_patch())
+    // order -- the same convention as `materials` in assembleStiffness()/
+    // assembleMass(). Deliberately a standalone implementation (does not
+    // call assembleGeneric()), so that this development/testing path can
+    // never affect assembleStiffness()/assembleMass() behavior.
+    static Eigen::SparseMatrix<double> assembleOperator(
+        const PatchAssembly& assembly,
+        const std::vector<std::shared_ptr<LocalOperator>>& operators,
         int gauss_n = 0);
 
 };

@@ -11,6 +11,7 @@
 #include "SpanNDIterator.hpp"
 #include "PatchIntegrator.hpp"
 #include "PatchAssembly.hpp"
+#include "LocalOperator.hpp"
 #include "refinement/RefinementOperator.hpp"
 #include "refinement/HRefiner.hpp"
 #include "refinement/SubdivisionRefiner.hpp"
@@ -19,6 +20,20 @@
 
 
 namespace py = pybind11;
+
+// Trampoline letting LocalOperator be subclassed from Python (development/
+// testing convenience -- see LocalOperator.hpp).
+class PyLocalOperator : public LocalOperator {
+public:
+    using LocalOperator::LocalOperator;
+    Eigen::MatrixXd computeIntegrand(
+        const std::vector<double>& R, const std::vector<double>& dRdx,
+        const std::vector<double>& dRdy) const override {
+        PYBIND11_OVERRIDE_PURE_NAME(
+            Eigen::MatrixXd, LocalOperator, "compute_integrand", computeIntegrand,
+            R, dRdx, dRdy);
+    }
+};
 
 PYBIND11_MODULE(bspline, m)
 {
@@ -281,7 +296,32 @@ IGABasis1D
         .def_static("assemble_mass", &PatchIntegrator::assembleMass,
             py::arg("assembly"), py::arg("materials"), py::arg("gauss_n") = 0,
             "Same as assemble_stiffness(), but for the consistent mass matrix of "
-            "the whole PatchAssembly. Every entry in materials must have rho > 0.");
+            "the whole PatchAssembly. Every entry in materials must have rho > 0.")
+        .def("integrate_operator", &PatchIntegrator::integrateOperator, py::arg("op"),
+            "Integrate a custom LocalOperator over this single patch. For "
+            "development/testing: subclass LocalOperator in Python and override "
+            "compute_integrand(). Not intended for performance-critical "
+            "assembly -- prefer integrate_stiffness()/integrate_mass() for that.")
+        .def_static("assemble_operator", &PatchIntegrator::assembleOperator,
+            py::arg("assembly"), py::arg("operators"), py::arg("gauss_n") = 0,
+            "Same as assemble_stiffness()/assemble_mass(), but for a custom "
+            "LocalOperator. operators must have one entry per patch, in "
+            "add_patch() order.");
+
+    py::class_<LocalOperator, PyLocalOperator, std::shared_ptr<LocalOperator>>(m, "LocalOperator",
+        "Base class to subclass FROM PYTHON for a custom integration term. "
+        "PatchIntegrator does the Gauss-point loop and the Jacobian/gradient "
+        "computation -- override compute_integrand(R, dRdx, dRdy) to return "
+        "just the term to integrate at one Gauss point (e.g. B^T*D*B for "
+        "stiffness, rho*N^T*N for mass), built from the basis values R and "
+        "physical gradients dRdx, dRdy of this span's active basis functions. "
+        "PatchIntegrator multiplies the returned matrix by the Gauss weight "
+        "and abs(detJ) and sums it over every Gauss point of every span. "
+        "Intended for development/testing convenience, not performance: every "
+        "Gauss point triggers one Python call.")
+        .def(py::init<>())
+        .def("compute_integrand", &LocalOperator::computeIntegrand,
+             py::arg("R"), py::arg("dRdx"), py::arg("dRdy"));
 
     py::class_<PatchAssembly>(m, "PatchAssembly",
         R"doc(
