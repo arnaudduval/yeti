@@ -421,6 +421,33 @@ before lumping. See :file:`examples/future/07_local_operator.ipynb` for the work
 example, with both this lumped-mass term and a from-Python reproduction of the built-in
 stiffness kernel.
 
+Boundary conditions and loads: bricks, not a solver
+--------------------------------------------------------
+
+A full linear elasticity computation needs three more things on top of ``K``:
+Dirichlet (displacement) boundary conditions, a Neumann (distributed load)
+right-hand side, and a way to solve the reduced system. ``future`` provides the first
+two — :meth:`Patch.boundary_control_points() <yeti_iga.future.bspline.Patch.boundary_control_points>`
+selects control points on an edge or a span sub-range of it (for Dirichlet), and
+:meth:`PatchIntegrator.integrate_boundary_load() <yeti_iga.future.bspline.PatchIntegrator.integrate_boundary_load>`/
+:meth:`assemble_boundary_load() <yeti_iga.future.bspline.PatchIntegrator.assemble_boundary_load>`
+integrate a :class:`~yeti_iga.future.bspline.Traction` over an edge into a load vector
+the same size as ``K`` — but deliberately stops there: eliminating the fixed dofs and
+solving the reduced system is a handful of ``scipy`` lines once the dof list and ``F``
+exist (see :file:`examples/future/08_boundary_conditions.ipynb`), not new code here.
+This is the same "matrices in, matrices out" scope ``future`` has kept since the first
+stiffness/mass kernels — a solver is a separate, later concern.
+
+``Traction`` mirrors ``LocalOperator``'s extensibility approach for the same reason:
+:meth:`Traction.evaluate() <yeti_iga.future.bspline.Traction.evaluate>` already takes
+the physical point, not just internal parameters, so a future Python-callback-based
+load (for a non-uniform traction) can be added as a new subclass — with a pybind11
+trampoline, exactly like :class:`~yeti_iga.future.bspline.LocalOperator`'s — without
+changing a single line of the boundary-load integration loop.
+:class:`~yeti_iga.future.bspline.ConstantTraction` is the only kernel implemented so
+far; the abstraction exists ahead of that need, the Python-callback subclass does not
+(yet).
+
 Bézier extraction's role
 ----------------------------
 

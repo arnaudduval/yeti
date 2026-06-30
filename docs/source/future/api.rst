@@ -116,6 +116,21 @@ Integration and assembly
     :special-members: __init__
     :members:
 
+Boundary conditions and loads
+---------------------------------
+
+.. autoclass:: yeti_iga.future.bspline.Traction
+    :special-members: __init__
+    :members:
+
+.. autoclass:: yeti_iga.future.bspline.ConstantTraction
+    :special-members: __init__
+    :members:
+
+.. autoclass:: yeti_iga.future.bspline.BoundaryLoadSpec
+    :special-members: __init__
+    :members:
+
 Bézier extraction
 --------------------
 
