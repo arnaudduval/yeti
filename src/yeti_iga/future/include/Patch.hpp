@@ -56,6 +56,22 @@ struct Patch {
 
     std::vector<const double*> control_points_for_span(const std::vector<int>& span) const;
 
+    // Patch-LOCAL flat positions (u-fastest) of the control points on the
+    // edge obtained by fixing `direction` at its first (side=0) or last
+    // (side=1) local index. If span_min/span_max are given (both >= 0,
+    // raw knot-span indices like the ones Patch::spans() yields), restricts
+    // the selection to control points active over those spans of the
+    // OTHER ("varying") direction; -1/-1 (default) selects the whole edge.
+    // 2D patches only (Phase 1 scope, like PatchAssembly's interfaces).
+    //
+    // Returned positions are suitable for
+    // PatchDOFManager::get_global_dof_indices()/get_global_dof() -- this is
+    // the building block for specifying Dirichlet boundary conditions at
+    // edge or boundary-span granularity (control-point granularity needs no
+    // helper: any local position works directly with the DOF manager).
+    std::vector<size_t> boundary_control_points(int direction, int side,
+                                                 int span_min = -1, int span_max = -1) const;
+
     SpanNDIterator spans() const { return SpanNDIterator(tensor); }
 
     void Test();

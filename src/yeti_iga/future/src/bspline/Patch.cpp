@@ -3,6 +3,7 @@
 #include "IGABasis1D.hpp"
 #include "PatchIntegrator.hpp"
 #include <algorithm>
+#include <stdexcept>
 #include <iostream> // temp for debug
 
 double* Patch::local_cp_ptr(size_t i_local) {
@@ -220,6 +221,49 @@ std::vector<const double*> Patch::control_points_for_span(const std::vector<int>
     return pts;
 }
 
+
+std::vector<size_t> Patch::boundary_control_points(int direction, int side,
+                                                    int span_min, int span_max) const {
+    size_t ndim = tensor.components.size();
+    if (ndim != 2)
+        throw std::invalid_argument(
+            "Patch::boundary_control_points: only 2D patches are supported (Phase 1 scope).");
+    if (direction != 0 && direction != 1)
+        throw std::invalid_argument("Patch::boundary_control_points: direction must be 0 or 1.");
+    if (side != 0 && side != 1)
+        throw std::invalid_argument("Patch::boundary_control_points: side must be 0 (min) or 1 (max).");
+    if ((span_min < 0) != (span_max < 0))
+        throw std::invalid_argument(
+            "Patch::boundary_control_points: span_min and span_max must be given together "
+            "(both >= 0), or both left at -1 for the whole edge.");
+
+    int varying = 1 - direction;
+    size_t fixed_index = (side == 0) ? 0 : local_shape[direction] - 1;
+
+    size_t lo = 0;
+    size_t hi = local_shape[varying] - 1;
+    if (span_min >= 0) {
+        int p_varying = tensor.components[varying].getDegree();
+        int local_lo = span_min - p_varying;
+        int local_hi = span_max;
+        lo = static_cast<size_t>(std::max(local_lo, 0));
+        hi = static_cast<size_t>(std::min(local_hi, static_cast<int>(local_shape[varying]) - 1));
+    }
+
+    std::vector<size_t> stride(ndim);
+    stride[0] = 1;
+    for (size_t d = 1; d < ndim; ++d)
+        stride[d] = stride[d-1] * local_shape[d-1];
+
+    std::vector<size_t> result;
+    if (lo > hi) return result;
+    result.reserve(hi - lo + 1);
+    for (size_t i = lo; i <= hi; ++i) {
+        size_t flat = fixed_index * stride[direction] + i * stride[varying];
+        result.push_back(flat);
+    }
+    return result;
+}
 
 void Patch::Test()
 {

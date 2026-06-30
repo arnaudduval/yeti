@@ -12,6 +12,7 @@
 #include "PatchIntegrator.hpp"
 #include "PatchAssembly.hpp"
 #include "LocalOperator.hpp"
+#include "Traction.hpp"
 #include "refinement/RefinementOperator.hpp"
 #include "refinement/HRefiner.hpp"
 #include "refinement/SubdivisionRefiner.hpp"
@@ -165,6 +166,19 @@ PYBIND11_MODULE(bspline, m)
             py::arg("span"),
             "Return array containing control points coordinates for a given span. Warning : data is return as stored in memory and need to be reshaped/transposed for proper use"
         )
+        .def("boundary_control_points", &Patch::boundary_control_points,
+            py::arg("direction"), py::arg("side"), py::arg("span_min") = -1, py::arg("span_max") = -1,
+            "Patch-LOCAL flat positions (u-fastest) of the control points on "
+            "the edge obtained by fixing `direction` at its first (side=0) "
+            "or last (side=1) local index. If span_min/span_max are given "
+            "(both >= 0, raw knot-span indices like the ones spans() "
+            "yields), restricts the selection to control points active "
+            "over those spans of the OTHER direction; -1/-1 (default) "
+            "selects the whole edge. Building block for Dirichlet boundary "
+            "conditions at edge/span-range granularity -- combine with "
+            "dof_manager.get_global_dof_indices(local_pos) to get global "
+            "dofs (control-point granularity needs no helper: any local "
+            "position works directly with the DOF manager).")
         .def("test", &Patch::Test)
         .def_readonly("tensor", &Patch::tensor)
         .def_property_readonly("n_cp", [](const Patch& self) { return self.global_indices.size(); },
@@ -276,6 +290,46 @@ IGABasis1D
         .def_readwrite("rho", &MaterialProperties::rho,
             "Mass density. Must be set (> 0) to use integrate_mass()/assemble_mass().");
 
+    py::class_<Traction, std::shared_ptr<Traction>>(m, "Traction",
+        "Value of a distributed boundary load (force per unit length), "
+        "evaluated at a physical point. Not subclassable from Python yet "
+        "(no trampoline) -- ConstantTraction is the only kernel for now; "
+        "evaluate() already takes the physical point so that a future "
+        "Python-callback-based kernel (mirroring LocalOperator) can be "
+        "added without changing PatchIntegrator's boundary-load loop.")
+        .def("evaluate", &Traction::evaluate, py::arg("physical_point"));
+
+    py::class_<ConstantTraction, Traction, std::shared_ptr<ConstantTraction>>(m, "ConstantTraction",
+        "A uniform traction vector (tx, ty), constant over the whole "
+        "loaded edge/span-range.")
+        .def(py::init<const Eigen::Vector2d&>(), py::arg("value"));
+
+    py::class_<BoundaryLoadSpec>(m, "BoundaryLoadSpec",
+        "One distributed boundary load to assemble over a whole "
+        "PatchAssembly (see PatchIntegrator.assemble_boundary_load()). "
+        "Unlike `materials`/`operators` (one entry per patch), a boundary "
+        "load only applies to a specific patch/edge, so specs are given as "
+        "a sparse list instead.")
+        .def(py::init([](size_t patch_index, int direction, int side,
+                          std::shared_ptr<Traction> traction, int span_min, int span_max) {
+                BoundaryLoadSpec spec;
+                spec.patch_index = patch_index;
+                spec.direction = direction;
+                spec.side = side;
+                spec.traction = traction;
+                spec.span_min = span_min;
+                spec.span_max = span_max;
+                return spec;
+            }),
+            py::arg("patch_index"), py::arg("direction"), py::arg("side"),
+            py::arg("traction"), py::arg("span_min") = -1, py::arg("span_max") = -1)
+        .def_readwrite("patch_index", &BoundaryLoadSpec::patch_index)
+        .def_readwrite("direction", &BoundaryLoadSpec::direction)
+        .def_readwrite("side", &BoundaryLoadSpec::side)
+        .def_readwrite("traction", &BoundaryLoadSpec::traction)
+        .def_readwrite("span_min", &BoundaryLoadSpec::span_min)
+        .def_readwrite("span_max", &BoundaryLoadSpec::span_max);
+
     py::class_<PatchIntegrator>(m, "PatchIntegrator")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const MaterialProperties&>(),
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("material_properties"))
@@ -306,7 +360,28 @@ IGABasis1D
             py::arg("assembly"), py::arg("operators"), py::arg("gauss_n") = 0,
             "Same as assemble_stiffness()/assemble_mass(), but for a custom "
             "LocalOperator. operators must have one entry per patch, in "
-            "add_patch() order.");
+            "add_patch() order.")
+        .def("integrate_boundary_load", &PatchIntegrator::integrateBoundaryLoad,
+            py::arg("direction"), py::arg("side"), py::arg("traction"),
+            py::arg("span_min") = -1, py::arg("span_max") = -1,
+            "Integrate a distributed boundary load (force per unit length) "
+            "over this single patch's edge obtained by fixing `direction` "
+            "at its first (side=0) or last (side=1) span. span_min/span_max "
+            "(raw knot-span indices of the OTHER direction, like "
+            "Patch.boundary_control_points()) restrict integration to a "
+            "sub-range of the edge; -1/-1 (default) integrates the whole "
+            "edge. Returns a vector sized like integrate_stiffness()'s "
+            "matrix, with nonzero entries only at dofs of control points on "
+            "the loaded edge/span-range.")
+        .def_static("assemble_boundary_load", &PatchIntegrator::assembleBoundaryLoad,
+            py::arg("assembly"), py::arg("specs"), py::arg("gauss_n") = 0,
+            "Assemble several distributed boundary loads (each on a "
+            "specific patch/edge, via a list of BoundaryLoadSpec) over a "
+            "whole PatchAssembly. Sized to the assembly-wide total dof "
+            "count -- same size as assemble_stiffness()/assemble_mass(), "
+            "regardless of which patches the specs actually touch -- so the "
+            "result can be added directly to a stiffness/mass right-hand "
+            "side.");
 
     py::class_<LocalOperator, PyLocalOperator, std::shared_ptr<LocalOperator>>(m, "LocalOperator",
         "Base class to subclass FROM PYTHON for a custom integration term. "

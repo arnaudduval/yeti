@@ -11,6 +11,7 @@
 #include "Patch.hpp"
 #include "PatchAssembly.hpp"
 #include "LocalOperator.hpp"
+#include "Traction.hpp"
 
 
 
@@ -20,6 +21,17 @@ struct MaterialProperties {
     double nu;
     double thickness = 1.0;   // Thickness (for plane problems)
     double rho = 0.0;         // Mass density (required by integrateMass()/assembleMass())
+};
+
+// One distributed boundary load to assemble over a whole PatchAssembly (see
+// PatchIntegrator::assembleBoundaryLoad()). Unlike `materials`/`operators`
+// (one entry per patch), a boundary load only applies to specific
+// patches/edges, so specs are given as a sparse list instead.
+struct BoundaryLoadSpec {
+    size_t patch_index;
+    int direction, side;
+    std::shared_ptr<Traction> traction;
+    int span_min = -1, span_max = -1;
 };
 
 class PatchIntegrator {
@@ -54,6 +66,23 @@ private:
     Eigen::MatrixXd computeLocalMassContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
     // Assemble local contriubution into global matrix (shared by stiffness and mass)
     void assembleLocalContribution(const Eigen::MatrixXd& local_contribution, const std::vector<int>& span, std::vector<Eigen::Triplet<double>>& tripletList);
+
+    // Compute local boundary-load contribution for a given boundary span (a
+    // regular ND span whose `direction` component is fixed at the edge).
+    // sg_varying is the SpanGauss1D of the OTHER ("varying") direction for
+    // this span; N_fixed_boundary is the fixed direction's basis row
+    // evaluated once at the boundary parameter (no Gauss loop needed there).
+    Eigen::VectorXd computeLocalBoundaryLoadContribution(
+        const Patch& patch, const std::vector<int>& span, int direction,
+        const SpanGauss1D& sg_varying, const Eigen::VectorXd& N_fixed_boundary,
+        const Traction& traction);
+
+    // Same as assembleLocalContribution(), but scatters a full local load
+    // vector (not a sparse matrix contribution) directly into a dense global
+    // vector using global dof indices. Reuses buildSpanLocalIndices()
+    // unchanged.
+    void assembleLocalLoadContribution(
+        const Eigen::VectorXd& local_load, const std::vector<int>& span, Eigen::VectorXd& global_load);
 
     // Patch-LOCAL flat positions (u-fastest) of the span's active control points.
     std::vector<size_t> buildSpanLocalIndices(const Patch& patch, const std::vector<int>& span) const;
@@ -285,6 +314,29 @@ public:
     static Eigen::SparseMatrix<double> assembleOperator(
         const PatchAssembly& assembly,
         const std::vector<std::shared_ptr<LocalOperator>>& operators,
+        int gauss_n = 0);
+
+    // Integrate a distributed boundary load (force per unit length) over
+    // this single patch's edge obtained by fixing `direction` at its first
+    // (side=0) or last (side=1) span. span_min/span_max (raw knot-span
+    // indices of the OTHER direction, like Patch::boundary_control_points())
+    // restrict integration to a sub-range of the edge; -1/-1 (default)
+    // integrates the whole edge. Returns a vector sized localTotalDofs(),
+    // with nonzero entries only at dofs of control points on the loaded
+    // edge/span-range.
+    Eigen::VectorXd integrateBoundaryLoad(
+        int direction, int side, const Traction& traction,
+        int span_min = -1, int span_max = -1);
+
+    // Assemble several distributed boundary loads (each possibly on a
+    // different patch and/or edge) over a whole PatchAssembly. Sized to the
+    // assembly-wide total dof count (same size as assembleStiffness()/
+    // assembleMass(), regardless of which patches the specs actually touch),
+    // so the result can be added directly to a stiffness/mass right-hand
+    // side. Deliberately standalone (does not call assembleGeneric()).
+    static Eigen::VectorXd assembleBoundaryLoad(
+        const PatchAssembly& assembly,
+        const std::vector<BoundaryLoadSpec>& specs,
         int gauss_n = 0);
 
 };

@@ -319,3 +319,181 @@ Eigen::SparseMatrix<double> PatchIntegrator::assembleOperator(
 
     return result;
 }
+
+// Local contribution for one boundary span. R/dR-w.r.t.-the-varying-
+// parameter use the same u-fastest tensor product as
+// evaluateGaussPointGeometry(), except one of the two factors (the fixed
+// direction's) is the boundary-evaluated row passed in, with a zero
+// derivative -- the chain rule below collapses to the right term in either
+// case (direction == 0 or 1) without a separate branch for each.
+Eigen::VectorXd PatchIntegrator::computeLocalBoundaryLoadContribution(
+    const Patch& patch, const std::vector<int>& span, int direction,
+    const SpanGauss1D& sg_varying, const Eigen::VectorXd& N_fixed_boundary,
+    const Traction& traction)
+{
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+    int ngauss = static_cast<int>(sg_varying.u_param.size());
+
+    Eigen::VectorXd F_loc = Eigen::VectorXd::Zero(2 * nb_loc);
+    Eigen::VectorXd zero_deriv = Eigen::VectorXd::Zero(N_fixed_boundary.size());
+
+    for (int g = 0; g < ngauss; ++g) {
+        double w = sg_varying.weight[g];
+
+        const Eigen::VectorXd& Nu  = (direction == 0) ? N_fixed_boundary : sg_varying.N[g];
+        const Eigen::VectorXd& dNu = (direction == 0) ? zero_deriv       : sg_varying.dN[g];
+        const Eigen::VectorXd& Nv  = (direction == 1) ? N_fixed_boundary : sg_varying.N[g];
+        const Eigen::VectorXd& dNv = (direction == 1) ? zero_deriv       : sg_varying.dN[g];
+
+        std::vector<double> R(nb_loc), dRdvar(nb_loc);
+        size_t idx = 0;
+        for (size_t jv = 0; jv < static_cast<size_t>(Nv.size()); ++jv) {
+            for (size_t iu = 0; iu < static_cast<size_t>(Nu.size()); ++iu) {
+                R[idx] = Nu(iu) * Nv(jv);
+                // Exactly one of the two terms below is nonzero, depending
+                // on which direction is fixed (its dN is the zero vector).
+                dRdvar[idx] = dNu(iu) * Nv(jv) + Nu(iu) * dNv(jv);
+                ++idx;
+            }
+        }
+
+        Eigen::Vector2d T = Eigen::Vector2d::Zero();
+        Eigen::Vector2d X = Eigen::Vector2d::Zero();
+        for (size_t a = 0; a < nb_loc; ++a) {
+            const double* P = pts[a];
+            T[0] += dRdvar[a] * P[0];
+            T[1] += dRdvar[a] * P[1];
+            X[0] += R[a] * P[0];
+            X[1] += R[a] * P[1];
+        }
+        double ds = T.norm();
+        if (ds < 1.e-14) continue;
+
+        Eigen::Vector2d t = traction.evaluate(X);
+
+        for (size_t a = 0; a < nb_loc; ++a) {
+            F_loc[2*a]     += R[a] * t[0] * w * ds;
+            F_loc[2*a + 1] += R[a] * t[1] * w * ds;
+        }
+    }
+
+    return F_loc;
+}
+
+void PatchIntegrator::assembleLocalLoadContribution(
+    const Eigen::VectorXd& local_load, const std::vector<int>& span, Eigen::VectorXd& global_load)
+{
+    std::vector<size_t> span_local_positions = buildSpanLocalIndices(patch_, span);
+
+    for (size_t i = 0; i < static_cast<size_t>(local_load.size()); ++i) {
+        size_t local_control_point = i / patch_.dof_manager->dofs_per_control_point;
+        size_t local_dof = i % patch_.dof_manager->dofs_per_control_point;
+        size_t global_i = patch_.dof_manager->get_global_dof(span_local_positions[local_control_point], local_dof);
+        global_load[global_i] += local_load[i];
+    }
+}
+
+Eigen::VectorXd PatchIntegrator::integrateBoundaryLoad(
+    int direction, int side, const Traction& traction, int span_min, int span_max)
+{
+    if (direction != 0 && direction != 1)
+        throw std::invalid_argument("PatchIntegrator::integrateBoundaryLoad: direction must be 0 or 1.");
+    if (side != 0 && side != 1)
+        throw std::invalid_argument("PatchIntegrator::integrateBoundaryLoad: side must be 0 (min) or 1 (max).");
+
+    int varying = 1 - direction;
+    const IGABasis1D& basis_varying = (direction == 0) ? basis_v_ : basis_u_;
+    const BSpline& bspline_fixed = patch_.tensor.components[direction];
+
+    // First/last valid span of the fixed direction (same "valid span" scan
+    // as SpanNDIterator/IGABasis1D::build).
+    const auto& kv_fixed = bspline_fixed.getKnotVector();
+    int p_fixed = bspline_fixed.getDegree();
+    int m_fixed = static_cast<int>(kv_fixed.size()) - 1;
+    int span_fixed = -1;
+    if (side == 0) {
+        for (int i = p_fixed; i <= m_fixed - p_fixed - 1; ++i)
+            if (kv_fixed[i+1] > kv_fixed[i]) { span_fixed = i; break; }
+    } else {
+        for (int i = m_fixed - p_fixed - 1; i >= p_fixed; --i)
+            if (kv_fixed[i+1] > kv_fixed[i]) { span_fixed = i; break; }
+    }
+    if (span_fixed < 0)
+        throw std::runtime_error(
+            "PatchIntegrator::integrateBoundaryLoad: no valid span found for the fixed direction.");
+
+    double u_boundary = (side == 0) ? kv_fixed.front() : kv_fixed.back();
+    std::vector<double> N_fixed_vals(p_fixed + 1);
+    bspline_fixed.BasisFuns_raw(span_fixed, u_boundary, N_fixed_vals.data());
+    Eigen::VectorXd N_fixed_boundary(p_fixed + 1);
+    for (int i = 0; i <= p_fixed; ++i) N_fixed_boundary[i] = N_fixed_vals[i];
+
+    Eigen::VectorXd global_load = Eigen::VectorXd::Zero(localTotalDofs());
+
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        if (span[direction] != span_fixed) continue;
+        if (span_min >= 0 && (span[varying] < span_min || span[varying] > span_max)) continue;
+
+        int idx_varying = basis_varying.span_indices.at(span[varying]);
+        const SpanGauss1D& sg_varying = basis_varying.gauss_spans[idx_varying];
+
+        Eigen::VectorXd local_load = computeLocalBoundaryLoadContribution(
+            patch_, span, direction, sg_varying, N_fixed_boundary, traction);
+
+        assembleLocalLoadContribution(local_load, span, global_load);
+    }
+
+    return global_load;
+}
+
+// Standalone orchestration -- does not call assembleGeneric() (one entry
+// per spec, not one per patch, unlike assembleStiffness()/assembleMass()).
+Eigen::VectorXd PatchIntegrator::assembleBoundaryLoad(
+    const PatchAssembly& assembly,
+    const std::vector<BoundaryLoadSpec>& specs,
+    int gauss_n)
+{
+    const auto& patches = assembly.getPatchs();
+
+    // Size to the assembly-wide total dof count, independent of which
+    // patches the specs actually touch, so the result composes directly
+    // with assembleStiffness()/assembleMass() (same total size).
+    size_t total_dofs = 0;
+    for (const auto& patch : patches) {
+        if (!patch->dof_manager) continue;
+        const auto& l2g = patch->dof_manager->local_to_global_dofs;
+        if (!l2g.empty())
+            total_dofs = std::max(total_dofs, *std::max_element(l2g.begin(), l2g.end()) + 1);
+    }
+    Eigen::VectorXd global_load = Eigen::VectorXd::Zero(total_dofs);
+
+    MaterialProperties unused_material{0.0, 0.0};
+    std::vector<IGABasis1D> bases_u, bases_v;
+    bases_u.reserve(specs.size());
+    bases_v.reserve(specs.size());
+
+    for (const auto& spec : specs) {
+        if (spec.patch_index >= patches.size())
+            throw std::out_of_range("PatchIntegrator::assembleBoundaryLoad: patch_index out of range.");
+
+        const Patch& patch = *patches[spec.patch_index];
+
+        int p_u = patch.tensor.components[0].getDegree();
+        int p_v = patch.tensor.components[1].getDegree();
+        int n_u = (gauss_n > 0) ? gauss_n : p_u + 1;
+        int n_v = (gauss_n > 0) ? gauss_n : p_v + 1;
+
+        bases_u.push_back(IGABasis1D::build(patch.tensor.components[0], n_u));
+        bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v));
+
+        PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), unused_material);
+        Eigen::VectorXd local_result = integrator.integrateBoundaryLoad(
+            spec.direction, spec.side, *spec.traction, spec.span_min, spec.span_max);
+
+        global_load.head(local_result.size()) += local_result;
+    }
+
+    return global_load;
+}
