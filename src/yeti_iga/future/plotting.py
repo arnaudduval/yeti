@@ -32,11 +32,16 @@ def plot_patches_2d(
     n_samples=100,
     show_control_points=False,
     show_control_point_indices=False,
+    show_weights=False,
     ax=None,
     title=None,
 ):
     """
     Plot the iso-parametric element borders of one or several 2D patches.
+
+    Works transparently for both B-spline and NURBS patches: iso-parametric
+    lines are evaluated via ``evaluate_patch_nd_omp``, which applies the
+    NURBS rationalization when the patch's ControlPointManager is rational.
 
     Parameters
     ----------
@@ -48,9 +53,15 @@ def plot_patches_2d(
         Number of points sampled along each iso-parametric line.
     show_control_points : bool, default False
         If True, draw each patch's control points as square markers.
+        For NURBS patches, control points whose weight differs from 1 are
+        drawn as circles to distinguish them from unit-weight points.
     show_control_point_indices : bool, default False
         If True, annotate each control point with its global id in the
         shared ControlPointManager pool.
+    show_weights : bool, default False
+        If True (and the patch is rational), annotate each control point
+        with its NURBS weight value.  Automatically enables
+        ``show_control_points``.
     ax : matplotlib.axes.Axes, optional
         Axes to draw on. A new figure is created and shown if not given.
     title : str, optional
@@ -99,17 +110,43 @@ def plot_patches_2d(
             pts = patch.evaluate_patch_nd_omp(spans, params)
             ax.plot(pts[:, 0], pts[:, 1], '-', lw=1, color=color)
 
-        if show_control_points or show_control_point_indices:
-            cps = np.array([patch.control_point(i) for i in range(patch.n_cp)])
+        draw_cp = show_control_points or show_control_point_indices or show_weights
+        if draw_cp:
+            cps      = np.array([patch.control_point(i) for i in range(patch.n_cp)])
+            rational = patch.cp_manager.is_rational
 
-            if show_control_points:
-                ax.scatter(cps[:, 0], cps[:, 1], marker='s', s=30,
-                           color=color, zorder=3)
+            if show_control_points or show_weights:
+                if rational:
+                    # unit-weight CPs: squares; non-unit: circles
+                    weights = patch.cp_manager.weights_view()
+                    gids    = list(patch.global_indices)
+                    w_local = weights[gids]
+                    unit    = np.isclose(w_local, 1.0)
+                    if unit.any():
+                        ax.scatter(cps[unit, 0], cps[unit, 1],
+                                   marker='s', s=30, color=color, zorder=3)
+                    if (~unit).any():
+                        ax.scatter(cps[~unit, 0], cps[~unit, 1],
+                                   marker='o', s=40, color=color, zorder=3)
+                else:
+                    ax.scatter(cps[:, 0], cps[:, 1],
+                               marker='s', s=30, color=color, zorder=3)
 
             if show_control_point_indices:
                 for local_i, (x, y) in zip(patch.global_indices, cps):
                     ax.annotate(str(local_i), (x, y), textcoords="offset points",
                                 xytext=(6, 6), color=color, fontsize=8)
+
+            if show_weights and rational:
+                weights = patch.cp_manager.weights_view()
+                gids    = list(patch.global_indices)
+                for gid, (x, y) in zip(gids, cps):
+                    w = weights[gid]
+                    if not np.isclose(w, 1.0):
+                        label = f'w={w:.3g}'
+                        ax.annotate(label, (x, y), textcoords="offset points",
+                                    xytext=(6, -14), color=color, fontsize=7,
+                                    fontstyle='italic')
 
     ax.set_aspect('equal')
     ax.grid(True)

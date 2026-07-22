@@ -48,11 +48,11 @@ def _perm_2d(pu: int, pv: int) -> list[int]:
     # Right edge interior   (iu=pu, iv=1..pv-1)
     for iv in range(1, pv):
         p.append(f(pu, iv))
-    # Top edge interior     (iv=pv, iu=pu-1..1)  ← reversed
-    for iu in range(pu - 1, 0, -1):
+    # Top edge interior     (iv=pv, iu=1..pu-1)  ← VTK uses ascending i
+    for iu in range(1, pu):
         p.append(f(iu, pv))
-    # Left edge interior    (iu=0,  iv=pv-1..1)  ← reversed
-    for iv in range(pv - 1, 0, -1):
+    # Left edge interior    (iu=0,  iv=1..pv-1)  ← VTK uses ascending j
+    for iv in range(1, pv):
         p.append(f(0, iv))
     # Face interior         (iv=1..pv-1, iu=1..pu-1)
     for iv in range(1, pv):
@@ -82,16 +82,16 @@ def _perm_3d(pu: int, pv: int, pw: int) -> list[int]:
           f(0, 0, pw), f(pu, 0, pw), f(pu, pv, pw), f(0, pv, pw)]
 
     # 12 edge interiors (in VTK edge order)
-    # Bottom face (iw=0): edges 0→1, 1→2, 2→3 (rev), 3→0 (rev)
+    # Bottom face (iw=0): edges 0→1, 1→2, 2→3, 3→0 (all ascending per VTK impl)
     for iu in range(1, pu):     p.append(f(iu, 0, 0))
     for iv in range(1, pv):     p.append(f(pu, iv, 0))
-    for iu in range(pu-1, 0, -1): p.append(f(iu, pv, 0))
-    for iv in range(pv-1, 0, -1): p.append(f(0, iv, 0))
-    # Top face (iw=pw): edges 4→5, 5→6, 6→7 (rev), 7→4 (rev)
+    for iu in range(1, pu):     p.append(f(iu, pv, 0))
+    for iv in range(1, pv):     p.append(f(0, iv, 0))
+    # Top face (iw=pw): edges 4→5, 5→6, 6→7, 7→4 (all ascending per VTK impl)
     for iu in range(1, pu):     p.append(f(iu, 0, pw))
     for iv in range(1, pv):     p.append(f(pu, iv, pw))
-    for iu in range(pu-1, 0, -1): p.append(f(iu, pv, pw))
-    for iv in range(pv-1, 0, -1): p.append(f(0, iv, pw))
+    for iu in range(1, pu):     p.append(f(iu, pv, pw))
+    for iv in range(1, pv):     p.append(f(0, iv, pw))
     # Vertical edges: 0→4, 1→5, 2→6, 3→7
     for iw in range(1, pw): p.append(f(0,  0,  iw))
     for iw in range(1, pw): p.append(f(pu, 0,  iw))
@@ -108,9 +108,9 @@ def _perm_3d(pu: int, pv: int, pw: int) -> list[int]:
     for iw in range(1, pw):
         for iv in range(1, pv): p.append(f(pu, iv, iw))  # face iu=pu
     for iw in range(1, pw):
-        for iu in range(pu-1, 0, -1): p.append(f(iu, pv, iw))  # face iv=pv (rev)
+        for iu in range(1, pu): p.append(f(iu, pv, iw))   # face iv=pv (ascending)
     for iw in range(1, pw):
-        for iv in range(pv-1, 0, -1): p.append(f(0, iv, iw))   # face iu=0 (rev)
+        for iv in range(1, pv): p.append(f(0, iv, iw))    # face iu=0 (ascending)
 
     # Volume interior
     for iw in range(1, pw):
@@ -124,6 +124,43 @@ def _perm_3d(pu: int, pv: int, pw: int) -> list[int]:
 # Main export function
 # ---------------------------------------------------------------------------
 
+def _bezier_cps_and_weights(elem, patch, rational, all_weights):
+    """
+    Compute physical Bézier CPs and (for NURBS) Bézier weights for one element.
+
+    B-spline: P_bz = C^T @ P_active
+    NURBS   : blend in homogeneous coordinates then divide:
+              w_bz  = C^T @ w_active
+              P_bz  = (C^T @ (w * P)_active) / w_bz
+    """
+    active   = list(elem.active_indices)
+    P_active = np.array([patch.control_point(j) for j in active], dtype=np.float64)
+    if rational:
+        w_active = all_weights[active]
+        w_bz     = elem.C.T @ w_active
+        wP_bz    = elem.C.T @ (w_active[:, None] * P_active)
+        return wP_bz / w_bz[:, None], w_bz
+    else:
+        return elem.C.T @ P_active, None
+
+
+def _local_flat_to_global(elem_idx, local_flat, degrees, n_pts_per_dir):
+    """
+    Map a local u-fastest flat index to the global shared-connectivity point ID.
+    """
+    ndim = len(degrees)
+    strides = [1] * ndim
+    for d in range(1, ndim):
+        strides[d] = strides[d - 1] * n_pts_per_dir[d - 1]
+    global_flat = 0
+    rem = local_flat
+    for d in range(ndim):
+        i_d = rem % (degrees[d] + 1)
+        rem //= (degrees[d] + 1)
+        global_flat += (elem_idx[d] * degrees[d] + i_d) * strides[d]
+    return global_flat
+
+
 def write_bezier_patch_vtu(
     patch,
     filename: str | Path,
@@ -131,25 +168,30 @@ def write_bezier_patch_vtu(
     field_name: str = "field",
 ) -> None:
     """
-    Write a B-spline patch as Bézier elements to a VTU file.
+    Write a B-spline or NURBS patch as Bézier elements to a VTU file.
+
+    Uses **VTK_BEZIER_QUADRILATERAL** (type 77) / **VTK_BEZIER_HEXAHEDRON**
+    (type 79).  NURBS patches write a ``RationalWeights`` PointData array so
+    VTK applies the rational Bézier formula exactly.
+
+    Adjacent elements share boundary point IDs (shared connectivity), which
+    prevents rendering cracks between elements.
 
     Parameters
     ----------
     patch : Patch
-        The B-spline patch to export.
+        The patch to export (B-spline or NURBS).
     filename : str or Path
         Output .vtu file path.
     field : array_like, shape (n_cp,) or (n_cp, k), optional
         Scalar or vector field at the B-spline control points (u-fastest flat
-        order).  Transformed to Bézier CPs via the same extraction operator
-        so Paraview can interpolate it correctly inside each element.
+        order).  Transformed to Bézier CPs via the extraction operator.
     field_name : str
-        Name of the field in the VTU file (default ``"field"``).
+        Name of the field in the VTU file.
 
     Notes
     -----
-    Requires Paraview 5.9+ / VTK 9.0+ for VTK_BEZIER_QUADRILATERAL /
-    VTK_BEZIER_HEXAHEDRON cells.
+    Requires Paraview 5.9+ / VTK 9.0+.
     """
     ndim     = len(patch.tensor.components)
     dim_phys = len(patch.control_point(0))
@@ -169,13 +211,22 @@ def write_bezier_patch_vtu(
     perm  = _perm_2d(*degrees) if ndim == 2 else _perm_3d(*degrees)
     elems = BezierExtractor.extract_nd(patch)
 
-    n_cells   = len(elems)
-    n_pts_tot = n_cells * n_local
+    rational    = patch.cp_manager.is_rational
+    all_weights = patch.cp_manager.weights_view() if rational else None
 
-    # Physical coordinates of Bézier CPs (VTK always 3-component)
-    coords = np.zeros((n_pts_tot, 3), dtype=np.float64)
+    n_cells = len(elems)
 
-    # Optional field transformed to Bézier CPs
+    # Shared connectivity: unique Bézier CP grid
+    # Total unique CPs per dir d = n_elems_d * degree_d + 1
+    max_eidx      = [max(e.elem_index[d] for e in elems) for d in range(ndim)]
+    n_pts_per_dir = [max_eidx[d] * degrees[d] + degrees[d] + 1 for d in range(ndim)]
+    n_pts_tot = 1
+    for n in n_pts_per_dir:
+        n_pts_tot *= n
+
+    coords      = np.zeros((n_pts_tot, 3), dtype=np.float64)
+    rat_weights = np.ones(n_pts_tot, dtype=np.float64) if rational else None
+
     if field is not None:
         farr   = np.asarray(field, dtype=np.float64)
         scalar = farr.ndim == 1
@@ -186,37 +237,40 @@ def write_bezier_patch_vtu(
         field_bz = None
         scalar   = True
 
-    for i, elem in enumerate(elems):
-        P_active = np.array(
-            [patch.control_point(j) for j in elem.active_indices],
-            dtype=np.float64,
-        )                                          # (n_local, dim_phys)
-        P_bezier = elem.C.T @ P_active             # (n_local, dim_phys)
-        P_vtk    = P_bezier[perm]                  # reordered for VTK
+    connectivity = np.zeros(n_cells * n_local, dtype=np.int64)
 
-        off = i * n_local
-        coords[off:off + n_local, :dim_phys] = P_vtk
+    for i, elem in enumerate(elems):
+        P_bezier, w_bezier = _bezier_cps_and_weights(
+            elem, patch, rational, all_weights)
+        elem_idx = list(elem.elem_index)
 
         if field_bz is not None:
-            f_act = farr[list(elem.active_indices)]  # (n_local, k)
-            field_bz[off:off + n_local] = (elem.C.T @ f_act)[perm]
+            f_act    = farr[list(elem.active_indices)]
+            f_bezier = elem.C.T @ f_act
 
-    # VTK arrays
-    connectivity = np.arange(n_pts_tot, dtype=np.int64)
-    offsets      = np.arange(n_local, n_pts_tot + n_local, n_local, dtype=np.int64)
-    types        = np.full(n_cells, cell_type, dtype=np.uint8)
+        for vtk_rank, local_flat in enumerate(perm):
+            gid = _local_flat_to_global(elem_idx, local_flat, degrees, n_pts_per_dir)
+            connectivity[i * n_local + vtk_rank] = gid
+            coords[gid, :dim_phys] = P_bezier[local_flat]
+            if rational:
+                rat_weights[gid] = w_bezier[local_flat]
+            if field_bz is not None:
+                field_bz[gid] = f_bezier[local_flat]
 
-    # HighOrderDegrees: one Int32 tuple [pu, pv, pw] per cell, in <CellData>.
+    offsets = np.arange(n_local, n_cells * n_local + n_local, n_local, dtype=np.int64)
+    types   = np.full(n_cells, cell_type, dtype=np.uint8)
+
     hod_tuple = np.zeros(3, dtype=np.int32)
     for d, deg in enumerate(degrees):
         hod_tuple[d] = deg
-    hod = np.tile(hod_tuple, (n_cells, 1))   # (n_cells, 3), Int32
+    hod = np.tile(hod_tuple, (n_cells, 1))
 
     _write_vtu_xml(
         Path(filename), n_pts_tot, n_cells,
         coords, connectivity, offsets, types, hod,
         field_bz if field is not None else None,
         field_name, scalar,
+        rat_weights,
     )
 
 
@@ -242,51 +296,50 @@ def _write_vtu_xml(
     field_bz: np.ndarray | None,
     field_name: str,
     scalar: bool,
+    rat_weights: np.ndarray | None = None,
 ) -> None:
     n_comp = 1 if scalar else (field_bz.shape[1] if field_bz is not None else 1)
 
-    # L2-norm range for HighOrderDegrees (matches VTK's own writer metadata)
-    norms = np.linalg.norm(hod.astype(float), axis=1)
-    hod_range_min = float(norms.min())
-    hod_range_max = float(norms.max())
-
-    # Flatten hod to one row of values per cell: "pu pv pw pu pv pw ..."
+    # Flatten hod: "pu pv pw  pu pv pw  ..." — one triple per cell
     hod_vals = " ".join(str(v) for v in hod.ravel())
 
     L = [
         '<?xml version="1.0"?>',
-        '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">',
+        '<VTKFile type="UnstructuredGrid" version="2.0" byte_order="LittleEndian">',
         '  <UnstructuredGrid>',
         f'    <Piece NumberOfPoints="{n_pts}" NumberOfCells="{n_cells}">',
-        # HighOrderDegrees in <CellData> — required by VTK 9.0+ / Paraview 5.9+.
-        # The HigherOrderDegrees="..." attribute on <CellData> marks it as the
-        # *active* attribute (like Scalars=/Vectors=); without it VTK ignores
-        # the array even though it is present, and silently assumes a wrong
-        # uniform degree for direction-dependent Bezier cells.
+        # HigherOrderDegrees attribute tells VTK which CellData array holds degrees.
         '      <CellData HigherOrderDegrees="HighOrderDegrees">',
-        f'        <DataArray type="Int32" Name="HighOrderDegrees"'
-        f' NumberOfComponents="3" format="ascii"'
-        f' RangeMin="{hod_range_min}" RangeMax="{hod_range_max}">',
+        '        <DataArray type="Int32" Name="HighOrderDegrees"'
+        ' NumberOfComponents="3" format="ascii">',
         f'          {hod_vals}',
-        '          <InformationKey name="L2_NORM_RANGE" location="vtkDataArray" length="2">',
-        f'            <Value index="0">{hod_range_min}</Value>',
-        f'            <Value index="1">{hod_range_max}</Value>',
-        '          </InformationKey>',
         '        </DataArray>',
         '      </CellData>',
     ]
 
-    # PointData: optional field
-    if field_bz is not None:
-        arr_to_write = field_bz.ravel() if scalar else field_bz
-        L += [
-            '      <PointData>',
-            f'        <DataArray type="Float64" Name="{field_name}"'
-            f' NumberOfComponents="{n_comp}" format="ascii">',
-            f'          {_fmt(arr_to_write)}',
-            '        </DataArray>',
-            '      </PointData>',
-        ]
+    # PointData: optional RationalWeights (not set as active Scalars so the user
+    # field remains the default coloring array) + optional user field.
+    has_point_data = (rat_weights is not None) or (field_bz is not None)
+    if has_point_data:
+        # Active Scalars = user field (if any), otherwise leave unset
+        scalars_attr = f' Scalars="{field_name}"' if field_bz is not None else ''
+        L.append(f'      <PointData{scalars_attr}>')
+        if rat_weights is not None:
+            L += [
+                '        <DataArray type="Float64" Name="RationalWeights"'
+                ' NumberOfComponents="1" format="ascii">',
+                f'          {_fmt(rat_weights)}',
+                '        </DataArray>',
+            ]
+        if field_bz is not None:
+            arr_to_write = field_bz.ravel() if scalar else field_bz
+            L += [
+                f'        <DataArray type="Float64" Name="{field_name}"'
+                f' NumberOfComponents="{n_comp}" format="ascii">',
+                f'          {_fmt(arr_to_write)}',
+                '        </DataArray>',
+            ]
+        L.append('      </PointData>')
 
     # Points
     L += [
