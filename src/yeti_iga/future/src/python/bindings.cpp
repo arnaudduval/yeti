@@ -12,6 +12,7 @@
 #include "PatchIntegrator.hpp"
 #include "PatchAssembly.hpp"
 #include "LocalOperator.hpp"
+#include "ScalarLocalOperator.hpp"
 #include "Traction.hpp"
 #include "refinement/RefinementOperator.hpp"
 #include "refinement/HRefiner.hpp"
@@ -33,6 +34,35 @@ public:
         PYBIND11_OVERRIDE_PURE_NAME(
             Eigen::MatrixXd, LocalOperator, "compute_integrand", computeIntegrand,
             R, dRdx, dRdy);
+    }
+};
+
+// Trampoline letting ScalarLocalOperator be subclassed from Python (scalar-
+// valued integration terms such as error norms -- see ScalarLocalOperator.hpp).
+class PyScalarLocalOperator : public ScalarLocalOperator {
+public:
+    using ScalarLocalOperator::ScalarLocalOperator;
+    double computeScalarIntegrand(
+        const std::vector<double>& R, const std::vector<double>& dRdx,
+        const std::vector<double>& dRdy,
+        const Eigen::Vector2d& physical_point,
+        const Eigen::VectorXd& u_local) const override {
+        PYBIND11_OVERRIDE_PURE_NAME(
+            double, ScalarLocalOperator, "compute_scalar_integrand",
+            computeScalarIntegrand,
+            R, dRdx, dRdy, physical_point, u_local);
+    }
+};
+
+// Trampoline letting Traction be subclassed from Python (position-dependent
+// boundary loads -- see Traction.hpp).
+class PyTraction : public Traction {
+public:
+    using Traction::Traction;
+    Eigen::Vector2d evaluate(const Eigen::Vector2d& physical_point) const override {
+        PYBIND11_OVERRIDE_PURE_NAME(
+            Eigen::Vector2d, Traction, "evaluate", evaluate,
+            physical_point);
     }
 };
 
@@ -89,7 +119,20 @@ PYBIND11_MODULE(bspline, m)
     py::class_<ControlPointManager, std::shared_ptr<ControlPointManager>>(m, "ControlPointManager")
         .def(py::init<int>(), py::arg("dim")=3)
         .def_property_readonly("dim_phys", [](const ControlPointManager& mgr) {return mgr.dim_phys; })
-        .def("add_point", &ControlPointManager::add_point)
+        .def("add_point", &ControlPointManager::add_point,
+             py::arg("coords"), py::arg("w") = 1.0,
+             "Add a control point with optional NURBS weight (default 1.0 = pure "
+             "B-spline, no overhead). When w != 1.0 or is_rational is already true, "
+             "activates rational mode and stores w alongside the point.")
+        .def("set_weight", &ControlPointManager::set_weight,
+             py::arg("id"), py::arg("w"),
+             "Set the NURBS weight of an existing control point. Activates rational "
+             "mode (all previous points get weight 1.0 if not yet set). Reverts to "
+             "B-spline mode automatically if all weights are 1.0 afterwards.")
+        .def_property_readonly("is_rational", &ControlPointManager::is_rational,
+             "True if any control point has a weight != 1.0 (NURBS mode). When false "
+             "all integration and evaluation uses the B-spline fast path with no "
+             "extra overhead.")
         .def_property_readonly("n_points", &ControlPointManager::n_points)
         .def("coords_view", [](ControlPointManager& self){
             auto capsule = py::capsule(&self);
@@ -99,7 +142,19 @@ PYBIND11_MODULE(bspline, m)
                 static_cast<std::ptrdiff_t>(sizeof(double))
             };
             return py::array_t<double>(shape, strides, self.coords.data(), capsule);
-        });
+        })
+        .def("weights_view", [](ControlPointManager& self) -> py::array_t<double> {
+            if (!self.is_rational())
+                throw std::runtime_error(
+                    "ControlPointManager.weights_view(): manager is not rational "
+                    "(all weights are 1.0). Call add_point(..., w) or set_weight() first.");
+            auto capsule = py::capsule(&self);
+            return py::array_t<double>(
+                {(ssize_t)self.n_points()},
+                {(ssize_t)sizeof(double)},
+                self.weights.data(), capsule);
+        }, "Zero-copy view of NURBS weights as a 1D numpy array (shape n_points). "
+           "Only available when is_rational is True.");
 
     py::class_<GlobalDOFManager>(m, "GlobalDOFManager",
         "Pool-wide map from a control-point id (in the shared "
@@ -188,7 +243,10 @@ PYBIND11_MODULE(bspline, m)
             "id in the shared ControlPointManager pool.")
         .def_property_readonly("local_shape", [](const Patch& self) { return self.local_shape; },
             "Number of basis functions per parametric direction [n_u, n_v, ...].")
-        .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; });
+        .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; })
+        .def_property_readonly("cp_manager", [](const Patch& self) -> std::shared_ptr<ControlPointManager> { return self.cp_manager; },
+            "Shared ControlPointManager holding the coordinates (and optional NURBS weights) "
+            "of every control point referenced by this patch.");
 
 
     py::class_<SpanNDIterator>(m, "SpanIterator")
@@ -255,6 +313,13 @@ PatchIntegrator : uses two IGABasis1D objects (one per parametric direction)
     to assemble stiffness / mass matrices over a 2-D patch.
         )doc")
         .def_property_readonly("gauss_spans", [](const IGABasis1D& self) {return self.gauss_spans;})
+        .def_property_readonly("span_indices",
+            [](const IGABasis1D& self) {
+                // Return as a dict {knot_span_index: gauss_span_index} (sorted for determinism)
+                return std::map<int,int>(self.span_indices.begin(), self.span_indices.end());
+            },
+            "Dict mapping each non-empty knot span index to its position in gauss_spans. "
+            "Mirrors the internal span_indices used by PatchIntegrator.")
         .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"),
             R"doc(
 Build an IGABasis1D from a BSpline and a Gauss-point count.
@@ -290,13 +355,13 @@ IGABasis1D
         .def_readwrite("rho", &MaterialProperties::rho,
             "Mass density. Must be set (> 0) to use integrate_mass()/assemble_mass().");
 
-    py::class_<Traction, std::shared_ptr<Traction>>(m, "Traction",
-        "Value of a distributed boundary load (force per unit length), "
-        "evaluated at a physical point. Not subclassable from Python yet "
-        "(no trampoline) -- ConstantTraction is the only kernel for now; "
-        "evaluate() already takes the physical point so that a future "
-        "Python-callback-based kernel (mirroring LocalOperator) can be "
-        "added without changing PatchIntegrator's boundary-load loop.")
+    py::class_<Traction, PyTraction, std::shared_ptr<Traction>>(m, "Traction",
+        "Base class for a distributed boundary load (force per unit length), "
+        "evaluated at a physical point. Subclass from Python and override "
+        "evaluate(physical_point) -> np.ndarray to define position-dependent "
+        "tractions. ConstantTraction is the built-in concrete subclass for "
+        "uniform loads.")
+        .def(py::init<>())
         .def("evaluate", &Traction::evaluate, py::arg("physical_point"));
 
     py::class_<ConstantTraction, Traction, std::shared_ptr<ConstantTraction>>(m, "ConstantTraction",
@@ -381,7 +446,35 @@ IGABasis1D
             "count -- same size as assemble_stiffness()/assemble_mass(), "
             "regardless of which patches the specs actually touch -- so the "
             "result can be added directly to a stiffness/mass right-hand "
-            "side.");
+            "side.")
+        .def("integrate_scalar_operator", &PatchIntegrator::integrateScalarOperator,
+            py::arg("op"), py::arg("u_global"),
+            "Integrate a ScalarLocalOperator over this single patch and return "
+            "the accumulated scalar. At each Gauss point the operator receives: "
+            "R, dRdx, dRdy (rationalized NURBS basis values and physical-space "
+            "gradients), physical_point (x,y), and u_local "
+            "(local DOF values in [u_x0,u_y0,u_x1,u_y1,...] order). Typical "
+            "use: error norms and energy functionals that depend on the current "
+            "FE solution. Subclass ScalarLocalOperator in Python and override "
+            "compute_scalar_integrand().");
+
+    py::class_<ScalarLocalOperator, PyScalarLocalOperator,
+               std::shared_ptr<ScalarLocalOperator>>(m, "ScalarLocalOperator",
+        "Base class for a scalar-valued integration term (error norms, energy "
+        "functionals, etc.) to be subclassed FROM PYTHON. "
+        "PatchIntegrator.integrate_scalar_operator() provides the Gauss loop, "
+        "Jacobian, physical-space gradients, physical coordinates, and local "
+        "DOF values; the subclass only needs to implement the scalar integrand "
+        "at one Gauss point. "
+        "Override compute_scalar_integrand(R, dRdx, dRdy, physical_point, "
+        "u_local) -> float, where u_local has layout "
+        "[u_x_cp0, u_y_cp0, u_x_cp1, u_y_cp1, ...] (2 DOFs per CP for 2D "
+        "problems). PatchIntegrator multiplies the returned value by the Gauss "
+        "weight and abs(detJ) before summing.")
+        .def(py::init<>())
+        .def("compute_scalar_integrand", &ScalarLocalOperator::computeScalarIntegrand,
+             py::arg("R"), py::arg("dRdx"), py::arg("dRdy"),
+             py::arg("physical_point"), py::arg("u_local"));
 
     py::class_<LocalOperator, PyLocalOperator, std::shared_ptr<LocalOperator>>(m, "LocalOperator",
         "Base class to subclass FROM PYTHON for a custom integration term. "

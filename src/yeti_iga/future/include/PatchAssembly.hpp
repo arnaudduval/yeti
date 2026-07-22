@@ -107,10 +107,13 @@ public:
         if (patches_.empty()) return;
         auto cp_manager = patches_[0]->cp_manager;
         size_t dim = cp_manager->dim_phys;
+        bool rational = cp_manager->is_rational();
 
         std::unordered_map<size_t, size_t> old_to_new;
         std::vector<double> new_coords;
+        std::vector<double> new_weights;
         new_coords.reserve(cp_manager->coords.size());
+        if (rational) new_weights.reserve(cp_manager->weights.size());
 
         for (auto& patch : patches_) {
             for (size_t& gid : patch->global_indices) {
@@ -121,6 +124,7 @@ public:
                     new_id = new_coords.size() / dim;
                     const double* src = cp_manager->coords.data() + old_gid * dim;
                     new_coords.insert(new_coords.end(), src, src + dim);
+                    if (rational) new_weights.push_back(cp_manager->weights[old_gid]);
                     old_to_new.emplace(old_gid, new_id);
                 } else {
                     new_id = it->second;
@@ -132,6 +136,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(cp_manager->mtx);
             cp_manager->coords = std::move(new_coords);
+            if (rational) cp_manager->weights = std::move(new_weights);
         }
 
         // Old global ids are no longer valid -- caller must call

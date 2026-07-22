@@ -54,9 +54,12 @@ void HRefiner::refine(
     std::vector<size_t> new_global_indices(nb_new_cp);
 
     // Blended CP coordinates (only p * nb_lines new points, not a full copy)
+    bool rational = patch.cp_manager->is_rational();
     size_t nb_blended = static_cast<size_t>(p) * nb_lines;
     std::vector<std::vector<double>> blended_coords;
+    std::vector<double>              blended_weights; // used only when rational
     blended_coords.reserve(nb_blended);
+    if (rational) blended_weights.reserve(nb_blended);
 
     // --- First pass: T matrix + reuse/collect indices ---
     std::vector<size_t> other_idx(ndim, 0);
@@ -83,17 +86,27 @@ void HRefiner::refine(
             double denom = knots[i + p] - knots[i];
             double alpha = (denom > 1e-14) ? (knot_ - knots[i]) / denom : 0.0;
 
-            const double* pi   = patch.local_cp_ptr(ls_old + static_cast<size_t>(i)     * old_stride[direction_]);
-            const double* pi_1 = patch.local_cp_ptr(ls_old + static_cast<size_t>(i - 1) * old_stride[direction_]);
-
-            std::vector<double> pt(dim_phys);
-            for (size_t d = 0; d < dim_phys; ++d)
-                pt[d] = alpha * pi[d] + (1.0 - alpha) * pi_1[d];
-            blended_coords.push_back(std::move(pt));
-
-            size_t nf    = ls_new + static_cast<size_t>(i)     * new_stride[direction_];
             size_t of_i  = ls_old + static_cast<size_t>(i)     * old_stride[direction_];
             size_t of_i1 = ls_old + static_cast<size_t>(i - 1) * old_stride[direction_];
+            const double* pi   = patch.local_cp_ptr(of_i);
+            const double* pi_1 = patch.local_cp_ptr(of_i1);
+
+            std::vector<double> pt(dim_phys);
+            if (rational) {
+                // Blend in homogeneous space: {w*x, w*y, w}
+                double wi   = patch.cp_manager->get_weight(patch.global_indices[of_i]);
+                double wi_1 = patch.cp_manager->get_weight(patch.global_indices[of_i1]);
+                double new_w = alpha * wi + (1.0 - alpha) * wi_1;
+                for (size_t d = 0; d < dim_phys; ++d)
+                    pt[d] = (alpha * wi * pi[d] + (1.0 - alpha) * wi_1 * pi_1[d]) / new_w;
+                blended_weights.push_back(new_w);
+            } else {
+                for (size_t d = 0; d < dim_phys; ++d)
+                    pt[d] = alpha * pi[d] + (1.0 - alpha) * pi_1[d];
+            }
+            blended_coords.push_back(std::move(pt));
+
+            size_t nf = ls_new + static_cast<size_t>(i) * new_stride[direction_];
             transition_matrix(nf, of_i)  = alpha;
             transition_matrix(nf, of_i1) = 1.0 - alpha;
             // new_global_indices[nf] filled in second pass
@@ -120,6 +133,7 @@ void HRefiner::refine(
         std::lock_guard<std::mutex> lock(patch.cp_manager->mtx);
         size_t start_idx = patch.cp_manager->n_points();
         patch.cp_manager->coords.reserve((start_idx + nb_blended) * dim_phys);
+        if (rational) patch.cp_manager->weights.reserve(start_idx + nb_blended);
 
         size_t blend_counter = 0;
         std::fill(other_idx.begin(), other_idx.end(), 0);
@@ -135,6 +149,12 @@ void HRefiner::refine(
                 size_t nf = ls_new + static_cast<size_t>(i) * new_stride[direction_];
                 for (size_t d = 0; d < dim_phys; ++d)
                     patch.cp_manager->coords.push_back(blended_coords[blend_counter][d]);
+                if (rational) {
+                    // Ensure weights vector is large enough to cover pre-existing ids
+                    if (patch.cp_manager->weights.size() < start_idx)
+                        patch.cp_manager->weights.resize(start_idx, 1.0);
+                    patch.cp_manager->weights.push_back(blended_weights[blend_counter]);
+                }
                 new_global_indices[nf] = start_idx + blend_counter;
                 ++blend_counter;
             }
@@ -172,16 +192,21 @@ void HRefiner::refine(
         // Build compact coords in flat (u-fastest) order
         std::vector<double> new_coords;
         new_coords.reserve(nb_new_cp * dim);
+        std::vector<double> new_weights;
+        if (rational) new_weights.reserve(nb_new_cp);
+
         for (size_t flat = 0; flat < nb_new_cp; ++flat) {
             size_t gid = patch.global_indices[flat];
             const double* src = patch.cp_manager->coords.data() + gid * dim;
             new_coords.insert(new_coords.end(), src, src + dim);
+            if (rational) new_weights.push_back(patch.cp_manager->weights[gid]);
         }
 
         // Sequential mapping: mgr[i] == flat i
         std::iota(patch.global_indices.begin(), patch.global_indices.end(), 0);
 
         patch.cp_manager->coords = std::move(new_coords);
+        if (rational) patch.cp_manager->weights = std::move(new_weights);
     }
 }
 
@@ -245,14 +270,16 @@ void HRefiner::apply_1d_cp_update(
     }
 
     size_t nb_lines = nb_old_cp / n_old;
+    bool   rational = patch.cp_manager->is_rational();
     std::vector<size_t> other_idx(ndim, 0);
 
     // new_global_indices[nf] is filled directly for protected (untouched)
     // positions; private positions are resolved afterwards (fast path:
     // sequential renumbering; general path: fresh dense block).
     std::vector<size_t> new_global_indices(nb_new_cp, SIZE_MAX);
-    std::vector<size_t> private_flat;            // nf, in visiting order
+    std::vector<size_t> private_flat;             // nf, in visiting order
     std::vector<std::vector<double>> private_pt;  // coords, parallel to private_flat
+    std::vector<double> private_w;                // weights, used only when rational
 
     for (size_t line = 0; line < nb_lines; ++line) {
         size_t ls_old = 0, ls_new = 0;
@@ -290,17 +317,32 @@ void HRefiner::apply_1d_cp_update(
 
             // Private CP (unchanged-but-owned, or genuinely blended): compute
             // its coordinates and queue it for (re)numbering below.
+            // For NURBS: blend in homogeneous space (w*x, w*y, w), then divide.
             std::vector<double> pt(dim_phys, 0.0);
+            double w_new = 0.0;
             for (size_t oi = 0; oi < n_old; ++oi) {
                 double coeff = T_1d(ni, oi);
                 if (std::abs(coeff) < 1e-15) continue;
                 size_t of = ls_old + oi * old_stride[direction];
                 const double* src = patch.local_cp_ptr(of);
+                if (rational) {
+                    double wi = patch.cp_manager->get_weight(patch.global_indices[of]);
+                    w_new += coeff * wi;
+                    for (size_t d = 0; d < dim_phys; ++d)
+                        pt[d] += coeff * wi * src[d];
+                } else {
+                    for (size_t d = 0; d < dim_phys; ++d)
+                        pt[d] += coeff * src[d];
+                }
+            }
+            if (rational && w_new > 1e-15) {
+                double inv_w = 1.0 / w_new;
                 for (size_t d = 0; d < dim_phys; ++d)
-                    pt[d] += coeff * src[d];
+                    pt[d] *= inv_w;
             }
             private_flat.push_back(nf);
             private_pt.push_back(std::move(pt));
+            if (rational) private_w.push_back(w_new);
         }
 
         for (int d = static_cast<int>(ndim) - 1; d >= 0; --d) {
@@ -322,14 +364,18 @@ void HRefiner::apply_1d_cp_update(
         // place, sequential ids 0..nb_new_cp-1 (identical to legacy behavior,
         // zero memory overhead).
         std::vector<double> new_coords(nb_new_cp * dim_phys, 0.0);
+        std::vector<double> new_weights;
+        if (rational) new_weights.resize(nb_new_cp, 0.0);
         for (size_t k : order) {
             size_t nf = private_flat[k];
             for (size_t d = 0; d < dim_phys; ++d)
                 new_coords[nf * dim_phys + d] = private_pt[k][d];
+            if (rational) new_weights[nf] = private_w[k];
         }
         {
             std::lock_guard<std::mutex> lock(patch.cp_manager->mtx);
             patch.cp_manager->coords = std::move(new_coords);
+            if (rational) patch.cp_manager->weights = std::move(new_weights);
         }
         patch.global_indices.resize(nb_new_cp);
         std::iota(patch.global_indices.begin(), patch.global_indices.end(), 0);
@@ -340,7 +386,8 @@ void HRefiner::apply_1d_cp_update(
         // add_point() locks cp_manager->mtx internally -- do not hold it here too.
         for (size_t k : order) {
             size_t nf = private_flat[k];
-            new_global_indices[nf] = patch.cp_manager->add_point(private_pt[k]);
+            double w = rational ? private_w[k] : 1.0;
+            new_global_indices[nf] = patch.cp_manager->add_point(private_pt[k], w);
         }
         patch.global_indices = std::move(new_global_indices);
     }

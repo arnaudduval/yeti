@@ -11,6 +11,7 @@
 #include "Patch.hpp"
 #include "PatchAssembly.hpp"
 #include "LocalOperator.hpp"
+#include "ScalarLocalOperator.hpp"
 #include "Traction.hpp"
 
 
@@ -60,10 +61,27 @@ private:
         const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu,
         const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv) const;
 
+    // NURBS rational variant: same as evaluateGaussPointGeometry but applies
+    // the quotient rule (R_a = w_a N_a / W) AFTER computing the raw tensor
+    // product and BEFORE computing the Jacobian, so J/detJ are already those
+    // of the NURBS surface. Weights are the active CPs' weights for this
+    // span, in the same u-fastest order as pts.
+    GaussPointGeometry evaluateGaussPointGeometryNURBS(
+        const std::vector<const double*>& pts,
+        const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu,
+        const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv,
+        const std::vector<double>& weights) const;
+
     // Compute local stiffness contribution for a given span
     Eigen::MatrixXd computeLocalStiffnessContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
+    // NURBS variant -- same as above but uses evaluateGaussPointGeometryNURBS
+    Eigen::MatrixXd computeLocalStiffnessContributionNURBS(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span, const std::vector<double>& weights);
+
     // Compute local mass contribution for a given span
     Eigen::MatrixXd computeLocalMassContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
+    // NURBS variant
+    Eigen::MatrixXd computeLocalMassContributionNURBS(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span, const std::vector<double>& weights);
+
     // Assemble local contriubution into global matrix (shared by stiffness and mass)
     void assembleLocalContribution(const Eigen::MatrixXd& local_contribution, const std::vector<int>& span, std::vector<Eigen::Triplet<double>>& tripletList);
 
@@ -76,6 +94,22 @@ private:
         const Patch& patch, const std::vector<int>& span, int direction,
         const SpanGauss1D& sg_varying, const Eigen::VectorXd& N_fixed_boundary,
         const Traction& traction);
+    // NURBS variant
+    Eigen::VectorXd computeLocalBoundaryLoadContributionNURBS(
+        const Patch& patch, const std::vector<int>& span, int direction,
+        const SpanGauss1D& sg_varying, const Eigen::VectorXd& N_fixed_boundary,
+        const Traction& traction, const std::vector<double>& weights);
+
+    // if constexpr dispatch helpers: IsRational=false generates code identical
+    // to the current B-spline-only path; IsRational=true calls the NURBS
+    // variants. The dispatch is done once per collect*() call (per patch per
+    // assembly), so there is zero overhead inside the Gauss loop for B-splines.
+    template<bool IsRational>
+    void collectTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList);
+    template<bool IsRational>
+    void collectMassTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList);
+    template<bool IsRational>
+    void collectOperatorTripletsImpl(LocalOperator& op, std::vector<Eigen::Triplet<double>>& tripletList);
 
     // Same as assembleLocalContribution(), but scatters a full local load
     // vector (not a sparse matrix contribution) directly into a dense global
@@ -107,26 +141,13 @@ public:
     // using GLOBAL dof indices. Does not size or build any matrix -- this is
     // what lets assembleStiffness() merge several patches' contributions
     // before a single setFromTriplets() call (see assembleStiffness()).
+    // Dispatches to collectTripletsImpl<IsRational> once (outside the span
+    // loop), so the Gauss loop is zero-overhead for B-splines.
     void collectTriplets(std::vector<Eigen::Triplet<double>>& tripletList) {
-        SpanNDIterator it = patch_.spans();
-
-        for (auto span : it) {
-            int span_u = span[0];
-            int span_v = span[1];
-
-            // Find spans indices in pre-computed basis
-            int idx_u = basis_u_.span_indices.at(span_u);
-            int idx_v = basis_v_.span_indices.at(span_v);
-
-            const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
-            const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
-
-            // Compute local contribution
-            Eigen::MatrixXd local_contribution = computeLocalStiffnessContribution(patch_, sg_u, sg_v, span);
-
-            // Assemble local contribution into global matrix
-            assembleLocalContribution(local_contribution, span, tripletList);
-        }
+        if (patch_.cp_manager->is_rational())
+            collectTripletsImpl<true>(tripletList);
+        else
+            collectTripletsImpl<false>(tripletList);
     }
 
     // Same as collectTriplets(), but for the consistent mass matrix
@@ -136,23 +157,10 @@ public:
             throw std::invalid_argument(
                 "PatchIntegrator::collectMassTriplets: material_properties_.rho "
                 "must be set (> 0) to assemble a mass matrix.");
-
-        SpanNDIterator it = patch_.spans();
-
-        for (auto span : it) {
-            int span_u = span[0];
-            int span_v = span[1];
-
-            int idx_u = basis_u_.span_indices.at(span_u);
-            int idx_v = basis_v_.span_indices.at(span_v);
-
-            const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
-            const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
-
-            Eigen::MatrixXd local_contribution = computeLocalMassContribution(patch_, sg_u, sg_v, span);
-
-            assembleLocalContribution(local_contribution, span, tripletList);
-        }
+        if (patch_.cp_manager->is_rational())
+            collectMassTripletsImpl<true>(tripletList);
+        else
+            collectMassTripletsImpl<false>(tripletList);
     }
 
     // This patch's own highest global dof + 1 (scanning every local control
@@ -226,69 +234,13 @@ public:
 
     // Same as collectTriplets()/collectMassTriplets(), but the per-Gauss-
     // point term comes from a caller-supplied LocalOperator instead of a
-    // built-in kernel: PatchIntegrator still does the Gauss-point loop and
-    // the Jacobian/gradient computation (via the shared
-    // evaluateGaussPointGeometry() helper -- same one used by
-    // computeLocalStiffnessContribution()/computeLocalMassContribution()), the
-    // operator only supplies the term to weight and sum. Development/
-    // testing convenience -- does not touch, and is not used by,
-    // collectTriplets()/collectMassTriplets().
+    // built-in kernel. Dispatches to collectOperatorTripletsImpl<IsRational>
+    // so the Gauss loop uses the correct (rational or B-spline) geometry.
     void collectOperatorTriplets(LocalOperator& op, std::vector<Eigen::Triplet<double>>& tripletList) {
-        SpanNDIterator it = patch_.spans();
-
-        for (auto span : it) {
-            int span_u = span[0];
-            int span_v = span[1];
-
-            int idx_u = basis_u_.span_indices.at(span_u);
-            int idx_v = basis_v_.span_indices.at(span_v);
-
-            const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
-            const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
-
-            std::vector<const double*> pts = patch_.control_points_for_span(span);
-            size_t nb_loc = pts.size();
-
-            int ngauss_u = static_cast<int>(sg_u.u_param.size());
-            int ngauss_v = static_cast<int>(sg_v.u_param.size());
-
-            Eigen::MatrixXd local_contribution;  // sized from the operator's first returned term
-
-            for (int gu = 0; gu < ngauss_u; ++gu) {
-                for (int gv = 0; gv < ngauss_v; ++gv) {
-                    double w = sg_u.weight[gu] * sg_v.weight[gv];
-
-                    const Eigen::VectorXd& Nu = sg_u.N[gu];
-                    const Eigen::VectorXd& dNu = sg_u.dN[gu];
-                    const Eigen::VectorXd& Nv = sg_v.N[gv];
-                    const Eigen::VectorXd& dNv = sg_v.dN[gv];
-
-                    GaussPointGeometry g = evaluateGaussPointGeometry(pts, Nu, dNu, Nv, dNv);
-                    if (g.detJ == 0.0) {
-                        continue;
-                    }
-
-                    double invJ11 = g.J22 / g.detJ;
-                    double invJ12 = -g.J12 / g.detJ;
-                    double invJ21 = -g.J21 / g.detJ;
-                    double invJ22 = g.J11 / g.detJ;
-
-                    std::vector<double> dRdx(nb_loc), dRdy(nb_loc);
-                    for (size_t a = 0; a < nb_loc; ++a) {
-                        dRdx[a] = invJ11 * g.dRdu[a] + invJ21 * g.dRdv[a];
-                        dRdy[a] = invJ12 * g.dRdu[a] + invJ22 * g.dRdv[a];
-                    }
-
-                    Eigen::MatrixXd term = op.computeIntegrand(g.R, dRdx, dRdy);
-                    if (local_contribution.size() == 0) {
-                        local_contribution = Eigen::MatrixXd::Zero(term.rows(), term.cols());
-                    }
-                    local_contribution += term * w * std::abs(g.detJ);
-                }
-            }
-
-            assembleLocalContribution(local_contribution, span, tripletList);
-        }
+        if (patch_.cp_manager->is_rational())
+            collectOperatorTripletsImpl<true>(op, tripletList);
+        else
+            collectOperatorTripletsImpl<false>(op, tripletList);
     }
 
     // Same as integrateStiffness()/integrateMass(), but for a custom
@@ -339,5 +291,123 @@ public:
         const std::vector<BoundaryLoadSpec>& specs,
         int gauss_n = 0);
 
+    // Integrate a ScalarLocalOperator over this single patch: loops over all
+    // Gauss points of all spans, evaluates R/dRdx/dRdy (with NURBS
+    // rationalisation when applicable), the physical coordinates, and the
+    // local DOF values extracted from `u_global`, then sums the operator's
+    // scalar return value weighted by the Gauss weight and |detJ|.
+    //
+    // Companion to integrateOperator() for cases where the integrand is a
+    // scalar (e.g., error norms, energy functionals) that depends on the
+    // current FE solution.
+    double integrateScalarOperator(ScalarLocalOperator& op,
+                                   const Eigen::VectorXd& u_global);
+
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Template bodies (must be visible at instantiation; kept here to avoid an
+// explicit-instantiation .cpp).  Each Impl<false> generates code identical to
+// the old B-spline-only methods; Impl<true> calls the NURBS variants.
+// ─────────────────────────────────────────────────────────────────────────────
+
+template<bool IsRational>
+void PatchIntegrator::collectTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList) {
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        int idx_u = basis_u_.span_indices.at(span[0]);
+        int idx_v = basis_v_.span_indices.at(span[1]);
+        const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+        const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+        Eigen::MatrixXd lc;
+        if constexpr (IsRational) {
+            auto w = patch_.weights_for_span(span);
+            lc = computeLocalStiffnessContributionNURBS(patch_, sg_u, sg_v, span, w);
+        } else {
+            lc = computeLocalStiffnessContribution(patch_, sg_u, sg_v, span);
+        }
+        assembleLocalContribution(lc, span, tripletList);
+    }
+}
+
+template<bool IsRational>
+void PatchIntegrator::collectMassTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList) {
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        int idx_u = basis_u_.span_indices.at(span[0]);
+        int idx_v = basis_v_.span_indices.at(span[1]);
+        const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+        const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+        Eigen::MatrixXd lc;
+        if constexpr (IsRational) {
+            auto w = patch_.weights_for_span(span);
+            lc = computeLocalMassContributionNURBS(patch_, sg_u, sg_v, span, w);
+        } else {
+            lc = computeLocalMassContribution(patch_, sg_u, sg_v, span);
+        }
+        assembleLocalContribution(lc, span, tripletList);
+    }
+}
+
+template<bool IsRational>
+void PatchIntegrator::collectOperatorTripletsImpl(
+    LocalOperator& op, std::vector<Eigen::Triplet<double>>& tripletList)
+{
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        int idx_u = basis_u_.span_indices.at(span[0]);
+        int idx_v = basis_v_.span_indices.at(span[1]);
+        const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+        const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+        std::vector<const double*> pts = patch_.control_points_for_span(span);
+        size_t nb_loc = pts.size();
+
+        [[maybe_unused]] std::vector<double> w;
+        if constexpr (IsRational) w = patch_.weights_for_span(span);
+
+        int ngauss_u = static_cast<int>(sg_u.u_param.size());
+        int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+        Eigen::MatrixXd local_contribution;
+
+        for (int gu = 0; gu < ngauss_u; ++gu) {
+            for (int gv = 0; gv < ngauss_v; ++gv) {
+                double wg = sg_u.weight[gu] * sg_v.weight[gv];
+
+                const Eigen::VectorXd& Nu  = sg_u.N[gu];
+                const Eigen::VectorXd& dNu = sg_u.dN[gu];
+                const Eigen::VectorXd& Nv  = sg_v.N[gv];
+                const Eigen::VectorXd& dNv = sg_v.dN[gv];
+
+                GaussPointGeometry g;
+                if constexpr (IsRational)
+                    g = evaluateGaussPointGeometryNURBS(pts, Nu, dNu, Nv, dNv, w);
+                else
+                    g = evaluateGaussPointGeometry(pts, Nu, dNu, Nv, dNv);
+
+                if (g.detJ == 0.0) continue;
+
+                double invJ11 = g.J22 / g.detJ;
+                double invJ12 = -g.J12 / g.detJ;
+                double invJ21 = -g.J21 / g.detJ;
+                double invJ22 = g.J11 / g.detJ;
+
+                std::vector<double> dRdx(nb_loc), dRdy(nb_loc);
+                for (size_t a = 0; a < nb_loc; ++a) {
+                    dRdx[a] = invJ11 * g.dRdu[a] + invJ21 * g.dRdv[a];
+                    dRdy[a] = invJ12 * g.dRdu[a] + invJ22 * g.dRdv[a];
+                }
+
+                Eigen::MatrixXd term = op.computeIntegrand(g.R, dRdx, dRdy);
+                if (local_contribution.size() == 0)
+                    local_contribution = Eigen::MatrixXd::Zero(term.rows(), term.cols());
+                local_contribution += term * wg * std::abs(g.detJ);
+            }
+        }
+        assembleLocalContribution(local_contribution, span, tripletList);
+    }
+}
 

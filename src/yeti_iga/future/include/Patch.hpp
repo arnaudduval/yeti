@@ -56,6 +56,12 @@ struct Patch {
 
     std::vector<const double*> control_points_for_span(const std::vector<int>& span) const;
 
+    // NURBS weights of the (p_u+1)*(p_v+1) control points active in span,
+    // in the same u-fastest order as control_points_for_span(). Returns an
+    // empty vector in O(1) when cp_manager->is_rational() is false (B-spline
+    // fast path: caller pays nothing).
+    std::vector<double> weights_for_span(const std::vector<int>& span) const;
+
     // Patch-LOCAL flat positions (u-fastest) of the control points on the
     // edge obtained by fixing `direction` at its first (side=0) or last
     // (side=1) local index. If span_min/span_max are given (both >= 0,

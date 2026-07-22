@@ -215,11 +215,15 @@ void PRefiner::apply_one_elevation(Patch& patch, Eigen::MatrixXd& transition_mat
     }
 
     size_t nb_lines = nb_old_cp / static_cast<size_t>(n_old);
+    bool   rational = patch.cp_manager->is_rational();
 
-    // Build transition matrix and compute new CP coords in one pass
+    // Build transition matrix and compute new CP coords in one pass.
+    // For NURBS: blend in homogeneous space (w*x, w*y, w), then divide.
     transition_matrix = Eigen::MatrixXd::Zero(nb_new_cp, nb_old_cp);
     std::vector<std::vector<double>> new_coords(nb_new_cp,
                                                 std::vector<double>(dim_phys, 0.0));
+    std::vector<double> new_weights;
+    if (rational) new_weights.resize(nb_new_cp, 0.0);
 
     std::vector<size_t> other_idx(ndim, 0);
 
@@ -240,8 +244,20 @@ void PRefiner::apply_one_elevation(Patch& patch, Eigen::MatrixXd& transition_mat
                 size_t of = ls_old + static_cast<size_t>(oi) * old_stride[direction_];
                 transition_matrix(nf, of) = coeff;
                 const double* src = patch.local_cp_ptr(of);
+                if (rational) {
+                    double wi = patch.cp_manager->get_weight(patch.global_indices[of]);
+                    new_weights[nf] += coeff * wi;
+                    for (size_t d = 0; d < dim_phys; d++)
+                        new_coords[nf][d] += coeff * wi * src[d];
+                } else {
+                    for (size_t d = 0; d < dim_phys; d++)
+                        new_coords[nf][d] += coeff * src[d];
+                }
+            }
+            if (rational && new_weights[nf] > 1e-15) {
+                double inv_w = 1.0 / new_weights[nf];
                 for (size_t d = 0; d < dim_phys; d++)
-                    new_coords[nf][d] += coeff * src[d];
+                    new_coords[nf][d] *= inv_w;
             }
         }
 
@@ -259,6 +275,7 @@ void PRefiner::apply_one_elevation(Patch& patch, Eigen::MatrixXd& transition_mat
         for (size_t i = 0; i < nb_new_cp; i++)
             for (size_t d = 0; d < dim_phys; d++)
                 patch.cp_manager->coords[i * dim_phys + d] = new_coords[i][d];
+        if (rational) patch.cp_manager->weights = std::move(new_weights);
     }
 
     // Update patch

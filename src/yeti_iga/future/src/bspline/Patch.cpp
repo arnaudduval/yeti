@@ -77,6 +77,9 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
         ssize_t total_size = 1;
         for (auto s : sizes) total_size *= s;
 
+        const bool rational = cp_manager->is_rational();
+        double W = 0.0;
+
         for (ssize_t n = 0; n < total_size; ++n) {
             // u-fastest linear index: direction 0 fastest (stride = 1)
             ssize_t lin_idx = 0;
@@ -88,20 +91,30 @@ py::array_t<double> Patch::EvaluatePatchND(const py::array_t<int> spans,
                 stride *= local_shape[d];
             }
 
-
-            // récupérer le point de contrôle correspondant
             const double* pt = local_pts_ptrs[lin_idx];
 
-            // accumulation dans res_ptr pour ce point
-
-            for (ssize_t d = 0; d < dim_phys; ++d)
-                res_ptr[k*dim_phys + d] += basis_vals[n] * pt[d];
+            if (rational) {
+                double wn = cp_manager->get_weight(global_indices[lin_idx]);
+                double wN = wn * basis_vals[n];
+                for (ssize_t d = 0; d < dim_phys; ++d)
+                    res_ptr[k*dim_phys + d] += wN * pt[d];
+                W += wN;
+            } else {
+                for (ssize_t d = 0; d < dim_phys; ++d)
+                    res_ptr[k*dim_phys + d] += basis_vals[n] * pt[d];
+            }
 
             // incrément de l’indice multi-dim
             for (ssize_t d = n_dims - 1; d >= 0; --d) {
                 if (++idx[d] < sizes[d]) break;
                 idx[d] = 0;
             }
+        }
+
+        // NURBS: divide accumulated weighted sum by W
+        if (rational && W > 0.0) {
+            for (ssize_t d = 0; d < dim_phys; ++d)
+                res_ptr[k*dim_phys + d] /= W;
         }
     }
 
@@ -153,7 +166,8 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
             idx.assign((size_t)n_dims, 0);
             val.assign((size_t)dim_phys, 0.0);
 
-
+            const bool rational = cp_manager->is_rational();
+            double W = 0.0;
 
             // loop over tensor-product basis
             for (ssize_t n = 0; n < total_size; ++n)
@@ -169,11 +183,18 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
                     stride *= local_shape[d];
                 }
 
-                const double b = basis_vals[n];
                 const double* pt = local_pts_ptrs[lin_idx];
 
-                for (ssize_t d = 0; d < dim_phys; ++d)
-                    val[d] += b * pt[d];
+                if (rational) {
+                    double wN = cp_manager->get_weight(global_indices[lin_idx]) * basis_vals[n];
+                    for (ssize_t d = 0; d < dim_phys; ++d)
+                        val[d] += wN * pt[d];
+                    W += wN;
+                } else {
+                    const double b = basis_vals[n];
+                    for (ssize_t d = 0; d < dim_phys; ++d)
+                        val[d] += b * pt[d];
+                }
 
                 // increment N-D index
                 for (ssize_t d = n_dims - 1; d >= 0; --d)
@@ -184,10 +205,15 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
                 }
             }
 
-            // write result
+            // write result (NURBS: divide by W)
             double* dst = res_ptr + kk * dim_phys;
-            for (ssize_t d = 0; d < dim_phys; ++d)
-                dst[d] = val[d];
+            if (rational && W > 0.0) {
+                for (ssize_t d = 0; d < dim_phys; ++d)
+                    dst[d] = val[d] / W;
+            } else {
+                for (ssize_t d = 0; d < dim_phys; ++d)
+                    dst[d] = val[d];
+            }
         }
 
     }
@@ -221,6 +247,30 @@ std::vector<const double*> Patch::control_points_for_span(const std::vector<int>
     return pts;
 }
 
+
+std::vector<double> Patch::weights_for_span(const std::vector<int>& span) const {
+    if (!cp_manager->is_rational()) return {};
+
+    int p_u = tensor.components[0].getDegree();
+    int p_v = tensor.components[1].getDegree();
+
+    int start_u = span[0] - p_u;
+    int start_v = span[1] - p_v;
+
+    ssize_t n_u = local_shape[0];
+
+    std::vector<double> w;
+    w.reserve((p_u + 1) * (p_v + 1));
+    for (int jv = 0; jv <= p_v; ++jv) {
+        int lv = start_v + jv;
+        for (int iu = 0; iu <= p_u; ++iu) {
+            int lu = start_u + iu;
+            size_t local_linear = static_cast<size_t>(lv * n_u + lu);
+            w.push_back(cp_manager->get_weight(global_indices[local_linear]));
+        }
+    }
+    return w;
+}
 
 std::vector<size_t> Patch::boundary_control_points(int direction, int side,
                                                     int span_min, int span_max) const {
