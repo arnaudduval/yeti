@@ -19,6 +19,7 @@
 #include "refinement/SubdivisionRefiner.hpp"
 #include "refinement/PRefiner.hpp"
 #include "refinement/BezierExtractor.hpp"
+#include "PatchEvaluator.hpp"
 
 
 namespace py = pybind11;
@@ -721,6 +722,41 @@ Typical workflow, in order:
             [](const BezierElementND& self) { return self.active; })
         .def_property_readonly("elem_index",
             [](const BezierElementND& self) { return self.elem_index; });
+
+    py::class_<PatchEvaluator>(m, "PatchEvaluator",
+        R"doc(
+Evaluates a FE solution field at arbitrary parametric-space points.
+
+The patch must carry a PatchDOFManager (i.e. it was constructed with one, or
+one was attached before building this evaluator).  NURBS patches are handled
+exactly — the rational basis R_a = w_a N_a / W is applied before accumulating
+DOF contributions, using the same zero-overhead dispatch as PatchIntegrator.
+The evaluation loop is OpenMP-parallel over evaluation points.
+
+Parameters
+----------
+patch : Patch
+    Patch with a PatchDOFManager attached.
+        )doc")
+        .def(py::init<const Patch&>(), py::arg("patch"))
+        .def("evaluate_solution", &PatchEvaluator::evaluateSolutionOMP,
+             py::arg("params"), py::arg("u_global"),
+             R"doc(
+Evaluate the FE solution at parametric-space points.
+
+Parameters
+----------
+params : ndarray, shape (n_pts, n_param_dims)
+    Parameter values at which to evaluate.
+u_global : ndarray, shape (n_dof,)
+    Global solution vector (same size as the stiffness matrix).
+
+Returns
+-------
+ndarray, shape (n_pts, n_dofs_per_cp)
+    Field values at each evaluation point.
+    For a 2-D solid with 2 DOFs per CP: columns are [u_x, u_y].
+             )doc");
 
     py::class_<BezierExtractor>(m, "BezierExtractor",
         R"pbdoc(

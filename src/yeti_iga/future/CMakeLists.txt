@@ -30,6 +30,7 @@ pybind11_add_module(${MODULE_NAME}
     src/bspline/BSplineTensor.cpp
     src/bspline/Patch.cpp
     src/bspline/PatchIntegrator.cpp
+    src/bspline/PatchEvaluator.cpp
     src/bspline/refinement/HRefiner.cpp
     src/bspline/refinement/SubdivisionRefiner.cpp
     src/bspline/refinement/PRefiner.cpp
