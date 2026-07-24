@@ -174,7 +174,9 @@ Protected vs. private control points
 Every refinement operator (:class:`~yeti_iga.future.bspline.HRefiner`,
 :class:`~yeti_iga.future.bspline.SubdivisionRefiner`,
 :class:`~yeti_iga.future.bspline.PRefiner`) therefore accepts a ``protected_global_ids``
-set (see e.g. ``SubdivisionRefiner.refine_1d``) and classifies every control point of
+set (see :meth:`~yeti_iga.future.bspline.HRefiner.refine_1d`,
+:meth:`~yeti_iga.future.bspline.SubdivisionRefiner.refine_1d`,
+:meth:`~yeti_iga.future.bspline.PRefiner.refine_1d`) and classifies every control point of
 the refined patch into one of two categories:
 
 - **Protected** — an id *borrowed* from another patch (a shared interface control
@@ -238,6 +240,28 @@ purpose:
 This split is the enabling mechanism behind the assembly's call-order contract below: if
 ``PatchDOFManager`` were id-indexed like ``GlobalDOFManager``, ``compact()`` would
 silently desynchronize every patch's dof mapping the moment it renumbers ids.
+
+Stale DOF manager pitfall
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every refinement operator updates ``patch.dof_manager`` **in-place** after refining a
+patch, and :meth:`~yeti_iga.future.bspline.PatchAssembly.update_dof_managers` rebuilds
+every patch's ``PatchDOFManager`` in-place. Any Python variable that captured the old
+``PatchDOFManager`` before either of these calls becomes **stale**: it still holds the
+pre-refinement DOF mapping and will silently return wrong indices if used afterwards.
+Always read ``patch.dof_manager`` **after** refining or calling ``update_dof_managers``,
+never cache it beforehand.
+
+.. code-block:: python
+
+   # Wrong: pdm is captured before refinement, becomes stale.
+   pdm = patch.dof_manager
+   HRefiner(0, 0.5).refine(patch, ...)
+   pdm.get_global_dof_indices(...)     # stale — returns pre-refinement indices
+
+   # Correct: read dof_manager from the patch after refining.
+   HRefiner(0, 0.5).refine(patch, ...)
+   patch.dof_manager.get_global_dof_indices(...)  # always up to date
 
 PatchAssembly's call-order contract
 ---------------------------------------
@@ -309,6 +333,37 @@ neighbors. For an assembly with chains of more than two patches sharing edges, t
 means propagation currently has to be triggered explicitly, patch by patch, along the
 chain. This is a documented scope limitation rather than a bug, left for a later phase.
 
+Carrying a prior solution across refinement
+-------------------------------------------------
+
+When progressively refining a problem (e.g. adaptive h-refinement), it is often useful to
+**warm-start** the refined solve from the solution on the coarser mesh. The transfer
+formula is :math:`u_\text{new} = T \, u_\text{old}`, where :math:`T` is the nD
+control-point transition matrix produced by the refinement step.
+
+:class:`~yeti_iga.future.bspline.PatchAssembly` stores one nD transition matrix per
+patch, initialized to the identity when the patch is added. The intended workflow is:
+
+1. Instead of ``refine_with_propagation``, call ``refine_1d()`` directly — it returns
+   the 1D transition matrix ``T_1d``.
+2. Expand it to nD:
+   ``T_nd = nd_transition_from_1d(T_1d, direction, shape_before, shape_after)``.
+3. Store it in the assembly:
+   :meth:`assembly.set_transformation_matrix(patch_index, T_nd) <yeti_iga.future.bspline.PatchAssembly.set_transformation_matrix>`.
+4. After solving on the fine mesh — or to construct an initial guess — apply it to the
+   flat DOF vector:
+   :meth:`assembly.apply_transformation_to_dofs(u_old, patch_index, dim_phys) <yeti_iga.future.bspline.PatchAssembly.apply_transformation_to_dofs>`.
+   Use :meth:`~yeti_iga.future.bspline.PatchAssembly.apply_transformation_to_control_points`
+   instead when working directly with per-control-point geometry vectors.
+
+The reason ``refine_with_propagation`` does not expose the transition matrices directly
+is that its ``refine_1d_fn`` callback has no return value by design (see
+:ref:`design-crossed-interface`): the direction it passes to the callback is
+patch-specific and may differ from the direction that triggered the propagation. Having
+the callback return a matrix would force the user to track which matrix belongs to which
+patch, which is exactly what ``PatchAssembly``'s per-patch matrix store already does.
+Use ``refine_1d`` directly whenever warm-starting is needed.
+
 Performance rationale: the 1D fast path
 -------------------------------------------
 
@@ -326,6 +381,18 @@ only on demand" pattern shows up again on the integration side:
 weights, and basis function values/derivatives once per 1D parametric direction, and
 :class:`~yeti_iga.future.bspline.PatchIntegrator` reuses that precomputed data across
 every span of a 2D patch rather than re-evaluating basis functions per assembly call.
+
+Skipping degenerate spans
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:class:`~yeti_iga.future.bspline.SpanIterator` filters out zero-measure knot spans
+(those where ``kv[i+1] - kv[i] == 0``) at construction time — before the integration
+loop ever runs. This matters for NURBS patches with C^0 knot repetitions and after
+degree elevation, both of which introduce internal zero-length spans that contribute
+nothing to any integral but can cause division by zero when computing the parametric
+Jacobian. By handling this once, in the iterator, every caller — stiffness, mass,
+boundary load, ``LocalOperator``, ``ScalarLocalOperator`` — benefits automatically
+with no per-integration check.
 
 A generic integration term: ``LocalOperator``
 --------------------------------------------------
@@ -473,6 +540,13 @@ exist (see :file:`examples/future/08_boundary_conditions.ipynb`), not new code h
 This is the same "matrices in, matrices out" scope ``future`` has kept since the first
 stiffness/mass kernels — a solver is a separate, later concern.
 
+:class:`~yeti_iga.future.bspline.BoundaryLoadSpec` is a plain data struct that packages
+a single load specification — patch index, direction, side, traction object, and optional
+``span_min``/``span_max`` for sub-range application — into a value the batch API
+:meth:`~yeti_iga.future.bspline.PatchIntegrator.assemble_boundary_load` can iterate
+over. It carries no logic; all design decisions sit in ``Traction`` and the integration
+loop.
+
 ``Traction`` mirrors ``LocalOperator``'s extensibility approach for the same reason:
 :meth:`Traction.evaluate() <yeti_iga.future.bspline.Traction.evaluate>` already takes
 the physical point, not just internal parameters, so a future Python-callback-based
@@ -609,12 +683,15 @@ operator of :cite:`borden_isogeometric_2011`: for each tensor-product element, i
 the matrix ``C`` such that the active B-spline basis functions on that element are a
 linear combination (via ``C``) of the standard Bernstein polynomials on a local
 ``[0, 1]`` (or ``[0,1]^ndim``, via Kronecker products of the 1D operators) reference
-element. It operates on the same :class:`~yeti_iga.future.bspline.Patch`/
-:class:`~yeti_iga.future.bspline.BSpline` data structures as the rest of the module, but
-it is not load-bearing for the multipatch assembly workflow described above — it exists
-to provide an alternate, per-element basis representation (e.g. for export/interop with
-finite-element-style tools or alternate assembly strategies), independent of patch
-sharing or refinement propagation.
+element. Results are returned as :class:`~yeti_iga.future.bspline.BezierElementND`
+instances — plain data containers each holding the extraction matrix ``C``, the indices
+of the active B-spline functions, and the span (element) index — iterated over all
+non-degenerate elements of the patch. It operates on the same
+:class:`~yeti_iga.future.bspline.Patch`/:class:`~yeti_iga.future.bspline.BSpline` data
+structures as the rest of the module, but it is not load-bearing for the multipatch
+assembly workflow described above — it exists to provide an alternate, per-element basis
+representation (e.g. for export/interop with finite-element-style tools or alternate
+assembly strategies), independent of patch sharing or refinement propagation.
 
 Worked example
 ------------------
