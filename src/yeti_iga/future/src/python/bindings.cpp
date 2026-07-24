@@ -89,10 +89,27 @@ public:
 
 PYBIND11_MODULE(bspline, m)
 {
-    py::class_<BSpline>(m, "BSpline")
-        .def(py::init<int, py::array_t<double>>())
-        .def("find_span", &BSpline::FindSpan)
-        .def("basis_funs", &BSpline::BasisFuns)
+    py::class_<BSpline>(m, "BSpline",
+        "1D B-spline basis of degree p over a knot vector. "
+        "find_span(u) locates the knot span enclosing the parameter value u; "
+        "basis_funs(span, u) evaluates the p+1 non-zero basis functions there; "
+        "basis_funs_derivatives(span, u, d) adds derivatives up to order d.")
+        .def(py::init<int, py::array_t<double>>(),
+             py::arg("degree"), py::arg("knot_vector"),
+             "Construct a B-spline of the given polynomial degree over knot_vector. "
+             "knot_vector must be non-decreasing with length >= 2*(degree+1).")
+        .def("find_span", &BSpline::FindSpan,
+             py::arg("u"),
+             "Return the index i of the knot span [U[i], U[i+1]) containing u.\n\n"
+             "Uses binary search (Cox-de Boor convention). u must lie in [U[p], U[n+1]].\n"
+             "The result is the span to pass to basis_funs(), basis_funs_derivatives(), "
+             "and one_basis_fun().")
+        .def("basis_funs", &BSpline::BasisFuns,
+             py::arg("span"), py::arg("u"),
+             "Evaluate the p+1 non-zero B-spline basis functions N_{span-p,p}..N_{span,p} at u.\n\n"
+             "span must be a valid knot-span index returned by find_span(u). "
+             "Returns a 1D NumPy array of length degree+1. "
+             "For all non-zero functions AND their derivatives use basis_funs_derivatives().")
         .def("basis_funs_derivatives", &bspline_basis_funs_derivatives,
                                         py::arg("span"),
                                         py::arg("u"),
@@ -116,30 +133,59 @@ PYBIND11_MODULE(bspline, m)
                                                 - row 0 = basis values
                                                 - row k = kth derivative
                                         )pbdoc")
-        .def("one_basis_fun", &BSpline::OneBasisFun)
-        .def_property_readonly("degree", &BSpline::getDegree)
-        .def_property_readonly("knot_vector", &BSpline::kvView);
+        .def("one_basis_fun", &BSpline::OneBasisFun,
+             py::arg("u"), py::arg("i"),
+             "Evaluate the single B-spline basis function N_{i,p}(u). "
+             "Useful when only one function value is needed; for all p+1 "
+             "non-zero functions at a span use basis_funs().")
+        .def_property_readonly("degree", &BSpline::getDegree,
+            "Polynomial degree p.")
+        .def_property_readonly("knot_vector", &BSpline::kvView,
+            "Knot vector as a 1D NumPy read-only view.");
 
-    py::class_<BSplineTensor>(m, "BSplineTensor")
-        .def_property_readonly("components", [](const BSplineTensor& t) {return t.components; })
-        .def("basis_funs_nd", &BSplineTensor::BasisFunsND)
+    py::class_<BSplineTensor>(m, "BSplineTensor",
+        "Tensor-product extension of several 1D B-splines. Evaluates the "
+        "multivariate basis over a Cartesian product of parametric directions. "
+        "BSplineSurface (2D) and BSplineVolume (3D) are the concrete subclasses.")
+        .def_property_readonly("components", [](const BSplineTensor& t) {return t.components; },
+            "list[BSpline] — one 1D B-spline per parametric direction (u, v[, w]).")
+        .def("basis_funs_nd", &BSplineTensor::BasisFunsND,
+             py::arg("span"), py::arg("u"),
+             "Evaluate all non-zero tensor-product basis functions at a parametric point.\n"
+             "span : int array, shape (n_param_dims,) -- knot-span indices (from find_span_nd).\n"
+             "u    : float array, shape (n_param_dims,) -- parametric coordinates.\n"
+             "Returns: 1D float array of length prod_d(degree_d + 1), u-fastest order.")
         .def("find_span_nd",
              static_cast<py::array_t<int>(BSplineTensor::*)(const py::array_t<double>&) const>
                 (&BSplineTensor::FindSpanND),
              py::arg("u"),
              "Compute span indices in all parameter dimensions.");
 
-    py::class_<BSplineSurface, BSplineTensor>(m, "BSplineSurface")
+    py::class_<BSplineSurface, BSplineTensor>(m, "BSplineSurface",
+        "Tensor-product B-spline surface basis built from two 1D BSplines (u and v). "
+        "Pass to Patch as the tensor to define the parametric-to-physical mapping of a 2D patch.")
         .def(py::init<const BSpline&, const BSpline&>(),
-             py::arg("su"), py::arg("sv"));
+             py::arg("su"), py::arg("sv"),
+             "Construct from a BSpline in the u direction and one in the v direction.");
 
-    py::class_<BSplineVolume, BSplineTensor>(m, "BSplineVolume")
+    py::class_<BSplineVolume, BSplineTensor>(m, "BSplineVolume",
+        "Tensor-product B-spline volume basis built from three 1D BSplines (u, v, w). "
+        "Pass to Patch as the tensor to define the parametric-to-physical mapping of a 3D patch.")
         .def(py::init<const BSpline&, const BSpline&, const BSpline&>(),
-             py::arg("su"), py::arg("sv"), py::arg("sw"));
+             py::arg("su"), py::arg("sv"), py::arg("sw"),
+             "Construct from a BSpline in each of the u, v, and w directions.");
 
-    py::class_<ControlPointManager, std::shared_ptr<ControlPointManager>>(m, "ControlPointManager")
-        .def(py::init<int>(), py::arg("dim")=3)
-        .def_property_readonly("dim_phys", [](const ControlPointManager& mgr) {return mgr.dim_phys; })
+    py::class_<ControlPointManager, std::shared_ptr<ControlPointManager>>(m, "ControlPointManager",
+        "Shared pool of physical control points (and optional NURBS weights) "
+        "referenced by one or more patches. Add points via add_point(); patches "
+        "then reference them by global index. Setting any weight != 1.0 activates "
+        "NURBS rational mode (is_rational becomes True); otherwise the pure "
+        "B-spline code path runs with no overhead.")
+        .def(py::init<int>(), py::arg("dim")=3,
+             "Construct an empty pool for control points in dim-dimensional "
+             "physical space (default 3).")
+        .def_property_readonly("dim_phys", [](const ControlPointManager& mgr) {return mgr.dim_phys; },
+            "Physical space dimension (2 for 2D, 3 for 3D).")
         .def("add_point", &ControlPointManager::add_point,
              py::arg("coords"), py::arg("w") = 1.0,
              "Add a control point with optional NURBS weight (default 1.0 = pure "
@@ -154,7 +200,8 @@ PYBIND11_MODULE(bspline, m)
              "True if any control point has a weight != 1.0 (NURBS mode). When false "
              "all integration and evaluation uses the B-spline fast path with no "
              "extra overhead.")
-        .def_property_readonly("n_points", &ControlPointManager::n_points)
+        .def_property_readonly("n_points", &ControlPointManager::n_points,
+            "Number of control points currently in the pool.")
         .def("coords_view", [](ControlPointManager& self){
             auto capsule = py::capsule(&self);
             std::vector<ssize_t> shape = {(ssize_t)self.n_points(), (ssize_t)self.dim_phys};
@@ -163,7 +210,8 @@ PYBIND11_MODULE(bspline, m)
                 static_cast<std::ptrdiff_t>(sizeof(double))
             };
             return py::array_t<double>(shape, strides, self.coords.data(), capsule);
-        })
+        }, "Zero-copy NumPy view of all control point coordinates, shape (n_points, dim_phys). "
+           "Row i is the physical coordinates of the control point with global id i.")
         .def("weights_view", [](ControlPointManager& self) -> py::array_t<double> {
             if (!self.is_rational())
                 throw std::runtime_error(
@@ -185,8 +233,13 @@ PYBIND11_MODULE(bspline, m)
         "automatically resolve to the SAME global dofs -- this is what "
         "makes PatchAssembly.update_dof_managers() work without any "
         "explicit tracking of which control points were merged.")
-        .def(py::init<const std::vector<int>&>(), py::arg("dofs_per_control_point"))
-        .def("get_dof_indices", &GlobalDOFManager::get_dof_indices, py::arg("control_point_idx"))
+        .def(py::init<const std::vector<int>&>(), py::arg("dofs_per_control_point"),
+            "Construct with a list of dof counts (one per existing control point). "
+            "Prefer GlobalDOFManager([dofs_per_cp] * n_cp) for uniform problems.")
+        .def("get_dof_indices", &GlobalDOFManager::get_dof_indices, py::arg("control_point_idx"),
+            "Return the global DOF indices for control point control_point_idx. "
+            "The returned list has length dofs_per_cp (typically 2 for 2-D, 3 for 3-D). "
+            "Raises if control_point_idx >= n_control_points().")
         .def("n_control_points", &GlobalDOFManager::n_control_points,
             "Number of control points currently covered (ids 0..n-1 are "
             "valid arguments to get_dof_indices()).")
@@ -200,29 +253,57 @@ PYBIND11_MODULE(bspline, m)
         "control point ids once built, so it survives PatchAssembly.compact() "
         "(which renumbers ids) unchanged.")
         .def(py::init<int, const std::vector<size_t>&, const GlobalDOFManager&>(),
-             py::arg("dofs_per_control_point"), py::arg("control_points"), py::arg("global_dof_manager"))
-        .def("get_global_dof_indices", &PatchDOFManager::get_global_dof_indices, py::arg("local_control_point_idx"));
+             py::arg("dofs_per_control_point"), py::arg("control_points"), py::arg("global_dof_manager"),
+             "Build from the patch's dofs_per_cp, its global_indices list, and the "
+             "assembly-wide GlobalDOFManager. Typically called by "
+             "PatchAssembly.update_dof_managers() rather than directly.")
+        .def("get_global_dof_indices", &PatchDOFManager::get_global_dof_indices, py::arg("local_control_point_idx"),
+            "Return the assembly-wide DOF indices for local control point position "
+            "local_control_point_idx (u-fastest index into Patch.global_indices). "
+            "Combine with Patch.boundary_control_points() to identify constrained "
+            "DOFs for Dirichlet boundary conditions.");
 
-    py::class_<Patch, std::shared_ptr<Patch>>(m, "Patch")
+    py::class_<Patch, std::shared_ptr<Patch>>(m, "Patch",
+        "Links a BSplineTensor (parametric basis), a shared ControlPointManager "
+        "(physical control points and optional NURBS weights), and an optional "
+        "PatchDOFManager (DOF mapping). One patch of a multi-patch IGA model. "
+        "The DOF manager is required for integration and solution evaluation; "
+        "attach it at construction or via PatchAssembly.update_dof_managers().")
         .def(py::init<const BSplineTensor&, std::shared_ptr<ControlPointManager>, const std::vector<size_t>&, const std::vector<size_t>&>(),
              py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"))
         .def(py::init<const BSplineTensor&, std::shared_ptr<ControlPointManager>, const std::vector<size_t>&, const std::vector<size_t>&, std::shared_ptr<PatchDOFManager>>(),
              py::arg("tensor"), py::arg("cp_manager"), py::arg("global_indices"), py::arg("local_shape"), py::arg("dof_manager"))
-        .def("local_cp_ptr", static_cast<double*(Patch::*)(size_t)>(&Patch::local_cp_ptr),
-             py::arg("i_local"),
-             "Return pointer to local control point (as int or PyCapsule for Python?)")
         .def("control_point",
              [](const Patch& p, size_t i_local) {
                 auto ptr = p.local_cp_ptr(i_local);
                 ssize_t dim = p.cp_manager->dim_phys;
                 return py::array_t<double>({dim}, ptr);
             },
-            "Return Numpy 1D view on a local point")
+            py::arg("i_local"),
+            "Zero-copy 1D NumPy view (length dim_phys) of the coordinates of "
+            "local control point i_local (u-fastest index).")
         .def("local_control_point_view", &Patch::local_control_point_view,
-             "Return a zero-copy NumPy array view of global control points (indexing from Python needed)")
-        .def("evaluate_patch_nd", &Patch::EvaluatePatchND)
-        .def("evaluate_patch_nd_omp", &Patch::EvaluatePatchNDOMP)
-        .def("spans", &Patch::spans)
+             "Zero-copy NumPy view of all local control points. "
+             "Shape: local_shape + (dim_phys,), row-major. "
+             "Last axis is the coordinate (x, y[, z]).")
+        .def("evaluate_patch_nd", &Patch::EvaluatePatchND,
+             py::arg("spans"), py::arg("params"),
+             "Evaluate the geometric mapping (parametric -> physical) at n_pts points.\n"
+             "spans  : int array, shape (n_pts, n_param_dims) -- knot-span index per direction.\n"
+             "params : float array, shape (n_pts, n_param_dims) -- parametric coordinates.\n"
+             "Returns: float array, shape (n_pts, dim_phys) -- physical coordinates.\n"
+             "Single-threaded. For the parallel variant use evaluate_patch_nd_omp().\n"
+             "Note: evaluates the geometry, not an FE solution field. "
+             "For solution evaluation use PatchEvaluator.evaluate_solution().")
+        .def("evaluate_patch_nd_omp", &Patch::EvaluatePatchNDOMP,
+             py::arg("spans"), py::arg("params"),
+             "OpenMP-parallel version of evaluate_patch_nd(). Same signature and "
+             "return value; use for large point sets where parallelism pays off.")
+        .def("spans", &Patch::spans,
+             "Iterate over all non-degenerate knot spans of this patch. "
+             "Returns a SpanIterator whose items are lists [i_u, i_v, ...] "
+             "(one span index per parametric direction, u-fastest order). "
+             "Zero-length spans from knot repetitions are skipped automatically.")
         .def("control_points_for_span",
             [](const Patch &self, const std::vector<int>& span) {
                 auto pts = self.control_points_for_span(span);
@@ -240,8 +321,10 @@ PYBIND11_MODULE(bspline, m)
                 return arr;
             },
             py::arg("span"),
-            "Return array containing control points coordinates for a given span. Warning : data is return as stored in memory and need to be reshaped/transposed for proper use"
-        )
+            "Return the coordinates of the active control points for a given span "
+            "(u-fastest order, same order as PatchIntegrator uses internally). "
+            "Shape: (n_active, dim_phys) where n_active = product of (degree+1) "
+            "per direction. Low-level; used internally by PatchIntegrator.")
         .def("boundary_control_points", &Patch::boundary_control_points,
             py::arg("direction"), py::arg("side"), py::arg("span_min") = -1, py::arg("span_max") = -1,
             "Patch-LOCAL flat positions (u-fastest) of the control points on "
@@ -255,8 +338,8 @@ PYBIND11_MODULE(bspline, m)
             "dof_manager.get_global_dof_indices(local_pos) to get global "
             "dofs (control-point granularity needs no helper: any local "
             "position works directly with the DOF manager).")
-        .def("test", &Patch::Test)
-        .def_readonly("tensor", &Patch::tensor)
+        .def_readonly("tensor", &Patch::tensor,
+            "The BSplineTensor defining the parametric-to-physical mapping of this patch.")
         .def_property_readonly("n_cp", [](const Patch& self) { return self.global_indices.size(); },
             "Number of control points in the mapping (= product of local_shape).")
         .def_property_readonly("global_indices", [](const Patch& self) { return self.global_indices; },
@@ -264,13 +347,22 @@ PYBIND11_MODULE(bspline, m)
             "id in the shared ControlPointManager pool.")
         .def_property_readonly("local_shape", [](const Patch& self) { return self.local_shape; },
             "Number of basis functions per parametric direction [n_u, n_v, ...].")
-        .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; })
+        .def_property_readonly("dof_manager", [](const Patch& self) -> std::shared_ptr<PatchDOFManager> { return self.dof_manager; },
+            "PatchDOFManager attached to this patch, or None if the patch was "
+            "constructed without one (geometry-only phase, before DOF assignment). "
+            "Set by PatchAssembly.update_dof_managers() or by passing dof_manager "
+            "to the constructor. Required by PatchIntegrator and PatchEvaluator.")
         .def_property_readonly("cp_manager", [](const Patch& self) -> std::shared_ptr<ControlPointManager> { return self.cp_manager; },
             "Shared ControlPointManager holding the coordinates (and optional NURBS weights) "
             "of every control point referenced by this patch.");
 
 
-    py::class_<SpanNDIterator>(m, "SpanIterator")
+    py::class_<SpanNDIterator>(m, "SpanIterator",
+        "Iterator over the non-degenerate knot spans of a tensor-product B-spline. "
+        "Each item is a list of knot-span indices [i_u, i_v, ...] (one per "
+        "parametric direction, u-fastest). Zero-length spans produced by knot "
+        "repetitions (e.g. a C0 interface knot) are skipped automatically. "
+        "Obtain via Patch.spans().")
         .def("__iter__", [](SpanNDIterator &self) -> SpanNDIterator& {
             return self;
         })
@@ -281,13 +373,23 @@ PYBIND11_MODULE(bspline, m)
             self.next();
             return py::cast(result);
         })
-        .def("size", &SpanNDIterator::size)
-        .def("current", &SpanNDIterator::current)
-        .def("next", &SpanNDIterator::next);
+        .def("size", &SpanNDIterator::size,
+             "Total number of non-degenerate spans in this iterator.")
+        .def("current", &SpanNDIterator::current,
+             "Current span as a list of knot-span indices [i_u, i_v, ...].")
+        .def("next", &SpanNDIterator::next,
+             "Advance to the next non-degenerate span.");
 
-    py::class_<SpanGauss1D>(m, "SpanGauss1D")
-        .def_property_readonly("u_param", [](const SpanGauss1D& self) { return self.u_param;})
-        .def_property_readonly("weight", [](const SpanGauss1D& self) { return self.weight;})
+    py::class_<SpanGauss1D>(m, "SpanGauss1D",
+        "Precomputed Gauss quadrature data for one (span, Gauss-point) pair in "
+        "one parametric direction. Stored inside IGABasis1D.gauss_spans. "
+        "Fields: u_param (parametric coordinate), weight (Gauss weight), "
+        "N (list of basis function values, one entry per active function), "
+        "dN (corresponding derivatives).")
+        .def_property_readonly("u_param", [](const SpanGauss1D& self) { return self.u_param;},
+            "Parametric coordinate of this Gauss point in the knot-vector space.")
+        .def_property_readonly("weight", [](const SpanGauss1D& self) { return self.weight;},
+            "Gauss quadrature weight (already includes the span half-length Jacobian factor).")
         .def_property_readonly("N", [](const SpanGauss1D& self) {
             std::vector<py::array_t<double>> arrays;
             for (const auto& vec : self.N) {
@@ -296,7 +398,8 @@ PYBIND11_MODULE(bspline, m)
                 arrays.push_back(arr);
             }
             return arrays;
-        })
+        }, "list of arrays, one per Gauss point: basis function values for the p+1 "
+           "active basis functions in this span (u-fastest order).")
         .def_property_readonly("dN", [](const SpanGauss1D& self) {
             std::vector<py::array_t<double>> arrays;
             for (const auto& vec : self.dN) {
@@ -305,7 +408,8 @@ PYBIND11_MODULE(bspline, m)
                 arrays.push_back(arr);
             }
             return arrays;
-        });
+        }, "list of arrays, one per Gauss point: first parametric derivatives of the "
+           "p+1 active basis functions (same order as N).");
         // .def_property_readonly("N", [](const SpanGauss1D& self) {return self.N;})
         // .def_property_readonly("dN", [](const SpanGauss1D& self) {return self.dN;});
 
@@ -333,7 +437,10 @@ See Also
 PatchIntegrator : uses two IGABasis1D objects (one per parametric direction)
     to assemble stiffness / mass matrices over a 2-D patch.
         )doc")
-        .def_property_readonly("gauss_spans", [](const IGABasis1D& self) {return self.gauss_spans;})
+        .def_property_readonly("gauss_spans", [](const IGABasis1D& self) {return self.gauss_spans;},
+            "list[SpanGauss1D] — one entry per non-empty knot span, in knot-vector order. "
+            "Each SpanGauss1D holds the precomputed u_param, weight, N and dN arrays "
+            "for gauss_n quadrature points in that span.")
         .def_property_readonly("span_indices",
             [](const IGABasis1D& self) {
                 // Return as a dict {knot_span_index: gauss_span_index} (sorted for determinism)
@@ -374,9 +481,12 @@ IGABasis1D
         .def(py::init([](double E, double nu, double rho, double thickness) {
                 return Material{E, nu, rho, thickness};
             }),
-            py::arg("E"), py::arg("nu"), py::arg("rho") = 0.0, py::arg("thickness") = 1.0)
-        .def_readwrite("E", &Material::E)
-        .def_readwrite("nu", &Material::nu)
+            py::arg("E"), py::arg("nu"), py::arg("rho") = 0.0, py::arg("thickness") = 1.0,
+            "Construct a material. E: Young's modulus; nu: Poisson's ratio; "
+            "rho: mass density (>0 for mass integration, default 0); "
+            "thickness: out-of-plane thickness for 2D plane problems (default 1).")
+        .def_readwrite("E", &Material::E, "Young's modulus.")
+        .def_readwrite("nu", &Material::nu, "Poisson's ratio.")
         .def_readwrite("rho", &Material::rho,
             "Mass density. Must be > 0 to use integrate_mass()/assemble_mass().")
         .def_readwrite("thickness", &Material::thickness,
@@ -394,7 +504,9 @@ IGABasis1D
         "Subclass from Python and override n_dofs_per_cp() -> int and "
         "stiffness_density(grad_a, grad_b, x_phys) -> ndarray (n x n). "
         "PlaneStress and PlaneStrain are the built-in concrete subclasses.")
-        .def(py::init<const Material&>(), py::arg("material"))
+        .def(py::init<const Material&>(), py::arg("material"),
+            "Base-class constructor for Python subclasses. Prefer PlaneStress(mat) "
+            "or PlaneStrain(mat) unless implementing a custom law.")
         .def("n_dofs_per_cp", &ConstitutiveLaw::n_dofs_per_cp,
             "Number of displacement DOFs per control point (2 for plane problems, 3 for 3D solid).")
         .def("stiffness_density", &ConstitutiveLaw::stiffness_density,
@@ -409,12 +521,16 @@ IGABasis1D
     py::class_<PlaneStress, ConstitutiveLaw, std::shared_ptr<PlaneStress>>(m, "PlaneStress",
         "2D plane-stress constitutive law (sigma_33 = 0). "
         "lambda_eff = nu*E / (1 - nu^2), mu = E / (2*(1+nu)).")
-        .def(py::init<const Material&>(), py::arg("material"));
+        .def(py::init<const Material&>(), py::arg("material"),
+            "Construct from a Material. "
+            "Use for thin structures where the out-of-plane stress is zero.");
 
     py::class_<PlaneStrain, ConstitutiveLaw, std::shared_ptr<PlaneStrain>>(m, "PlaneStrain",
         "2D plane-strain constitutive law (eps_33 = 0). "
         "lambda_eff = nu*E / ((1+nu)*(1-2*nu)), mu = E / (2*(1+nu)).")
-        .def(py::init<const Material&>(), py::arg("material"));
+        .def(py::init<const Material&>(), py::arg("material"),
+            "Construct from a Material. "
+            "Use for thick cross-sections where the out-of-plane strain is zero.");
 
     py::class_<Traction, PyTraction, std::shared_ptr<Traction>>(m, "Traction",
         "Base class for a distributed boundary load (force per unit length), "
@@ -422,13 +538,18 @@ IGABasis1D
         "evaluate(physical_point) -> np.ndarray to define position-dependent "
         "tractions. ConstantTraction is the built-in concrete subclass for "
         "uniform loads.")
-        .def(py::init<>())
-        .def("evaluate", &Traction::evaluate, py::arg("physical_point"));
+        .def(py::init<>(), "Construct a Traction base object; subclass and override evaluate().")
+        .def("evaluate", &Traction::evaluate, py::arg("physical_point"),
+            "Override in a Python subclass: return the traction vector (force per unit "
+            "length) at physical_point as a 1D NumPy array of length dim_phys. "
+            "PatchIntegrator.integrate_boundary_load() calls this once per Gauss point "
+            "on the loaded edge.");
 
     py::class_<ConstantTraction, Traction, std::shared_ptr<ConstantTraction>>(m, "ConstantTraction",
         "A uniform traction vector (tx, ty), constant over the whole "
         "loaded edge/span-range.")
-        .def(py::init<const Eigen::Vector2d&>(), py::arg("value"));
+        .def(py::init<const Eigen::Vector2d&>(), py::arg("value"),
+            "Construct with a constant traction vector value (shape (2,) for 2D).");
 
     py::class_<BoundaryLoadSpec>(m, "BoundaryLoadSpec",
         "One distributed boundary load to assemble over a whole "
@@ -448,19 +569,44 @@ IGABasis1D
                 return spec;
             }),
             py::arg("patch_index"), py::arg("direction"), py::arg("side"),
-            py::arg("traction"), py::arg("span_min") = -1, py::arg("span_max") = -1)
-        .def_readwrite("patch_index", &BoundaryLoadSpec::patch_index)
-        .def_readwrite("direction", &BoundaryLoadSpec::direction)
-        .def_readwrite("side", &BoundaryLoadSpec::side)
-        .def_readwrite("traction", &BoundaryLoadSpec::traction)
-        .def_readwrite("span_min", &BoundaryLoadSpec::span_min)
-        .def_readwrite("span_max", &BoundaryLoadSpec::span_max);
+            py::arg("traction"), py::arg("span_min") = -1, py::arg("span_max") = -1,
+            "Construct a boundary load spec. patch_index: 0-based index in the assembly. "
+            "direction: fixed parametric direction (0=u, 1=v). side: 0=first, 1=last. "
+            "traction: Traction object (e.g. ConstantTraction). "
+            "span_min/span_max: restrict to a sub-range of the edge (-1/-1 = whole edge).")
+        .def_readwrite("patch_index", &BoundaryLoadSpec::patch_index,
+            "0-based index of the patch this load applies to, in PatchAssembly.get_patchs() order.")
+        .def_readwrite("direction", &BoundaryLoadSpec::direction,
+            "Fixed parametric direction of the loaded edge (0=u, 1=v).")
+        .def_readwrite("side", &BoundaryLoadSpec::side,
+            "0 for the first boundary (u=0 or v=0), 1 for the last (u=1 or v=1).")
+        .def_readwrite("traction", &BoundaryLoadSpec::traction,
+            "Traction object evaluated at each Gauss point along the loaded edge.")
+        .def_readwrite("span_min", &BoundaryLoadSpec::span_min,
+            "First knot-span index (in the non-fixed direction) of the loaded sub-range. "
+            "-1 means start from the first non-degenerate span (default: load whole edge).")
+        .def_readwrite("span_max", &BoundaryLoadSpec::span_max,
+            "Last knot-span index (inclusive) of the loaded sub-range. "
+            "-1 means end at the last non-degenerate span (default: load whole edge).");
 
-    py::class_<PatchIntegrator>(m, "PatchIntegrator")
+    py::class_<PatchIntegrator>(m, "PatchIntegrator",
+        "Gauss-quadrature integrator over a single 2D patch. Assembles stiffness "
+        "and mass matrices, boundary load vectors, and custom scalar integrals via "
+        "a ConstitutiveLaw. The integration dispatches at construction time between "
+        "a B-spline and a NURBS code path (if constexpr), so pure B-spline patches "
+        "run with no rational-basis overhead. "
+        "For multi-patch assemblies use the static assemble_*() class methods.")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&,
                       std::shared_ptr<const ConstitutiveLaw>>(),
-             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("law"))
-        .def("integrate_stiffness", &PatchIntegrator::integrateStiffness)
+             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("law"),
+             "Construct for the given patch and precomputed Gauss data (one IGABasis1D "
+             "per parametric direction). law defines the mechanical behaviour and the "
+             "number of DOFs per control point.")
+        .def("integrate_stiffness", &PatchIntegrator::integrateStiffness,
+            "Assemble the stiffness matrix of this single patch. "
+            "Returns a scipy.sparse.csc_matrix of size (n_dof, n_dof) where "
+            "n_dof = n_cp * law.n_dofs_per_cp(). "
+            "For multi-patch assemblies use assemble_stiffness() instead.")
         .def("integrate_mass", &PatchIntegrator::integrateMass,
             "Same as integrate_stiffness(), but for the consistent mass matrix of "
             "this single patch. Requires law.material().rho > 0.")
@@ -533,10 +679,15 @@ IGABasis1D
         "[u_x_cp0, u_y_cp0, u_x_cp1, u_y_cp1, ...] (2 DOFs per CP for 2D "
         "problems). PatchIntegrator multiplies the returned value by the Gauss "
         "weight and abs(detJ) before summing.")
-        .def(py::init<>())
+        .def(py::init<>(), "Construct; subclass and override compute_scalar_integrand().")
         .def("compute_scalar_integrand", &ScalarLocalOperator::computeScalarIntegrand,
              py::arg("R"), py::arg("dRdx"), py::arg("dRdy"),
-             py::arg("physical_point"), py::arg("u_local"));
+             py::arg("physical_point"), py::arg("u_local"),
+             "Override in a Python subclass: return the scalar integrand at one Gauss point. "
+             "R, dRdx, dRdy: lists (length n_active) of basis values and physical-space gradients. "
+             "physical_point: (x, y) physical coordinates (shape (2,)). "
+             "u_local: flat DOF values [u_x0, u_y0, u_x1, u_y1, ...] for the active control points. "
+             "The returned float is multiplied by |detJ| * gauss_weight and accumulated over the patch.");
 
     py::class_<LocalOperator, PyLocalOperator, std::shared_ptr<LocalOperator>>(m, "LocalOperator",
         "Base class to subclass FROM PYTHON for a custom integration term. "
@@ -549,9 +700,14 @@ IGABasis1D
         "and abs(detJ) and sums it over every Gauss point of every span. "
         "Intended for development/testing convenience, not performance: every "
         "Gauss point triggers one Python call.")
-        .def(py::init<>())
+        .def(py::init<>(), "Construct; subclass and override compute_integrand().")
         .def("compute_integrand", &LocalOperator::computeIntegrand,
-             py::arg("R"), py::arg("dRdx"), py::arg("dRdy"));
+             py::arg("R"), py::arg("dRdx"), py::arg("dRdy"),
+             "Override in a Python subclass: return the local matrix contribution at one "
+             "Gauss point. R, dRdx, dRdy are lists (length n_active) of basis values and "
+             "their physical-space gradients for the active basis functions in this span "
+             "(u-fastest order). The returned (n x n) matrix is multiplied by |detJ| * "
+             "gauss_weight and summed over every Gauss point of every span.");
 
     py::class_<PatchAssembly>(m, "PatchAssembly",
         R"doc(
@@ -578,7 +734,7 @@ Typical workflow, in order:
    ``detect_shared_control_points()`` / ``detect_interfaces()`` afterwards
    if their results are still needed (compact() invalidates both).
         )doc")
-        .def(py::init<>())
+        .def(py::init<>(), "Construct an empty assembly; call add_patch() for each patch.")
         .def("add_patch", &PatchAssembly::addPatch, py::arg("patch"),
             "Add a patch to the assembly.")
         .def("detect_shared_control_points", &PatchAssembly::detectSharedControlPoints,
@@ -648,7 +804,17 @@ Typical workflow, in order:
                     result.append(d);
                 }
                 return result;
-            })
+            },
+            "Return the list of detected interfaces (one dict per compatible shared edge). "
+            "Each dict has keys: "
+            "patch_a/patch_b (patch indices), "
+            "direction_a/direction_b (fixed parametric direction of the shared edge on each patch), "
+            "side_a/side_b (0=first, 1=last), "
+            "varying_direction_a/varying_direction_b (direction to refine on each patch "
+            "to propagate refinement across this interface), "
+            "reversed (bool: True if the shared edge is traversed in opposite senses on "
+            "the two patches, e.g. u of patch_a glued to v of patch_b). "
+            "Empty until detect_interfaces() has been called.")
         .def("get_patchs_sharing_control_points", &PatchAssembly::getPatchsSharingControlPoints, py::arg("global_cp_index"),
             "Return the list of patch indices sharing the given global "
             "control point id (empty if detect_shared_control_points() "
@@ -661,18 +827,35 @@ Typical workflow, in order:
             "-- does not require detect_shared_control_points() to have "
             "been called first.")
         .def("get_control_points_for_patch", &PatchAssembly::getControlPointsForPatch, py::arg("patch_index"),
-            "Return the number of control points of patches[patch_index].")
+            "Return the number of control points of patches[patch_index] "
+            "(= product of local_shape entries).")
         .def("apply_transformation_to_control_points", [](const PatchAssembly& self, const std::vector<Eigen::VectorXd>& old_control_points, size_t patch_index) {
                 return self.applyTransformationToControlPoints(old_control_points, patch_index);
-            }, py::arg("old_control_points"), py::arg("patch_index")
+            }, py::arg("old_control_points"), py::arg("patch_index"),
+            "Apply patches[patch_index]'s stored transition matrix to a list of "
+            "pre-refinement control points and return the post-refinement list. "
+            "Each element of old_control_points is a 1D array of physical coordinates "
+            "for one control point. Requires set_transformation_matrix() to have been "
+            "called first (or a refiner's transition matrix to be stored)."
         )
         .def("apply_transformation_to_dofs", [](const PatchAssembly& self, const Eigen::VectorXd& old_dofs, size_t patch_index, size_t dim_phys) {
                 return self.applyTransformationToDOFs(old_dofs, patch_index, dim_phys);
-            }, py::arg("old_dofs"), py::arg("patch_index"), py::arg("dim_phys")
+            }, py::arg("old_dofs"), py::arg("patch_index"), py::arg("dim_phys"),
+            "Apply patches[patch_index]'s stored transition matrix to a flat "
+            "pre-refinement DOF vector (length n_old_cp * dim_phys) and return "
+            "the post-refinement DOF vector (length n_new_cp * dim_phys). "
+            "Useful for warm-starting a refined problem from an existing solution. "
+            "Requires set_transformation_matrix() to have been called first."
         )
         .def("set_transformation_matrix", [](PatchAssembly& self, size_t patch_index, const Eigen::MatrixXd matrix) {
                     return self.setTransformationMatrix(patch_index, matrix);
-            }, py::arg("patch_index"), py::arg("matrix")
+            }, py::arg("patch_index"), py::arg("matrix"),
+            "Store a refinement transition matrix for patches[patch_index]. "
+            "Typically the matrix returned by a refiner (e.g. HRefiner.refine(), "
+            "SubdivisionRefiner.refine()), shape (n_new_cp, n_old_cp). "
+            "Enables apply_transformation_to_control_points() and "
+            "apply_transformation_to_dofs() for this patch. "
+            "Defaults to identity (no transformation stored) until set."
         )
         .def("get_patchs", &PatchAssembly::getPatchs,
             "Return the list of patches added to this assembly, in add_patch() order.")
@@ -694,8 +877,14 @@ Typical workflow, in order:
             "Return the per-patch refinement transformation matrices "
             "(identity until set_transformation_matrix() is called).");
 
-    py::class_<RefinementOperator, std::shared_ptr<RefinementOperator>>(m, "RefinementOperator")
-        .def("get_type", &RefinementOperator::getType)
+    py::class_<RefinementOperator, std::shared_ptr<RefinementOperator>>(m, "RefinementOperator",
+        "Abstract base class for in-place patch refinement. Concrete subclasses: "
+        "HRefiner (single knot insertion), SubdivisionRefiner (uniform bisection), "
+        "PRefiner (degree elevation). Each refine() call updates the patch's "
+        "BSplineTensor and ControlPointManager in-place and returns the transition "
+        "matrix (n_new_cp x n_old_cp).")
+        .def("get_type", &RefinementOperator::getType,
+            "Return a short string identifying the refiner type ('h', 'subdivision', 'p').")
         .def("refine", [](const RefinementOperator& self, Patch& patch) {
             Eigen::MatrixXd T;
             self.refine(patch, T);
@@ -703,17 +892,43 @@ Typical workflow, in order:
         }, py::arg("patch"),
            "Refine patch in-place. Returns transition_matrix (nb_new_cp x nb_old_cp).");
 
-    py::class_<HRefiner, RefinementOperator, std::shared_ptr<HRefiner>>(m, "HRefiner")
-        .def(py::init<int, double>(), py::arg("direction"), py::arg("knot"))
+    py::class_<HRefiner, RefinementOperator, std::shared_ptr<HRefiner>>(m, "HRefiner",
+        "Single knot insertion refiner (h-refinement). Inserts one knot value into "
+        "one parametric direction via Boehm's algorithm (Piegl & Tiller A5.1). "
+        "Chain multiple calls to insert several knots; for uniform refinement "
+        "SubdivisionRefiner is more efficient.")
+        .def(py::init<int, double>(), py::arg("direction"), py::arg("knot"),
+            "direction: parametric direction (0=u, 1=v). "
+            "knot: the value to insert (must lie within the existing knot span).")
         .def("refine", [](const HRefiner& self, Patch& patch) {
             Eigen::MatrixXd T;
             self.refine(patch, T);
             return T;
         }, py::arg("patch"),
-           "Insert knot in-place (h-refinement). Returns transition_matrix (nb_new_cp x nb_old_cp).");
+           "Insert knot in-place (h-refinement). Returns transition_matrix (nb_new_cp x nb_old_cp).")
+        .def("refine_1d", [](const HRefiner& self, Patch& patch,
+                              const std::unordered_set<size_t>& protected_global_ids) {
+            Eigen::MatrixXd T;
+            self.refine_1d(patch, T, protected_global_ids);
+            return T;
+        }, py::arg("patch"), py::arg("protected_global_ids") = std::unordered_set<size_t>{},
+           "Fast path: insert one knot in-place, return only the 1D transition matrix "
+           "(n_new_1d x n_old_1d). Use nd_transition_from_1d() to reconstruct the full "
+           "nD matrix if needed. "
+           "protected_global_ids: ids borrowed from another patch (shared interface) that "
+           "must never be recomputed/renumbered; if empty (default), this patch is assumed "
+           "to exclusively own its cp_manager range. "
+           "Use as refine_1d_fn in PatchAssembly.refine_with_propagation(): "
+           "lambda patch, d, ids: HRefiner(d, knot).refine_1d(patch, ids).");
 
-    py::class_<SubdivisionRefiner, RefinementOperator, std::shared_ptr<SubdivisionRefiner>>(m, "SubdivisionRefiner")
-        .def(py::init<int, int>(), py::arg("direction"), py::arg("n_levels") = 1)
+    py::class_<SubdivisionRefiner, RefinementOperator, std::shared_ptr<SubdivisionRefiner>>(m, "SubdivisionRefiner",
+        "Uniform knot insertion refiner: bisects every existing knot span n_levels times "
+        "in one parametric direction (element count multiplied by 2^n_levels). "
+        "refine_1d() exposes a fast path returning only the 1D transition matrix, "
+        "suitable for PatchAssembly.refine_with_propagation().")
+        .def(py::init<int, int>(), py::arg("direction"), py::arg("n_levels") = 1,
+            "direction: parametric direction (0=u, 1=v). "
+            "n_levels: number of bisection levels (default 1, i.e. double the element count).")
         .def("refine", [](const SubdivisionRefiner& self, Patch& patch) {
             Eigen::MatrixXd T;
             self.refine(patch, T);
@@ -732,8 +947,14 @@ Typical workflow, in order:
            "never be recomputed/renumbered; if empty (default), this patch is assumed to "
            "exclusively own its cp_manager range.");
 
-    py::class_<PRefiner, RefinementOperator, std::shared_ptr<PRefiner>>(m, "PRefiner")
-        .def(py::init<int, int>(), py::arg("direction"), py::arg("n_elevations") = 1)
+    py::class_<PRefiner, RefinementOperator, std::shared_ptr<PRefiner>>(m, "PRefiner",
+        "Degree elevation refiner (p-refinement). Elevates the polynomial degree by "
+        "n_elevations steps in one parametric direction (Piegl & Tiller A5.9). "
+        "Typically combined with knot insertion for k-refinement: elevate degree first, "
+        "then insert knots to recover continuity control.")
+        .def(py::init<int, int>(), py::arg("direction"), py::arg("n_elevations") = 1,
+            "direction: parametric direction (0=u, 1=v). "
+            "n_elevations: number of degree elevation steps (default 1).")
         .def("refine", [](const PRefiner& self, Patch& patch) {
             Eigen::MatrixXd T;
             self.refine(patch, T);
@@ -778,11 +999,15 @@ Typical workflow, in order:
         elem_index : list[int]
             0-based element multi-index (e_0, e_1, ...).
         )pbdoc")
-        .def_readonly("C", &BezierElementND::C)
+        .def_readonly("C", &BezierElementND::C,
+            "Extraction matrix, shape (n_local, n_local): N_active(xi) = C @ B_nd(xi_hat) "
+            "where n_local = prod_d(p_d + 1).")
         .def_property_readonly("active_indices",
-            [](const BezierElementND& self) { return self.active; })
+            [](const BezierElementND& self) { return self.active; },
+            "u-fastest flat CP indices of the active B-spline basis functions on this element.")
         .def_property_readonly("elem_index",
-            [](const BezierElementND& self) { return self.elem_index; });
+            [](const BezierElementND& self) { return self.elem_index; },
+            "0-based element multi-index (e_0, e_1, ...) of this element in the patch grid.");
 
     py::class_<PatchEvaluator>(m, "PatchEvaluator",
         R"doc(
@@ -799,7 +1024,10 @@ Parameters
 patch : Patch
     Patch with a PatchDOFManager attached.
         )doc")
-        .def(py::init<const Patch&>(), py::arg("patch"))
+        .def(py::init<const Patch&>(), py::arg("patch"),
+            "Construct for the given patch. The patch must already carry a "
+            "PatchDOFManager (attached at construction or via "
+            "PatchAssembly.update_dof_managers()).")
         .def("evaluate_solution", &PatchEvaluator::evaluateSolutionOMP,
              py::arg("params"), py::arg("u_global"),
              R"doc(
@@ -846,7 +1074,8 @@ ndarray, shape (n_pts, n_dofs_per_cp)
         Ce_v = BezierExtractor(direction=1).extract(patch)  # list of (p_v+1, p_v+1) matrices
         spans_u = BezierExtractor.spans(patch, direction=0) # span index per element
         )pbdoc")
-        .def(py::init<int>(), py::arg("direction"))
+        .def(py::init<int>(), py::arg("direction"),
+            "Construct for the given parametric direction (0=u, 1=v, 2=w).")
         .def("extract", [](const BezierExtractor& self, const Patch& patch) -> py::list {
             auto Ce = self.extract(patch);
             py::list result;

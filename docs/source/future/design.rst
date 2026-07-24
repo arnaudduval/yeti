@@ -46,8 +46,11 @@ sections that follow explain the *why* behind each relationship.
 
         class ControlPointManager {
             +coords
-            add_point()
+            +weights
+            +is_rational : bool
+            add_point(w=1.0)
             coords_view()
+            weights_view()
         }
 
         class Patch {
@@ -120,6 +123,38 @@ This is also why :meth:`ControlPointManager.coords_view() <yeti_iga.future.bspli
 returns a zero-copy NumPy view rather than a fresh array: the buffer is the single
 source of truth for every patch's geometry, and a small ``mutex`` on the manager keeps
 concurrent appends safe.
+
+NURBS: rational bases with zero B-spline overhead
+----------------------------------------------------
+
+B-splines are the default — all basis functions are evaluated as plain polynomials and no
+weight-related computation occurs. NURBS are activated by passing ``w != 1.0`` to
+:meth:`ControlPointManager.add_point() <yeti_iga.future.bspline.ControlPointManager.add_point>`.
+Once activated, ``is_rational`` returns ``True`` and the rational basis
+:math:`R_a = w_a N_a / W` (where :math:`W = \sum_b w_b N_b`) replaces the polynomial
+basis in every integration and evaluation routine.
+
+The key constraint is that **B-spline patches pay zero additional cost** — no extra
+memory, no division, no branch inside the Gauss loop. This is enforced by a
+``if constexpr`` dispatch at the level of the span-collection methods
+(``collectTripletsImpl``, ``collectMassTripletsImpl``, ``collectOperatorTripletsImpl``,
+``computeLocalBoundaryLoadContribution``). Each checks
+``patch.cp_manager->is_rational()`` **once**, outside every loop, then instantiates one
+of two fully separate template paths:
+
+- ``..Impl<false>`` (B-spline) — identical to the pre-NURBS code, with every NURBS
+  branch compiled away by the optimizer.
+- ``..Impl<true>`` (NURBS) — fetches per-span weights via ``Patch::weights_for_span()``
+  and applies the quotient-rule rationalisation inside the Gauss loop.
+
+:class:`~yeti_iga.future.bspline.PatchEvaluator`'s evaluation loop follows the same
+split.
+
+``ControlPointManager`` activates rational mode lazily: the first ``add_point(...,
+w=...)`` call with ``w != 1.0`` allocates the weights vector and backfills 1.0 for
+every previously added point. Patches that never use a non-unit weight keep ``weights``
+empty, ``is_rational()`` returning ``False``, and the B-spline path stays active — zero
+overhead, by construction.
 
 Refinement of shared patches: protected vs. private control points
 -----------------------------------------------------------------------
@@ -447,6 +482,124 @@ changing a single line of the boundary-load integration loop.
 :class:`~yeti_iga.future.bspline.ConstantTraction` is the only kernel implemented so
 far; the abstraction exists ahead of that need, the Python-callback subclass does not
 (yet).
+
+Constitutive law architecture: B-free formulation
+----------------------------------------------------
+
+Material data vs. mechanical behaviour
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The integration infrastructure needs two independent pieces of information: the physical
+constants that characterise a material (Young's modulus, Poisson's ratio, density…) and
+the mechanical formulation that converts those constants into a stiffness contribution at
+a Gauss point. These are separated into two distinct objects:
+
+- :class:`~yeti_iga.future.bspline.Material` — a plain data struct. It stores ``E``,
+  ``nu``, ``rho`` (default 0), and ``thickness`` (default 1), and computes derived
+  elastic moduli (``mu()``, ``lambda_3d()``, ``bulk_modulus()``). It is *not*
+  constructible through the abstract law hierarchy and carries no formulation knowledge.
+- :class:`~yeti_iga.future.bspline.ConstitutiveLaw` — an abstract strategy class. It
+  holds a reference to a ``Material`` (accessible via ``material()``) and declares two
+  pure-virtual methods: ``n_dofs_per_cp() -> int`` and
+  ``stiffness_density(grad_a, grad_b, x_phys) -> matrix``. Concrete subclasses
+  implement those two methods for a specific mechanical formulation.
+
+This separation lets the same ``Material`` instance be reused across different
+formulations without coupling them: ``PlaneStress(mat)`` and ``PlaneStrain(mat)`` both
+accept the same ``mat``; future additions (``Solid3D``, ``Axisymmetric``, J2 plastic)
+will do the same. It also opens the door to Python subclassing — see below.
+
+The B-free stiffness kernel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The built-in formulations (``PlaneStress``, ``PlaneStrain``) implement a **B-free**
+stiffness kernel instead of the classical
+:math:`\mathbf{B}^T \mathbf{D} \mathbf{B}` matrix product. For a pair of basis-function
+physical-space gradients :math:`\nabla R_a` and :math:`\nabla R_b`, the elementary
+stiffness block at a Gauss point is:
+
+.. math::
+
+   \mathbf{K}^{ab} = \lambda\,(\nabla R_a \otimes \nabla R_b^T)
+                   + \mu\,(\nabla R_b \otimes \nabla R_a^T)
+                   + \mu\,(\nabla R_a \cdot \nabla R_b)\,\mathbf{I}
+
+where :math:`\lambda` and :math:`\mu` are the Lamé constants of the chosen formulation
+(:math:`\lambda_\text{PS} = \nu E/(1-\nu^2)` for plane stress,
+:math:`\lambda_\text{PE} = \nu E/((1+\nu)(1-2\nu))` for plane strain, :math:`\mu`
+identical). For linear isotropic elasticity this is mathematically equivalent to
+:math:`\mathbf{B}^T \mathbf{D} \mathbf{B}` — the two formulations produce the same
+global stiffness matrix.
+
+The practical advantages over the B-matrix approach are:
+
+- **Dimension-agnostic**: the formula holds for 2D, 3D, shell, and axisymmetric problems
+  without changing the integration loop — only the Lamé constants differ.
+- **No Voigt encoding**: the outer-product form avoids assembling the ``B`` matrix and
+  the Voigt-packed ``D`` matrix entirely; for an isotropic law the number of operations
+  per Gauss point is :math:`O(n^2)` instead of :math:`O(n^2 d^2)` where :math:`n` is
+  ``n_dofs_per_cp`` and :math:`d` the spatial dimension.
+- **Natural extension point**: anisotropic or path-dependent materials (J2 plasticity,
+  thermoelasticity) implement ``stiffness_density`` with their own algebra, with no
+  changes to the integration loop and no Voigt convention to maintain.
+
+Python subclassing via pybind11 trampoline
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:class:`~yeti_iga.future.bspline.ConstitutiveLaw` is the third class in ``future``
+exposed through a pybind11 trampoline (after
+:class:`~yeti_iga.future.bspline.LocalOperator` and
+:class:`~yeti_iga.future.bspline.Traction`). Subclass it from Python and override
+``n_dofs_per_cp()`` and ``stiffness_density(grad_a, grad_b, x_phys)`` to define a
+custom material model — the integration loop in ``PatchIntegrator`` calls these methods
+via the virtual dispatch and weights the result by the Gauss weight and ``|detJ|``
+before accumulating it into the local stiffness matrix.
+
+One implementation detail worth noting: ``ConstitutiveLaw``'s constructor is
+``protected`` (it is abstract — direct instantiation makes no sense). pybind11's
+standard ``using Base::Base;`` inheritance keeps the same access level, making the
+constructor inaccessible from the binding layer. The trampoline therefore defines an
+explicit ``public`` constructor that delegates to the protected base, which is the
+canonical fix for this pattern.
+
+Solution evaluation and scalar integrals
+------------------------------------------
+
+Evaluating a FE solution at arbitrary points
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once a linear system is solved, the displacement field
+:math:`u_h(\xi) = \sum_a R_a(\xi)\,d_a` must be evaluated at a set of parametric
+points — typically to generate a deformed-mesh plot or to compute error norms against an
+analytical solution. :class:`~yeti_iga.future.bspline.PatchEvaluator` handles this:
+given a ``Patch`` with a ``PatchDOFManager`` and a global solution vector ``u_global``,
+``evaluate_solution(params, u_global)`` returns the field values at every parametric
+point in ``params`` (shape ``(n_pts, n_dofs_per_cp)``).
+
+The evaluation loop is OpenMP-parallel over points and NURBS-aware: the same
+``if constexpr (IsRational)`` dispatch used by ``PatchIntegrator`` ensures that B-spline
+patches never pay any rationalisation cost.
+
+Post-processing scalar quantities: ScalarLocalOperator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:class:`~yeti_iga.future.bspline.ScalarLocalOperator` addresses a different
+post-processing need: computing a single scalar over the patch (e.g. an
+:math:`L^2` or :math:`H^1` error norm, an energy functional) that depends on both the
+geometry and the current FE solution :math:`u_h`. It is the scalar counterpart of
+:class:`~yeti_iga.future.bspline.LocalOperator`: subclass it from Python and override
+``compute_scalar_integrand(R, dRdx, dRdy, physical_point, u_local) -> float``; the
+integration loop in
+:meth:`PatchIntegrator.integrate_scalar_operator() <yeti_iga.future.bspline.PatchIntegrator.integrate_scalar_operator>`
+supplies the rationalized basis values, physical-space gradients, physical coordinates,
+and local DOF values at each Gauss point, then weights the returned scalar by the Gauss
+weight and ``|detJ|`` before accumulating.
+
+Compared to ``LocalOperator`` (which returns a matrix and is used during assembly),
+``ScalarLocalOperator`` returns a float and is used during post-processing. Both rely on
+the same per-Gauss-point granularity rationale: the costly Jacobian inversion and
+NURBS rationalisation remain in validated C++; only the problem-specific algebra moves
+to Python.
 
 Bézier extraction's role
 ----------------------------

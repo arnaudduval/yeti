@@ -211,6 +211,23 @@ void HRefiner::refine(
 }
 
 
+void HRefiner::refine_1d(Patch& patch, Eigen::MatrixXd& T_1d,
+                          const std::unordered_set<size_t>& protected_global_ids) const {
+    if (direction_ < 0 || direction_ >= static_cast<int>(patch.tensor.components.size()))
+        throw std::invalid_argument("Invalid direction for knot insertion.");
+
+    const BSpline& spline = patch.tensor.components[direction_];
+    int p = spline.getDegree();
+    std::vector<double> new_kv;
+    HRefiner::compute_1d_transition(spline, knot_, T_1d, new_kv);
+    HRefiner::apply_1d_cp_update(patch, direction_, T_1d, protected_global_ids);
+
+    std::vector<BSpline> new_components = patch.tensor.components;
+    new_components[direction_] = BSpline(p, py::cast(new_kv));
+    patch.tensor = BSplineTensor(new_components);
+}
+
+
 // ---------------------------------------------------------------------------
 // Static helpers
 // ---------------------------------------------------------------------------

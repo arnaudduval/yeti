@@ -8,7 +8,9 @@ import numpy as np
 
 # pylint: disable=no-name-in-module
 from yeti_iga.future.bspline import (
-    BSpline, BSplineSurface, ControlPointManager, Patch, HRefiner
+    BSpline, BSplineSurface, ControlPointManager, Patch, HRefiner,
+    GlobalDOFManager, PatchDOFManager, PatchAssembly, SubdivisionRefiner,
+    nd_transition_from_1d,
 )
 
 
@@ -219,6 +221,147 @@ def test_hrefiner_geometry_preservation_d2():
     print(f"  new CPs:\n{new_coords}")
 
 
+def test_hrefiner_refine_1d_consistency():
+    """
+    refine_1d() must yield the same geometry as refine() but return only the
+    1D transition matrix.  The full nD matrix reconstructed via
+    nd_transition_from_1d() must match the one returned by refine().
+    """
+    # Reference patch: bilinear, 2x2 CPs
+    def make_patch():
+        return build_surface_patch(
+            1, 1,
+            kv_u=[0., 0., 1., 1.],
+            kv_v=[0., 0., 1., 1.],
+            cp_coords=[[0., 0.], [1., 0.],
+                       [0., 1.], [1., 1.]]
+        )
+
+    # --- full refine ---
+    patch_full, nu, nv = make_patch()
+    shape_before = [nu, nv]
+    T_nd = HRefiner(direction=0, knot=0.5).refine(patch_full)
+    coords_full = get_cp_coords(patch_full, patch_full.n_cp)
+    shape_after_full = list(patch_full.local_shape)
+
+    # --- refine_1d ---
+    patch_1d, nu2, nv2 = make_patch()
+    T_1d = HRefiner(direction=0, knot=0.5).refine_1d(patch_1d)
+    coords_1d = get_cp_coords(patch_1d, patch_1d.n_cp)
+    shape_after_1d = list(patch_1d.local_shape)
+
+    # 1D matrix must be smaller than nD
+    assert T_1d.shape == (nu + 1, nu), (
+        f"Expected T_1d shape ({nu+1}, {nu}), got {T_1d.shape}"
+    )
+    assert T_nd.shape == ((nu + 1) * nv, nu * nv), (
+        f"Expected T_nd shape ({(nu+1)*nv}, {nu*nv}), got {T_nd.shape}"
+    )
+
+    # Geometry must be identical
+    assert np.allclose(coords_full, coords_1d, atol=1e-12), (
+        f"Geometry mismatch between refine() and refine_1d()\n"
+        f"  refine:    {coords_full}\n  refine_1d: {coords_1d}"
+    )
+    assert shape_after_full == shape_after_1d
+
+    # Reconstructed nD matrix must match the full one
+    T_nd_reconstructed = nd_transition_from_1d(T_1d, 0, shape_before, shape_after_1d)
+    assert np.allclose(T_nd, T_nd_reconstructed, atol=1e-12), (
+        f"nd_transition_from_1d(T_1d) != T from refine()"
+    )
+    print("[PASS] test_hrefiner_refine_1d_consistency")
+
+
+def test_hrefiner_refine_1d_with_propagation():
+    """
+    HRefiner.refine_1d() must work as refine_1d_fn in
+    PatchAssembly.refine_with_propagation(), propagating a targeted knot
+    insertion across a shared interface.
+
+    Two unit-square patches glued along their right/left edge (u=1 / u=0).
+    Insert knot v=0.5 in patch 0; verify it propagates to patch 1.
+    """
+    def make_unit_square(x_offset=0.0):
+        cp_coords = [
+            [x_offset + 0., 0.], [x_offset + 1., 0.],
+            [x_offset + 0., 1.], [x_offset + 1., 1.],
+        ]
+        return build_surface_patch(
+            1, 1,
+            kv_u=[0., 0., 1., 1.],
+            kv_v=[0., 0., 1., 1.],
+            cp_coords=cp_coords
+        )
+
+    patch0, nu0, nv0 = make_unit_square(0.0)
+    patch1, nu1, nv1 = make_unit_square(1.0)
+
+    # Share the right boundary of patch0 with the left boundary of patch1
+    # Right boundary of patch0 (direction=0, side=1): local indices {1, 3}  (u=1)
+    # Left  boundary of patch1 (direction=0, side=0): local indices {0, 2}  (u=0)
+    # Re-use global ids from patch0 in patch1 to establish sharing
+    shared_right = patch0.boundary_control_points(direction=0, side=1)   # [1, 3]
+    left_of_p1   = patch1.boundary_control_points(direction=0, side=0)   # [0, 2]
+
+    # Remap patch1's left-edge local positions to use patch0's global ids
+    new_gi = list(patch1.global_indices)
+    cp_mgr = patch1.cp_manager
+    for loc1, loc0 in zip(left_of_p1, shared_right):
+        gid0 = patch0.global_indices[loc0]
+        old_gid1 = new_gi[loc1]
+        new_gi[loc1] = gid0
+        # Patch0's cp_manager holds the shared coords; link patch1 to it
+    # Use a single shared cp_manager for both patches
+    shared_mgr = patch0.cp_manager
+    # Add patch1's private CPs (right boundary) to shared_mgr
+    private_coords = [
+        [2., 0.],  # local 1 (u=1, v=0) of patch1
+        [2., 1.],  # local 3 (u=1, v=1) of patch1
+    ]
+    private_locs = patch1.boundary_control_points(direction=0, side=1)  # [1, 3]
+    for loc, xy in zip(private_locs, private_coords):
+        new_gi[loc] = shared_mgr.add_point(list(xy))
+
+    surf1 = BSplineSurface(
+        BSpline(1, np.array([0., 0., 1., 1.])),
+        BSpline(1, np.array([0., 0., 1., 1.]))
+    )
+    patch1 = Patch(surf1, shared_mgr, new_gi, [nu1, nv1])
+
+    assembly = PatchAssembly()
+    assembly.add_patch(patch0)
+    assembly.add_patch(patch1)
+    assembly.detect_shared_control_points()
+    assembly.detect_interfaces()
+
+    knot = 0.5
+
+    def refine_1d_fn(patch, direction, protected_global_ids):
+        HRefiner(direction, knot).refine_1d(patch, protected_global_ids)
+
+    assembly.refine_with_propagation(
+        patch_index=0, direction=1, refine_1d_fn=refine_1d_fn
+    )
+
+    patches = assembly.get_patchs()
+    # Both patches must now have nv = 3 (one knot inserted in v)
+    for i, p in enumerate(patches):
+        assert p.local_shape[1] == 3, (
+            f"Patch {i}: expected nv=3 after propagation, got {p.local_shape[1]}"
+        )
+    # The shared boundary CPs (in v) must be identical between the two patches
+    right_boundary = patches[0].boundary_control_points(direction=0, side=1)
+    left_boundary  = patches[1].boundary_control_points(direction=0, side=0)
+    for loc0, loc1 in zip(right_boundary, left_boundary):
+        gid0 = patches[0].global_indices[loc0]
+        gid1 = patches[1].global_indices[loc1]
+        assert gid0 == gid1, (
+            f"Shared boundary CP mismatch: patch0 gid={gid0}, patch1 gid={gid1}"
+        )
+    print("[PASS] test_hrefiner_refine_1d_with_propagation")
+
+
 # ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -227,4 +370,6 @@ if __name__ == '__main__':
     test_hrefiner_geometry_preservation_d1()
     test_hrefiner_direction_v()
     test_hrefiner_geometry_preservation_d2()
+    test_hrefiner_refine_1d_consistency()
+    test_hrefiner_refine_1d_with_propagation()
     print("\nAll HRefiner tests passed!")

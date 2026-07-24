@@ -16,6 +16,14 @@ public:
         Eigen::MatrixXd& transition_matrix
     ) const override;
 
+    // Fast path: insert one knot in-place, return only the 1D transition matrix
+    // (n_new_1d × n_old_1d). Avoids the Kronecker product needed for the full nD
+    // matrix. Use nd_transition_from_1d() to reconstruct the nD matrix if needed.
+    // Suitable as refine_1d_fn for PatchAssembly::refineWithPropagation().
+    // protected_global_ids: see HRefiner::apply_1d_cp_update.
+    void refine_1d(Patch& patch, Eigen::MatrixXd& T_1d,
+                   const std::unordered_set<size_t>& protected_global_ids = {}) const;
+
     std::string getType() const override { return "h"; }
 
     // -----------------------------------------------------------------------

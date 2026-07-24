@@ -12,13 +12,6 @@ signature. For *why* the module is structured this way (shared control point poo
 protected vs. private control points during refinement, the two-level DOF manager
 split, the multipatch assembly call-order contract...), see :doc:`design`.
 
-.. note::
-
-    A few methods are not yet documented at the binding level (missing docstrings in
-    ``bindings.cpp``): :class:`~yeti_iga.future.bspline.BSpline`'s ``find_span`` and
-    ``basis_funs``, and :class:`~yeti_iga.future.bspline.HRefiner`'s ``refine_1d`` and
-    ``get_type``. This is a documentation gap to close in the bindings themselves, not
-    something this page can paper over.
 
 B-spline basis
 ---------------
@@ -104,7 +97,19 @@ Integration and assembly
     :special-members: __init__
     :members:
 
-.. autoclass:: yeti_iga.future.bspline.MaterialProperties
+.. autoclass:: yeti_iga.future.bspline.Material
+    :special-members: __init__
+    :members:
+
+.. autoclass:: yeti_iga.future.bspline.ConstitutiveLaw
+    :special-members: __init__
+    :members:
+
+.. autoclass:: yeti_iga.future.bspline.PlaneStress
+    :special-members: __init__
+    :members:
+
+.. autoclass:: yeti_iga.future.bspline.PlaneStrain
     :special-members: __init__
     :members:
 
@@ -113,6 +118,17 @@ Integration and assembly
     :members:
 
 .. autoclass:: yeti_iga.future.bspline.LocalOperator
+    :special-members: __init__
+    :members:
+
+.. autoclass:: yeti_iga.future.bspline.ScalarLocalOperator
+    :special-members: __init__
+    :members:
+
+Solution evaluation
+----------------------
+
+.. autoclass:: yeti_iga.future.bspline.PatchEvaluator
     :special-members: __init__
     :members:
 
