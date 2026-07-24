@@ -9,7 +9,7 @@ import numpy as np
 # pylint: disable=no-name-in-module
 from yeti_iga.future.bspline import (BSpline, BSplineSurface, ControlPointManager,
     Patch, GlobalDOFManager, PatchDOFManager, PatchAssembly, PatchIntegrator,
-    MaterialProperties)
+    Material, PlaneStress)
 
 from test_mass import mass_matrix_legagy, RHO
 
@@ -71,7 +71,7 @@ def test_assemble_mass_domain_split_matches_single_patch():
     shared_map = assembly.get_shared_control_points_map()
     assert set(shared_map.keys()) == {2, 7, 12}
 
-    material = MaterialProperties(210000, 0.3, rho=RHO)
+    material = PlaneStress(Material(E=210000, nu=0.3, rho=RHO))
     mass_matrix = PatchIntegrator.assemble_mass(assembly, [material, material])
 
     assert mass_matrix.shape == mass_legacy.shape
@@ -110,7 +110,7 @@ def test_assemble_mass_requires_rho_on_every_material():
     assembly.add_patch(patch_a)
     assembly.add_patch(patch_b)
 
-    materials = [MaterialProperties(210000, 0.3, rho=RHO), MaterialProperties(210000, 0.3)]
+    materials = [PlaneStress(Material(E=210000, nu=0.3, rho=RHO)), PlaneStress(Material(E=210000, nu=0.3))]
     try:
         PatchIntegrator.assemble_mass(assembly, materials)
         assert False, "expected an exception when one material has no rho set"

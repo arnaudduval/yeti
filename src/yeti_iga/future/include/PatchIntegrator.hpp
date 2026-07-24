@@ -13,19 +13,12 @@
 #include "LocalOperator.hpp"
 #include "ScalarLocalOperator.hpp"
 #include "Traction.hpp"
+#include "ConstitutiveLaw.hpp"
 
 
-
-struct MaterialProperties {
-    // TODO Generalize it
-    double E;
-    double nu;
-    double thickness = 1.0;   // Thickness (for plane problems)
-    double rho = 0.0;         // Mass density (required by integrateMass()/assembleMass())
-};
 
 // One distributed boundary load to assemble over a whole PatchAssembly (see
-// PatchIntegrator::assembleBoundaryLoad()). Unlike `materials`/`operators`
+// PatchIntegrator::assembleBoundaryLoad()). Unlike `laws`/`operators`
 // (one entry per patch), a boundary load only applies to specific
 // patches/edges, so specs are given as a sparse list instead.
 struct BoundaryLoadSpec {
@@ -41,16 +34,18 @@ private:
     // TODO: generalize it for N dimensions
     const IGABasis1D& basis_u_;
     const IGABasis1D& basis_v_;
-    MaterialProperties material_properties_;
+    std::shared_ptr<const ConstitutiveLaw> law_;
+
+    // No-law constructor for assembleOperator() / assembleBoundaryLoad() which
+    // never call the stiffness/mass kernels. Static methods can access it.
+    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v)
+        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), law_(nullptr) {}
 
     // Geometry shared by the stiffness and mass kernels at one Gauss point:
     // basis values/derivatives in physical-mapping order (u-fastest), the
     // Jacobian components and its determinant. Mass only needs R and detJ;
-    // stiffness derives invJ/grads/B/D from J11..J22 and dRdu/dRdv on top of
-    // this (storing J11..J22 here, instead of just detJ, avoids recomputing
-    // the Jacobian a second time in computeLocalStiffnessContribution). detJ == 0.0
-    // signals a degenerate point to be skipped by the caller (mirrors the
-    // previous inline `if (std::abs(detJ) < 1e-14) continue;`).
+    // stiffness derives invJ/grads from J11..J22 and dRdu/dRdv on top of
+    // this. detJ == 0.0 signals a degenerate point to be skipped by the caller.
     struct GaussPointGeometry {
         std::vector<double> R, dRdu, dRdv;
         double J11, J12, J21, J22;
@@ -72,9 +67,9 @@ private:
         const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv,
         const std::vector<double>& weights) const;
 
-    // Compute local stiffness contribution for a given span
+    // Compute local stiffness contribution for a given span (B-free kernel).
     Eigen::MatrixXd computeLocalStiffnessContribution(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span);
-    // NURBS variant -- same as above but uses evaluateGaussPointGeometryNURBS
+    // NURBS variant -- same but uses evaluateGaussPointGeometryNURBS
     Eigen::MatrixXd computeLocalStiffnessContributionNURBS(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span, const std::vector<double>& weights);
 
     // Compute local mass contribution for a given span
@@ -82,7 +77,7 @@ private:
     // NURBS variant
     Eigen::MatrixXd computeLocalMassContributionNURBS(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span, const std::vector<double>& weights);
 
-    // Assemble local contriubution into global matrix (shared by stiffness and mass)
+    // Assemble local contribution into global matrix (shared by stiffness and mass)
     void assembleLocalContribution(const Eigen::MatrixXd& local_contribution, const std::vector<int>& span, std::vector<Eigen::Triplet<double>>& tripletList);
 
     // Compute local boundary-load contribution for a given boundary span (a
@@ -113,37 +108,38 @@ private:
 
     // Same as assembleLocalContribution(), but scatters a full local load
     // vector (not a sparse matrix contribution) directly into a dense global
-    // vector using global dof indices. Reuses buildSpanLocalIndices()
-    // unchanged.
+    // vector using global dof indices.
     void assembleLocalLoadContribution(
         const Eigen::VectorXd& local_load, const std::vector<int>& span, Eigen::VectorXd& global_load);
 
     // Patch-LOCAL flat positions (u-fastest) of the span's active control points.
     std::vector<size_t> buildSpanLocalIndices(const Patch& patch, const std::vector<int>& span) const;
 
-    // Shared orchestration for assemble()/assembleMass(): validates
-    // materials, builds one IGABasis1D pair + PatchIntegrator per patch,
-    // invokes `collect` (collectTriplets or collectMassTriplets) into one
-    // shared triplet list, sizes the result to the assembly-wide total dof
-    // count. Called once per patch, not per Gauss point -- the std::function
-    // indirection has no measurable cost here.
+    // Shared orchestration for assembleStiffness()/assembleMass(): validates
+    // laws, builds one IGABasis1D pair + PatchIntegrator per patch, invokes
+    // `collect` into one shared triplet list, sizes the result to the
+    // assembly-wide total dof count.
     static Eigen::SparseMatrix<double> assembleGeneric(
         const PatchAssembly& assembly,
-        const std::vector<MaterialProperties>& materials,
+        const std::vector<std::shared_ptr<const ConstitutiveLaw>>& laws,
         int gauss_n,
         const std::function<void(PatchIntegrator&, std::vector<Eigen::Triplet<double>>&)>& collect);
 
 public:
-    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v, const MaterialProperties& material_properties)
-        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), material_properties_(material_properties) {}
+    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v,
+                    std::shared_ptr<const ConstitutiveLaw> law)
+        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), law_(std::move(law)) {}
 
     // Append this patch's contribution to a (possibly shared) triplet list,
     // using GLOBAL dof indices. Does not size or build any matrix -- this is
     // what lets assembleStiffness() merge several patches' contributions
-    // before a single setFromTriplets() call (see assembleStiffness()).
-    // Dispatches to collectTripletsImpl<IsRational> once (outside the span
-    // loop), so the Gauss loop is zero-overhead for B-splines.
+    // before a single setFromTriplets() call. Dispatches to
+    // collectTripletsImpl<IsRational> once (outside the span loop), so the
+    // Gauss loop is zero-overhead for B-splines.
     void collectTriplets(std::vector<Eigen::Triplet<double>>& tripletList) {
+        if (!law_)
+            throw std::logic_error(
+                "PatchIntegrator::collectTriplets: no ConstitutiveLaw set.");
         if (patch_.cp_manager->is_rational())
             collectTripletsImpl<true>(tripletList);
         else
@@ -151,11 +147,14 @@ public:
     }
 
     // Same as collectTriplets(), but for the consistent mass matrix
-    // contribution (requires material_properties_.rho > 0).
+    // contribution (requires law->material().rho > 0).
     void collectMassTriplets(std::vector<Eigen::Triplet<double>>& tripletList) {
-        if (material_properties_.rho <= 0.0)
+        if (!law_)
+            throw std::logic_error(
+                "PatchIntegrator::collectMassTriplets: no ConstitutiveLaw set.");
+        if (law_->material().rho <= 0.0)
             throw std::invalid_argument(
-                "PatchIntegrator::collectMassTriplets: material_properties_.rho "
+                "PatchIntegrator::collectMassTriplets: material.rho "
                 "must be set (> 0) to assemble a mass matrix.");
         if (patch_.cp_manager->is_rational())
             collectMassTripletsImpl<true>(tripletList);
@@ -167,10 +166,6 @@ public:
     // point, not just the last one -- global dof order need not follow
     // local position order once global_indices isn't the identity mapping,
     // e.g. for any patch that isn't the first one added to a PatchAssembly).
-    // For a single, exclusively-owned patch this is the full matrix size
-    // (see integrateStiffness()); for a patch that is part of a
-    // PatchAssembly, the assembly-wide total is generally larger -- see
-    // assembleStiffness().
     size_t localTotalDofs() const {
         const auto& local_to_global = patch_.dof_manager->local_to_global_dofs;
         return *std::max_element(local_to_global.begin(), local_to_global.end()) + 1;
@@ -182,7 +177,6 @@ public:
 
         size_t total_dofs = localTotalDofs();
 
-        // build sparse matrix from triplets
         Eigen::SparseMatrix<double> stiffness_matrix(total_dofs, total_dofs);
         stiffness_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
 
@@ -190,7 +184,7 @@ public:
     }
 
     // Same as integrateStiffness(), but for the consistent mass matrix
-    // (requires material_properties_.rho > 0).
+    // (requires law->material().rho > 0).
     Eigen::SparseMatrix<double> integrateMass() {
         std::vector<Eigen::Triplet<double>> tripletList;
         collectMassTriplets(tripletList);
@@ -203,33 +197,19 @@ public:
         return mass_matrix;
     }
 
-    // Assemble the global stiffness matrix of a whole PatchAssembly: builds
-    // one PatchIntegrator per patch (with its own IGABasis1D in each
-    // direction and its own MaterialProperties), merges every patch's
-    // triplets into ONE list, and sizes the result to the assembly-wide
-    // total dof count. Control points shared between patches already
-    // resolve to the same global dof (see GlobalDOFManager/PatchAssembly
-    // documentation) and Eigen::setFromTriplets() sums duplicate (row, col)
-    // entries automatically, so shared-boundary coupling falls out of this
-    // merge with no special-casing.
-    //
-    // materials must have one entry per patch, in assembly.get_patchs()
-    // (add_patch()) order.
-    //
-    // gauss_n: number of Gauss points per span, per direction, used for
-    // every patch. If 0 (default), each direction of each patch uses
-    // degree + 1 (sufficient to integrate the stiffness bilinear form
-    // exactly, see IGABasis1D::build()).
+    // Assemble the global stiffness matrix of a whole PatchAssembly.
+    // laws must have one entry per patch, in assembly.get_patchs() (add_patch()) order.
+    // gauss_n: Gauss points per span per direction; 0 (default) means degree+1 per direction.
     static Eigen::SparseMatrix<double> assembleStiffness(
         const PatchAssembly& assembly,
-        const std::vector<MaterialProperties>& materials,
+        const std::vector<std::shared_ptr<const ConstitutiveLaw>>& laws,
         int gauss_n = 0);
 
-    // Same as assembleStiffness(), but for the consistent mass matrix of
-    // the whole PatchAssembly. Every entry in `materials` must have rho > 0.
+    // Same as assembleStiffness(), but for the consistent mass matrix.
+    // Every entry in laws must have material().rho > 0.
     static Eigen::SparseMatrix<double> assembleMass(
         const PatchAssembly& assembly,
-        const std::vector<MaterialProperties>& materials,
+        const std::vector<std::shared_ptr<const ConstitutiveLaw>>& laws,
         int gauss_n = 0);
 
     // Same as collectTriplets()/collectMassTriplets(), but the per-Gauss-
@@ -259,47 +239,25 @@ public:
 
     // Assemble a custom LocalOperator over a whole PatchAssembly. operators
     // must have one entry per patch, in assembly.get_patchs() (add_patch())
-    // order -- the same convention as `materials` in assembleStiffness()/
-    // assembleMass(). Deliberately a standalone implementation (does not
-    // call assembleGeneric()), so that this development/testing path can
-    // never affect assembleStiffness()/assembleMass() behavior.
+    // order.
     static Eigen::SparseMatrix<double> assembleOperator(
         const PatchAssembly& assembly,
         const std::vector<std::shared_ptr<LocalOperator>>& operators,
         int gauss_n = 0);
 
     // Integrate a distributed boundary load (force per unit length) over
-    // this single patch's edge obtained by fixing `direction` at its first
-    // (side=0) or last (side=1) span. span_min/span_max (raw knot-span
-    // indices of the OTHER direction, like Patch::boundary_control_points())
-    // restrict integration to a sub-range of the edge; -1/-1 (default)
-    // integrates the whole edge. Returns a vector sized localTotalDofs(),
-    // with nonzero entries only at dofs of control points on the loaded
-    // edge/span-range.
+    // this single patch's edge.
     Eigen::VectorXd integrateBoundaryLoad(
         int direction, int side, const Traction& traction,
         int span_min = -1, int span_max = -1);
 
-    // Assemble several distributed boundary loads (each possibly on a
-    // different patch and/or edge) over a whole PatchAssembly. Sized to the
-    // assembly-wide total dof count (same size as assembleStiffness()/
-    // assembleMass(), regardless of which patches the specs actually touch),
-    // so the result can be added directly to a stiffness/mass right-hand
-    // side. Deliberately standalone (does not call assembleGeneric()).
+    // Assemble several distributed boundary loads over a whole PatchAssembly.
     static Eigen::VectorXd assembleBoundaryLoad(
         const PatchAssembly& assembly,
         const std::vector<BoundaryLoadSpec>& specs,
         int gauss_n = 0);
 
-    // Integrate a ScalarLocalOperator over this single patch: loops over all
-    // Gauss points of all spans, evaluates R/dRdx/dRdy (with NURBS
-    // rationalisation when applicable), the physical coordinates, and the
-    // local DOF values extracted from `u_global`, then sums the operator's
-    // scalar return value weighted by the Gauss weight and |detJ|.
-    //
-    // Companion to integrateOperator() for cases where the integrand is a
-    // scalar (e.g., error norms, energy functionals) that depends on the
-    // current FE solution.
+    // Integrate a ScalarLocalOperator over this single patch.
     double integrateScalarOperator(ScalarLocalOperator& op,
                                    const Eigen::VectorXd& u_global);
 
@@ -410,4 +368,3 @@ void PatchIntegrator::collectOperatorTripletsImpl(
         assembleLocalContribution(local_contribution, span, tripletList);
     }
 }
-

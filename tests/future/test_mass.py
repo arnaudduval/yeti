@@ -12,7 +12,7 @@ from yeti_iga.preprocessing.igaparametrization import IGAparametrization
 from yeti_iga.massmtrx import build_cmassmatrix
 from yeti_iga.future.bspline import BSpline, BSplineSurface, ControlPointManager, \
     Patch, GlobalDOFManager, PatchDOFManager, IGABasis1D, PatchIntegrator, \
-    MaterialProperties
+    Material, PlaneStress
 
 RHO = 7800.0
 
@@ -71,7 +71,7 @@ def test_mass_1elt_lin_square_1():
     basis_u = IGABasis1D.build(su, 2)
     basis_v = IGABasis1D.build(sv, 2)
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3, rho=RHO))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3, rho=RHO)))
     mass_matrix = integrator.integrate_mass()
 
     assert np.allclose(mass_matrix.toarray(), mass_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -106,7 +106,7 @@ def test_mass_1elt_lin_rect():
     basis_u = IGABasis1D.build(su, 2)
     basis_v = IGABasis1D.build(sv, 2)
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3, rho=RHO))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3, rho=RHO)))
     mass_matrix = integrator.integrate_mass()
 
     assert np.allclose(mass_matrix.toarray(), mass_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -146,7 +146,7 @@ def test_mass_1elt_d2_square_1():
     basis_u = IGABasis1D.build(su, 3)
     basis_v = IGABasis1D.build(sv, 3)
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3, rho=RHO))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3, rho=RHO)))
     mass_matrix = integrator.integrate_mass()
 
     assert np.allclose(mass_matrix.toarray(), mass_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -186,7 +186,7 @@ def test_mass_1elt_d2_rect():
     basis_u = IGABasis1D.build(su, 3)
     basis_v = IGABasis1D.build(sv, 3)
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3, rho=RHO))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3, rho=RHO)))
     mass_matrix = integrator.integrate_mass()
 
     assert np.allclose(mass_matrix.toarray(), mass_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -232,7 +232,7 @@ def test_mass_2_elements_C0():
     basis_u = IGABasis1D.build(su, 3)
     basis_v = IGABasis1D.build(sv, 3)
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3, rho=RHO))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3, rho=RHO)))
     mass_matrix = integrator.integrate_mass()
 
     assert np.allclose(mass_matrix.toarray(), mass_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -275,7 +275,7 @@ def test_mass_2_elements_C1():
     basis_u = IGABasis1D.build(su, 3)
     basis_v = IGABasis1D.build(sv, 3)
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3, rho=RHO))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3, rho=RHO)))
     mass_matrix = integrator.integrate_mass()
 
     assert np.allclose(mass_matrix.toarray(), mass_legacy.toarray(), rtol=1.e-5, atol=1.e-8)
@@ -302,7 +302,7 @@ def test_mass_requires_rho():
     basis_u = IGABasis1D.build(su, 2)
     basis_v = IGABasis1D.build(sv, 2)
 
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3)))
     try:
         integrator.integrate_mass()
         assert False, "expected an exception when rho is not set"

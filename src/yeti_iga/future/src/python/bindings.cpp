@@ -67,6 +67,26 @@ public:
     }
 };
 
+// Trampoline letting ConstitutiveLaw be subclassed from Python.
+// Explicit public constructor calls the protected base constructor.
+class PyConstitutiveLaw : public ConstitutiveLaw {
+public:
+    explicit PyConstitutiveLaw(const Material& m) : ConstitutiveLaw(m) {}
+    int n_dofs_per_cp() const override {
+        PYBIND11_OVERRIDE_PURE_NAME(
+            int, ConstitutiveLaw, "n_dofs_per_cp", n_dofs_per_cp);
+    }
+    Eigen::MatrixXd stiffness_density(
+        const Eigen::VectorXd& grad_a,
+        const Eigen::VectorXd& grad_b,
+        const Eigen::VectorXd& x_phys) const override
+    {
+        PYBIND11_OVERRIDE_PURE_NAME(
+            Eigen::MatrixXd, ConstitutiveLaw, "stiffness_density", stiffness_density,
+            grad_a, grad_b, x_phys);
+    }
+};
+
 PYBIND11_MODULE(bspline, m)
 {
     py::class_<BSpline>(m, "BSpline")
@@ -347,14 +367,54 @@ IGABasis1D
     k-th non-empty span.
             )doc");
 
-    py::class_<MaterialProperties>(m, "MaterialProperties")
-        .def(py::init<double, double, double, double>(),
-             py::arg("E"), py::arg("nu"), py::arg("thickness") = 1.0, py::arg("rho") = 0.0)
-        .def_readwrite("E", &MaterialProperties::E)
-        .def_readwrite("nu", &MaterialProperties::nu)
-        .def_readwrite("thickness", &MaterialProperties::thickness)
-        .def_readwrite("rho", &MaterialProperties::rho,
-            "Mass density. Must be set (> 0) to use integrate_mass()/assemble_mass().");
+    py::class_<Material>(m, "Material",
+        "Physical material constants (E, nu, rho, thickness) with derived elastic "
+        "moduli (mu, lambda_3d, bulk_modulus). Pass to a ConstitutiveLaw to set "
+        "the mechanical behaviour for integration.")
+        .def(py::init([](double E, double nu, double rho, double thickness) {
+                return Material{E, nu, rho, thickness};
+            }),
+            py::arg("E"), py::arg("nu"), py::arg("rho") = 0.0, py::arg("thickness") = 1.0)
+        .def_readwrite("E", &Material::E)
+        .def_readwrite("nu", &Material::nu)
+        .def_readwrite("rho", &Material::rho,
+            "Mass density. Must be > 0 to use integrate_mass()/assemble_mass().")
+        .def_readwrite("thickness", &Material::thickness,
+            "Out-of-plane thickness for 2D plane problems (default 1.0).")
+        .def("mu", &Material::mu, "Shear modulus E / (2*(1+nu)).")
+        .def("lambda_3d", &Material::lambda_3d,
+            "3D first Lame parameter nu*E / ((1+nu)*(1-2*nu)).")
+        .def("bulk_modulus", &Material::bulk_modulus, "Bulk modulus E / (3*(1-2*nu)).")
+        .def_static("steel",     &Material::steel,     "Structural steel (E=210000, nu=0.30, rho=7850).")
+        .def_static("aluminium", &Material::aluminium, "Aluminium alloy (E=70000, nu=0.33, rho=2700).")
+        .def_static("concrete",  &Material::concrete,  "Concrete (E=30000, nu=0.20, rho=2400).");
+
+    py::class_<ConstitutiveLaw, PyConstitutiveLaw, std::shared_ptr<ConstitutiveLaw>>(m, "ConstitutiveLaw",
+        "Abstract B-free constitutive law (Planas, Romero & Sancho 2012). "
+        "Subclass from Python and override n_dofs_per_cp() -> int and "
+        "stiffness_density(grad_a, grad_b, x_phys) -> ndarray (n x n). "
+        "PlaneStress and PlaneStrain are the built-in concrete subclasses.")
+        .def(py::init<const Material&>(), py::arg("material"))
+        .def("n_dofs_per_cp", &ConstitutiveLaw::n_dofs_per_cp,
+            "Number of displacement DOFs per control point (2 for plane problems, 3 for 3D solid).")
+        .def("stiffness_density", &ConstitutiveLaw::stiffness_density,
+            py::arg("grad_a"), py::arg("grad_b"), py::arg("x_phys"),
+            "Elementary stiffness block K^{ab} for one Gauss point.\n"
+            "grad_a / grad_b: physical-space gradients of basis functions a and b.\n"
+            "x_phys: physical coordinates of the Gauss point.\n"
+            "Returns an (n x n) matrix where n = n_dofs_per_cp().")
+        .def_property_readonly("material", &ConstitutiveLaw::material,
+            "The Material this law was constructed with.");
+
+    py::class_<PlaneStress, ConstitutiveLaw, std::shared_ptr<PlaneStress>>(m, "PlaneStress",
+        "2D plane-stress constitutive law (sigma_33 = 0). "
+        "lambda_eff = nu*E / (1 - nu^2), mu = E / (2*(1+nu)).")
+        .def(py::init<const Material&>(), py::arg("material"));
+
+    py::class_<PlaneStrain, ConstitutiveLaw, std::shared_ptr<PlaneStrain>>(m, "PlaneStrain",
+        "2D plane-strain constitutive law (eps_33 = 0). "
+        "lambda_eff = nu*E / ((1+nu)*(1-2*nu)), mu = E / (2*(1+nu)).")
+        .def(py::init<const Material&>(), py::arg("material"));
 
     py::class_<Traction, PyTraction, std::shared_ptr<Traction>>(m, "Traction",
         "Base class for a distributed boundary load (force per unit length), "
@@ -397,16 +457,17 @@ IGABasis1D
         .def_readwrite("span_max", &BoundaryLoadSpec::span_max);
 
     py::class_<PatchIntegrator>(m, "PatchIntegrator")
-        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const MaterialProperties&>(),
-             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("material_properties"))
+        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&,
+                      std::shared_ptr<const ConstitutiveLaw>>(),
+             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("law"))
         .def("integrate_stiffness", &PatchIntegrator::integrateStiffness)
         .def("integrate_mass", &PatchIntegrator::integrateMass,
             "Same as integrate_stiffness(), but for the consistent mass matrix of "
-            "this single patch. Requires material_properties.rho > 0.")
+            "this single patch. Requires law.material().rho > 0.")
         .def_static("assemble_stiffness", &PatchIntegrator::assembleStiffness,
-            py::arg("assembly"), py::arg("materials"), py::arg("gauss_n") = 0,
+            py::arg("assembly"), py::arg("laws"), py::arg("gauss_n") = 0,
             "Assemble the global stiffness matrix of a whole PatchAssembly.\n"
-            "materials must have one entry per patch, in assembly.get_patchs() "
+            "laws must have one entry per patch, in assembly.get_patchs() "
             "(add_patch()) order. Control points shared between patches "
             "(see PatchAssembly) automatically resolve to the same global dof, "
             "so contributions from every patch touching a shared boundary are "
@@ -414,9 +475,9 @@ IGABasis1D
             "gauss_n: Gauss points per span per direction for every patch; if "
             "0 (default), each direction of each patch uses its own degree + 1.")
         .def_static("assemble_mass", &PatchIntegrator::assembleMass,
-            py::arg("assembly"), py::arg("materials"), py::arg("gauss_n") = 0,
+            py::arg("assembly"), py::arg("laws"), py::arg("gauss_n") = 0,
             "Same as assemble_stiffness(), but for the consistent mass matrix of "
-            "the whole PatchAssembly. Every entry in materials must have rho > 0.")
+            "the whole PatchAssembly. Every entry in laws must have material().rho > 0.")
         .def("integrate_operator", &PatchIntegrator::integrateOperator, py::arg("op"),
             "Integrate a custom LocalOperator over this single patch. For "
             "development/testing: subclass LocalOperator in Python and override "

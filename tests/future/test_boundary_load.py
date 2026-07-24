@@ -9,7 +9,7 @@ import numpy as np
 # pylint: disable=no-name-in-module
 from yeti_iga.future.bspline import (BSpline, BSplineSurface, ControlPointManager,
     Patch, GlobalDOFManager, PatchDOFManager, PatchAssembly, IGABasis1D,
-    PatchIntegrator, MaterialProperties, ConstantTraction, BoundaryLoadSpec)
+    PatchIntegrator, Material, PlaneStress, ConstantTraction, BoundaryLoadSpec)
 
 
 def _build_2_elts_c0_patch():
@@ -76,7 +76,7 @@ def test_integrate_boundary_load_resultant_force():
     all zero, and zero entries away from the loaded edge.
     """
     patch, basis_u, basis_v = _build_2_elts_c0_patch()
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3)))
 
     p = 1000.0
     traction = ConstantTraction(np.array([0.0, -p]))
@@ -104,7 +104,7 @@ def test_integrate_boundary_load_span_range_matches_partial_resultant():
     the total resultant force of the whole edge.
     """
     patch, basis_u, basis_v = _build_2_elts_c0_patch()
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3)))
 
     p = 1000.0
     traction = ConstantTraction(np.array([0.0, -p]))

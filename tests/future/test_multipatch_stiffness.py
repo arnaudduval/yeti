@@ -9,7 +9,7 @@ import numpy as np
 # pylint: disable=no-name-in-module
 from yeti_iga.future.bspline import (BSpline, BSplineSurface, ControlPointManager,
     Patch, GlobalDOFManager, PatchDOFManager, PatchAssembly, PatchIntegrator,
-    MaterialProperties, SubdivisionRefiner)
+    Material, PlaneStress, SubdivisionRefiner)
 
 from test_stiffness import stiffness_matrix_legagy
 
@@ -71,7 +71,7 @@ def test_assemble_domain_split_matches_single_patch():
     shared_map = assembly.get_shared_control_points_map()
     assert set(shared_map.keys()) == {2, 7, 12}
 
-    material = MaterialProperties(210000, 0.3)
+    material = PlaneStress(Material(E=210000, nu=0.3))
     stiffness_matrix = PatchIntegrator.assemble_stiffness(assembly, [material, material])
 
     assert stiffness_matrix.shape == stiff_legacy.shape
@@ -124,7 +124,7 @@ def test_assemble_crossed_reversed_interface():
     assembly.refine_with_propagation(patch_index=0, direction=1, refine_1d_fn=refine_1d_fn)
     assembly.update_dof_managers(global_dof_manager, dofs_per_cp=2)
 
-    material = MaterialProperties(210000, 0.3)
+    material = PlaneStress(Material(E=210000, nu=0.3))
     stiffness_matrix = PatchIntegrator.assemble_stiffness(assembly, [material, material]).toarray()
 
     n_dofs = global_dof_manager.get_dof_indices(cp_manager.n_points - 1)[-1] + 1
@@ -139,7 +139,7 @@ def test_assemble_crossed_reversed_interface():
                         if len(patches) == 2 and cp not in (1, 3))
     dof = global_dof_manager.get_dof_indices(midpoint_cp)[0]
 
-    material_list_a_only = [material, MaterialProperties(0.0, 0.3)]
+    material_list_a_only = [material, PlaneStress(Material(E=0.0, nu=0.3))]
     stiffness_a_only = PatchIntegrator.assemble_stiffness(assembly, material_list_a_only).toarray()
     assert stiffness_matrix[dof, dof] > stiffness_a_only[dof, dof]
 

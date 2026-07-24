@@ -29,6 +29,7 @@ pybind11_add_module(${MODULE_NAME}
     src/bspline/BSpline.cpp
     src/bspline/BSplineTensor.cpp
     src/bspline/Patch.cpp
+    src/bspline/ConstitutiveLaw.cpp
     src/bspline/PatchIntegrator.cpp
     src/bspline/PatchEvaluator.cpp
     src/bspline/refinement/HRefiner.cpp

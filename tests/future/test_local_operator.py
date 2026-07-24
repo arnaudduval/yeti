@@ -14,7 +14,7 @@ import numpy as np
 # pylint: disable=no-name-in-module
 from yeti_iga.future.bspline import (BSpline, BSplineSurface, ControlPointManager,
     Patch, GlobalDOFManager, PatchDOFManager, IGABasis1D, PatchAssembly,
-    PatchIntegrator, MaterialProperties, LocalOperator)
+    PatchIntegrator, Material, PlaneStress, LocalOperator)
 
 from test_stiffness import stiffness_matrix_legagy
 
@@ -117,7 +117,7 @@ def test_integrate_operator_reproduces_stiffness():
     stiff_legacy = stiffness_matrix_legagy(f'{script_dir}/1_elt_d2_rect')
 
     patch, basis_u, basis_v = _build_1elt_d2_rect_patch()
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3)))
 
     op = PythonStiffnessOperator(210000, 0.3)
     operator_matrix = integrator.integrate_operator(op)
@@ -138,7 +138,7 @@ def test_integrate_operator_lumped_mass_conserves_total_mass():
     """
     patch, basis_u, basis_v = _build_1elt_d2_rect_patch()
     rho = 7800.0
-    integrator = PatchIntegrator(patch, basis_u, basis_v, MaterialProperties(210000, 0.3))
+    integrator = PatchIntegrator(patch, basis_u, basis_v, PlaneStress(Material(E=210000, nu=0.3)))
 
     mass_matrix = integrator.integrate_operator(LumpedMassOperator(rho)).toarray()
 

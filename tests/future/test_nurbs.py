@@ -20,7 +20,7 @@ import numpy as np
 from yeti_iga.future.bspline import (
     BSpline, BSplineSurface, ControlPointManager,
     Patch, GlobalDOFManager, PatchDOFManager, IGABasis1D,
-    PatchIntegrator, MaterialProperties,
+    PatchIntegrator, Material, PlaneStress,
     HRefiner, PRefiner, SubdivisionRefiner,
 )
 
@@ -103,7 +103,7 @@ def test_uniform_weights_reproduce_bspline_stiffness():
     patch_bs, bu_bs, bv_bs, _ = _build_rect_patch()
     patch_nr, bu_nr, bv_nr, _ = _build_rect_patch_nurbs(2.0)
 
-    mat = MaterialProperties(210000, 0.3)
+    mat = PlaneStress(Material(E=210000, nu=0.3))
 
     K_bs = PatchIntegrator(patch_bs, bu_bs, bv_bs, mat).integrate_stiffness()
     K_nr = PatchIntegrator(patch_nr, bu_nr, bv_nr, mat).integrate_stiffness()
@@ -116,7 +116,7 @@ def test_uniform_weights_reproduce_bspline_mass():
     patch_bs, bu_bs, bv_bs, _ = _build_rect_patch()
     patch_nr, bu_nr, bv_nr, _ = _build_rect_patch_nurbs(3.0)
 
-    mat = MaterialProperties(210000, 0.3, rho=7800.0)
+    mat = PlaneStress(Material(E=210000, nu=0.3, rho=7800.0))
 
     M_bs = PatchIntegrator(patch_bs, bu_bs, bv_bs, mat).integrate_mass()
     M_nr = PatchIntegrator(patch_nr, bu_nr, bv_nr, mat).integrate_mass()
@@ -294,7 +294,7 @@ def test_nurbs_stiffness_symmetry():
     patch, mgr, _, _ = _build_quarter_ring()
     basis_u = IGABasis1D.build(patch.tensor.components[0], 4)
     basis_v = IGABasis1D.build(patch.tensor.components[1], 3)
-    mat = MaterialProperties(210000, 0.3)
+    mat = PlaneStress(Material(E=210000, nu=0.3))
     K = PatchIntegrator(patch, basis_u, basis_v, mat).integrate_stiffness()
     K_arr = K.toarray()
     np.testing.assert_allclose(K_arr, K_arr.T, atol=1e-10,
@@ -306,7 +306,7 @@ def test_nurbs_mass_symmetry():
     patch, mgr, _, _ = _build_quarter_ring()
     basis_u = IGABasis1D.build(patch.tensor.components[0], 4)
     basis_v = IGABasis1D.build(patch.tensor.components[1], 3)
-    mat = MaterialProperties(210000, 0.3, rho=1.0)
+    mat = PlaneStress(Material(E=210000, nu=0.3, rho=1.0))
     M = PatchIntegrator(patch, basis_u, basis_v, mat).integrate_mass()
     M_arr = M.toarray()
     np.testing.assert_allclose(M_arr, M_arr.T, atol=1e-10,
@@ -324,7 +324,7 @@ def test_nurbs_mass_area():
     basis_u = IGABasis1D.build(patch.tensor.components[0], 4)
     basis_v = IGABasis1D.build(patch.tensor.components[1], 3)
     rho = 7800.0
-    mat = MaterialProperties(210000, 0.3, rho=rho)
+    mat = PlaneStress(Material(E=210000, nu=0.3, rho=rho))
     M = PatchIntegrator(patch, basis_u, basis_v, mat).integrate_mass()
 
     area_computed = np.sum(M.toarray()) / 2.0 / rho
@@ -357,7 +357,7 @@ def test_nurbs_stiffness_differs_from_bspline():
 
     basis_u = IGABasis1D.build(su, 4)
     basis_v = IGABasis1D.build(sv, 3)
-    mat = MaterialProperties(210000, 0.3)
+    mat = PlaneStress(Material(E=210000, nu=0.3))
 
     K_nurbs = PatchIntegrator(patch_nurbs, basis_u, basis_v, mat).integrate_stiffness()
     K_bs    = PatchIntegrator(patch_bs,    basis_u, basis_v, mat).integrate_stiffness()
