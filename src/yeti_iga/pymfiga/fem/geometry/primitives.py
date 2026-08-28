@@ -1,5 +1,8 @@
 from typing import List, Union, Literal
-from meshpy import triangle
+try:
+    from meshpy import triangle
+except ImportError:
+    triangle = None
 import numpy as np
 
 
