@@ -1,3 +1,4 @@
+from __future__ import annotations
 from yeti_iga.pymfiga.common.base.cls import BaseSingleModel, BaseMultiModel
 from yeti_iga.pymfiga.common.numerics.solvers import OuterToleranceSetter
 from yeti_iga.pymfiga.common.numerics.solvers import LinearSolver
