@@ -1,6 +1,5 @@
 from .postprocessing import Postprocessing
 from typing import Dict, Optional, Literal, Any
-from matplotlib import pyplot as plt
 import numpy as np
 import logging
 
@@ -74,6 +73,7 @@ class FeaPostprocessing:
         folder: Optional[str] = None,
         mesh_order: Optional[Literal["linear", "quadratic"]] = None,
     ):
+        from matplotlib import pyplot as plt
         from matplotlib.collections import PolyCollection
         from collections import Counter
 

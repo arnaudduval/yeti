@@ -1,6 +1,5 @@
 from .postprocessing import Postprocessing
 from typing import Union, List, Tuple, Optional, Literal, Any, Dict
-from matplotlib import pyplot as plt
 from copy import deepcopy
 import numpy as np
 import logging
@@ -273,6 +272,7 @@ class IgaPostprocessing:
                 logger.warning("Plot cannot be created. Exit code.")
                 return
 
+        from matplotlib import pyplot as plt
         fig, ax = plt.subplots(figsize=figsize)
         ax.grid(None)
         ax.set_axis_off()
