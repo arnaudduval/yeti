@@ -31,8 +31,6 @@ dependencies = [
 viz = ["matplotlib>=3.7"]
 fem = ["meshpy>=2022.1"]
 all = ["matplotlib>=3.7", "meshpy>=2022.1"]
-
-[project.optional-dependencies]
 dev = ["nbstripout", "jupyter", "matplotlib"]
 
 [project.urls]
