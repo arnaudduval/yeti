@@ -10,9 +10,45 @@ Linux
 -----
 
 You can simply install Yeti by invoking pip from the command line. YETI package is available for x86_64 platforms.
-::
+
+.. code-block:: bash
 
     pip install yeti-iga
+
+Optional extras
+~~~~~~~~~~~~~~~
+
+Some features of the :mod:`yeti_iga.pymfiga` submodule require additional dependencies
+that are not installed by default, because they are only needed for specific use cases
+or have heavier system requirements.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 35 50
+
+   * - Extra
+     - Install command
+     - What it enables
+   * - ``viz``
+     - ``pip install yeti-iga[viz]``
+     - Postprocessing plots via **matplotlib** —
+       :mod:`~yeti_iga.pymfiga.common.io.fea_postprocessing` and
+       :mod:`~yeti_iga.pymfiga.common.io.iga_postprocessing`
+   * - ``fem``
+     - ``pip install yeti-iga[fem]``
+     - FEM triangle mesh generation via **meshpy** —
+       :mod:`~yeti_iga.pymfiga.fem.geometry.primitives`.
+       Requires the ``boost`` C++ library to be installed on the system
+       (``apt install libboost-dev`` on Debian/Ubuntu).
+   * - ``all``
+     - ``pip install yeti-iga[all]``
+     - All optional extras above.
+
+If you are installing for development and want everything available:
+
+.. code-block:: bash
+
+    pip install -e ".[all]"
 
 Windows
 -------

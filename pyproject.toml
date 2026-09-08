@@ -1,6 +1,6 @@
 [project]
 name = "yeti-iga"
-version = "0.1.1"
+version = "0.2.0"
 authors = [
     { name="Arnaud Duval", email="arnaud.duval@cnrs.fr" },
 ]
@@ -18,7 +18,19 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
 ]
-dependencies = ["numpy>=2", "scipy>=1.13", "nlopt>=2"]
+dependencies = [
+    "numpy>=2",
+    "scipy>=1.13",
+    "nlopt>=2",
+    "geomdl>=5.3",
+    "networkx>=3.0",
+    "sympy>=1.12",
+]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.7"]
+fem = ["meshpy>=2022.1"]
+all = ["matplotlib>=3.7", "meshpy>=2022.1"]
 
 [project.optional-dependencies]
 dev = ["nbstripout", "jupyter", "matplotlib"]

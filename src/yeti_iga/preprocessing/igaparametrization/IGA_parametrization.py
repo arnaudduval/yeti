@@ -432,8 +432,9 @@ class IGAparametrization:
             self._IEN.append(e + self._nb_cp)
         self._nb_cp += patchMechSet[1][1]
         self._MATERIAL_PROPERTIES = np.concatenate(
-            (self._MATERIAL_PROPERTIES, np.vstack(patchMechSet[3])),
+            (self._MATERIAL_PROPERTIES, np.vstack(patchMechSet[3][0])),
             axis=1)
+        self._N_MATERIAL_PROPERTIES = np.append(self._N_MATERIAL_PROPERTIES, patchMechSet[3][1])
         for p in patchMechSet[4][0]:
             self._PROPS.append(p)
         self._JPROPS = np.append(self._JPROPS, patchMechSet[4][1])
