@@ -2,7 +2,7 @@ Changelog
 =========
 
 
-Version 0.1.2 - xxxx-xx-xx
+Version 0.2.0 - 2026-09-08
 --------------------------
  - Add OpenMP parallel build of stiffness matrix
  - Add GitHub workflows (build, test, publish packages on PyPI, build doc, publish on ReadTheDocs)
