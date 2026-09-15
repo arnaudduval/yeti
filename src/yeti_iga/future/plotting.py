@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 from .bspline import Patch, PatchAssembly
 
@@ -27,12 +28,58 @@ def _as_patch_list(patches):
     return list(patches)
 
 
+def _distinct_colors(n):
+    """Return n visually distinct RGBA colors.
+
+    tab10/tab20 are qualitative palettes with a fixed, small set of hand-picked
+    hues -- great for readability but they start repeating past their size.
+    Falls back to an evenly-spaced sampling of a continuous colormap for
+    larger patch counts, so every patch still gets a unique color.
+    """
+    if n <= 10:
+        return plt.cm.tab10(np.arange(n))
+    if n <= 20:
+        return plt.cm.tab20(np.arange(n))
+    return plt.cm.hsv(np.linspace(0, 1, n, endpoint=False))
+
+
+def _patch_boundary_polygon(patch, n_samples=100):
+    """Trace the closed outer boundary of a 2D patch as a single polygon.
+
+    Walks the four iso-parametric edges in order (u=u_min, v=v_max,
+    u=u_max, v=v_min), each oriented so the result is a continuous loop,
+    suitable for ``ax.fill()``.
+    """
+    su = patch.tensor.components[0]
+    sv = patch.tensor.components[1]
+    u_lo, u_hi = su.knot_vector[0], su.knot_vector[-1]
+    v_lo, v_hi = sv.knot_vector[0], sv.knot_vector[-1]
+
+    def eval_edge(u_vals, v_vals):
+        spans = np.array(
+            [[su.find_span(u), sv.find_span(v)] for u, v in zip(u_vals, v_vals)],
+            dtype=np.int32,
+        )
+        params = np.column_stack([u_vals, v_vals])
+        return patch.evaluate_patch_nd_omp(spans, params)
+
+    n = n_samples
+    e1 = eval_edge(np.full(n, u_lo), np.linspace(v_lo, v_hi, n))          # u=u_lo
+    e2 = eval_edge(np.linspace(u_lo, u_hi, n), np.full(n, v_hi))          # v=v_hi
+    e3 = eval_edge(np.full(n, u_hi), np.linspace(v_hi, v_lo, n))          # u=u_hi
+    e4 = eval_edge(np.linspace(u_hi, u_lo, n), np.full(n, v_lo))          # v=v_lo
+    return np.vstack([e1, e2, e3, e4])
+
+
 def plot_patches_2d(
     patches,
     n_samples=100,
     show_control_points=False,
     show_control_point_indices=False,
     show_weights=False,
+    fill_patches=False,
+    fill_alpha=0.2,
+    legend=False,
     ax=None,
     title=None,
 ):
@@ -62,6 +109,14 @@ def plot_patches_2d(
         If True (and the patch is rational), annotate each control point
         with its NURBS weight value.  Automatically enables
         ``show_control_points``.
+    fill_patches : bool, default False
+        If True, fill each patch's interior with its outline color at low
+        opacity (``fill_alpha``), so patch extents read at a glance.
+    fill_alpha : float, default 0.2
+        Alpha (opacity) of the fill when ``fill_patches=True``.
+    legend : bool, default False
+        If True, add a legend mapping each patch's color to its index
+        (its position in ``patches``, e.g. in ``PatchAssembly.get_patchs()``).
     ax : matplotlib.axes.Axes, optional
         Axes to draw on. A new figure is created and shown if not given.
     title : str, optional
@@ -79,7 +134,7 @@ def plot_patches_2d(
     if created_fig:
         _, ax = plt.subplots()
 
-    colors = plt.cm.tab10(np.arange(len(patch_list)) % 10)
+    colors = _distinct_colors(len(patch_list))
 
     for patch, color in zip(patch_list, colors):
         if len(patch.tensor.components) != 2:
@@ -90,6 +145,11 @@ def plot_patches_2d(
         u_breaks = np.unique(su.knot_vector)
         v_breaks = np.unique(sv.knot_vector)
 
+        if fill_patches:
+            poly = _patch_boundary_polygon(patch, n_samples=n_samples)
+            ax.fill(poly[:, 0], poly[:, 1], color=color, alpha=fill_alpha,
+                     lw=0, zorder=0)
+
         # iso-u lines
         for u_val in u_breaks:
             vs = np.linspace(v_breaks[0], v_breaks[-1], n_samples)
@@ -98,7 +158,7 @@ def plot_patches_2d(
             )
             params = np.column_stack([np.full(n_samples, u_val), vs])
             pts = patch.evaluate_patch_nd_omp(spans, params)
-            ax.plot(pts[:, 0], pts[:, 1], '-', lw=1, color=color)
+            ax.plot(pts[:, 0], pts[:, 1], '-', lw=1, color=color, zorder=1)
 
         # iso-v lines
         for v_val in v_breaks:
@@ -108,7 +168,7 @@ def plot_patches_2d(
             )
             params = np.column_stack([us, np.full(n_samples, v_val)])
             pts = patch.evaluate_patch_nd_omp(spans, params)
-            ax.plot(pts[:, 0], pts[:, 1], '-', lw=1, color=color)
+            ax.plot(pts[:, 0], pts[:, 1], '-', lw=1, color=color, zorder=1)
 
         draw_cp = show_control_points or show_control_point_indices or show_weights
         if draw_cp:
@@ -152,6 +212,14 @@ def plot_patches_2d(
     ax.grid(True)
     if title:
         ax.set_title(title)
+
+    if legend:
+        swatch_alpha = fill_alpha if fill_patches else 1.0
+        handles = [mpatches.Patch(color=(*color[:3], swatch_alpha), label=str(i))
+                   for i, color in enumerate(colors)]
+        ncol = 1 if len(handles) <= 12 else 2
+        ax.legend(handles=handles, title='patch index', loc='center left',
+                  bbox_to_anchor=(1.02, 0.5), fontsize=8, ncol=ncol)
 
     if created_fig:
         plt.tight_layout()
