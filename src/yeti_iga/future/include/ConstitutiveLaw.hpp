@@ -17,6 +17,11 @@ public:
     // grad_a / grad_b: physical-space gradients of basis functions a and b (size = physical dim).
     // x_phys: physical coordinates of the Gauss point (needed for axisymmetric laws).
     // Returns a (n x n) matrix where n = n_dofs_per_cp().
+    //
+    // REQUIRED INVARIANT: stiffness_density(a, b, x).transpose() == stiffness_density(b, a, x)
+    // (holds for any symmetric bilinear energy form -- true of all physically valid elastic
+    // laws). PatchIntegrator relies on it to compute only the a<=b pairs per element and
+    // mirror the transpose, halving the number of stiffness_density() calls.
     virtual Eigen::MatrixXd stiffness_density(
         const Eigen::VectorXd& grad_a,
         const Eigen::VectorXd& grad_b,

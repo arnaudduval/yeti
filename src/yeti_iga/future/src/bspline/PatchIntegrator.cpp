@@ -82,11 +82,17 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContribution(
                 x_phys[1] += g.R[a] * pts[a][1];
             }
 
+            // Only the a<=b pairs are computed; stiffness_density(b,a) == its
+            // transpose (see ConstitutiveLaw::stiffness_density invariant), so the
+            // b<a block is filled by mirroring instead of a second evaluation.
             double factor = w * std::abs(detJ);
             for (size_t a = 0; a < nb_loc; ++a) {
-                for (size_t b = 0; b < nb_loc; ++b) {
-                    K_loc.block(n*a, n*b, n, n) +=
+                for (size_t b = a; b < nb_loc; ++b) {
+                    Eigen::MatrixXd block =
                         law_->stiffness_density(grads[a], grads[b], x_phys) * factor;
+                    K_loc.block(n*a, n*b, n, n) += block;
+                    if (b != a)
+                        K_loc.block(n*b, n*a, n, n) += block.transpose();
                 }
             }
         }
@@ -119,13 +125,19 @@ Eigen::MatrixXd PatchIntegrator::computeLocalMassContribution(
             GaussPointGeometry g = evaluateGaussPointGeometry(pts, Nu, dNu, Nv, dNv);
             if (g.detJ == 0.0) continue;
 
-            // M^{ab} = rho * R_a * R_b * I_n  (block-diagonal in DOF index)
+            // M^{ab} = rho * R_a * R_b * I_n  (block-diagonal in DOF index).
+            // R_a*R_b is symmetric in (a,b) already, so only a<=b is computed and
+            // the b<a entry is filled directly (no transpose needed: the block
+            // is a scalar multiple of I_n).
             double factor = rho * w * std::abs(g.detJ);
             for (size_t a = 0; a < nb_loc; ++a) {
-                for (size_t b = 0; b < nb_loc; ++b) {
+                for (size_t b = a; b < nb_loc; ++b) {
                     double Ra_Rb = g.R[a] * g.R[b] * factor;
-                    for (int i = 0; i < n; ++i)
+                    for (int i = 0; i < n; ++i) {
                         M_loc(n*a + i, n*b + i) += Ra_Rb;
+                        if (b != a)
+                            M_loc(n*b + i, n*a + i) += Ra_Rb;
+                    }
                 }
             }
         }
@@ -549,11 +561,16 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContributionNURBS(
                 x_phys[1] += g.R[a] * pts[a][1];
             }
 
+            // See computeLocalStiffnessContribution(): only a<=b is evaluated,
+            // b<a is filled by mirroring the transpose.
             double factor = w * std::abs(detJ);
             for (size_t a = 0; a < nb_loc; ++a) {
-                for (size_t b = 0; b < nb_loc; ++b) {
-                    K_loc.block(n*a, n*b, n, n) +=
+                for (size_t b = a; b < nb_loc; ++b) {
+                    Eigen::MatrixXd block =
                         law_->stiffness_density(grads[a], grads[b], x_phys) * factor;
+                    K_loc.block(n*a, n*b, n, n) += block;
+                    if (b != a)
+                        K_loc.block(n*b, n*a, n, n) += block.transpose();
                 }
             }
         }
@@ -587,12 +604,16 @@ Eigen::MatrixXd PatchIntegrator::computeLocalMassContributionNURBS(
             GaussPointGeometry g = evaluateGaussPointGeometryNURBS(pts, Nu, dNu, Nv, dNv, weights);
             if (g.detJ == 0.0) continue;
 
+            // See computeLocalMassContribution(): only a<=b is evaluated.
             double factor = rho * w * std::abs(g.detJ);
             for (size_t a = 0; a < nb_loc; ++a) {
-                for (size_t b = 0; b < nb_loc; ++b) {
+                for (size_t b = a; b < nb_loc; ++b) {
                     double Ra_Rb = g.R[a] * g.R[b] * factor;
-                    for (int i = 0; i < n; ++i)
+                    for (int i = 0; i < n; ++i) {
                         M_loc(n*a + i, n*b + i) += Ra_Rb;
+                        if (b != a)
+                            M_loc(n*b + i, n*a + i) += Ra_Rb;
+                    }
                 }
             }
         }
