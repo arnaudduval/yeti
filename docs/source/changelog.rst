@@ -2,6 +2,10 @@ Changelog
 =========
 
 
+Version 0.2.x - 2026-xx-xx
+--------------------------
+ - Add propagation of refinement in multipatch assemblies
+
 Version 0.2.0 - 2026-09-08
 --------------------------
  - Add OpenMP parallel build of stiffness matrix
