@@ -2,6 +2,15 @@
 #include <Eigen/Dense>
 #include "Material.hpp"
 
+// stiffness_density() is called once per basis-function pair per Gauss point --
+// the hottest loop in the whole integrator. n_dofs_per_cp() is documented as 2
+// (plane problems) or 3 (3D solid), never more, so a compile-time MAX size of 3
+// lets Eigen store these on the stack (no heap allocation) while keeping the
+// actual size runtime-determined, exactly like Eigen::VectorXd/MatrixXd
+// everywhere else in this header's API.
+using PhysVector = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 3, 1>;
+using PhysMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, 3, 3>;
+
 // Abstract B-free constitutive law. Subclasses implement stiffness_density()
 // using the identity C{v,w} = lambda*(v x w^T) + mu*(w x v^T) + mu*(v.w)*I
 // (Planas, Romero & Sancho 2012, CMAME 217-220, 226-235).
@@ -16,16 +25,16 @@ public:
     // Elementary stiffness block K^{ab} = integral of stiffness_density(grad_a, grad_b, x_phys).
     // grad_a / grad_b: physical-space gradients of basis functions a and b (size = physical dim).
     // x_phys: physical coordinates of the Gauss point (needed for axisymmetric laws).
-    // Returns a (n x n) matrix where n = n_dofs_per_cp().
+    // Returns a (n x n) matrix where n = n_dofs_per_cp() (n <= 3).
     //
     // REQUIRED INVARIANT: stiffness_density(a, b, x).transpose() == stiffness_density(b, a, x)
     // (holds for any symmetric bilinear energy form -- true of all physically valid elastic
     // laws). PatchIntegrator relies on it to compute only the a<=b pairs per element and
     // mirror the transpose, halving the number of stiffness_density() calls.
-    virtual Eigen::MatrixXd stiffness_density(
-        const Eigen::VectorXd& grad_a,
-        const Eigen::VectorXd& grad_b,
-        const Eigen::VectorXd& x_phys) const = 0;
+    virtual PhysMatrix stiffness_density(
+        const PhysVector& grad_a,
+        const PhysVector& grad_b,
+        const PhysVector& x_phys) const = 0;
 
     const Material& material() const { return mat_; }
     virtual ~ConstitutiveLaw() = default;
@@ -43,10 +52,10 @@ protected:
     explicit IsotropicElastic(const Material& m) : ConstitutiveLaw(m) {}
 
 public:
-    Eigen::MatrixXd stiffness_density(
-        const Eigen::VectorXd& v,
-        const Eigen::VectorXd& w,
-        const Eigen::VectorXd& /*x_phys*/) const override;
+    PhysMatrix stiffness_density(
+        const PhysVector& v,
+        const PhysVector& w,
+        const PhysVector& /*x_phys*/) const override;
 };
 
 // 2D plane-stress: lambda_eff = nu*E / (1 - nu^2), n_dofs = 2.

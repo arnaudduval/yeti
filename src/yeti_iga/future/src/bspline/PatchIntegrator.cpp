@@ -54,6 +54,13 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContribution(
 
     Eigen::MatrixXd K_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
 
+    // Allocated once per element/span (nb_loc is constant here) and overwritten at
+    // each Gauss point below, rather than reallocated every Gauss point -- and
+    // PhysVector itself never touches the heap (bounded to max size 3, see
+    // ConstitutiveLaw.hpp), so this whole hot loop runs alloc-free.
+    std::vector<PhysVector> grads(nb_loc, PhysVector(2));
+    PhysVector x_phys(2);
+
     for (int gu = 0; gu < ngauss_u; ++gu) {
         for (int gv = 0; gv < ngauss_v; ++gv) {
             double w = sg_u.weight[gu] * sg_v.weight[gv];
@@ -73,8 +80,7 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContribution(
             double invJ22 =  g.J11 / detJ;
 
             // Physical-space gradients and Gauss-point physical coordinates
-            std::vector<Eigen::VectorXd> grads(nb_loc, Eigen::VectorXd(2));
-            Eigen::VectorXd x_phys = Eigen::VectorXd::Zero(2);
+            x_phys.setZero();
             for (size_t a = 0; a < nb_loc; ++a) {
                 grads[a][0] = invJ11 * g.dRdu[a] + invJ21 * g.dRdv[a];
                 grads[a][1] = invJ12 * g.dRdu[a] + invJ22 * g.dRdv[a];
@@ -88,7 +94,7 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContribution(
             double factor = w * std::abs(detJ);
             for (size_t a = 0; a < nb_loc; ++a) {
                 for (size_t b = a; b < nb_loc; ++b) {
-                    Eigen::MatrixXd block =
+                    PhysMatrix block =
                         law_->stiffness_density(grads[a], grads[b], x_phys) * factor;
                     K_loc.block(n*a, n*b, n, n) += block;
                     if (b != a)
@@ -534,6 +540,11 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContributionNURBS(
 
     Eigen::MatrixXd K_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
 
+    // See computeLocalStiffnessContribution(): allocated once per element, PhysVector
+    // never touches the heap, so this hot loop runs alloc-free.
+    std::vector<PhysVector> grads(nb_loc, PhysVector(2));
+    PhysVector x_phys(2);
+
     for (int gu = 0; gu < ngauss_u; ++gu) {
         for (int gv = 0; gv < ngauss_v; ++gv) {
             double w = sg_u.weight[gu] * sg_v.weight[gv];
@@ -552,8 +563,7 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContributionNURBS(
             double invJ21 = -g.J21 / detJ;
             double invJ22 =  g.J11 / detJ;
 
-            std::vector<Eigen::VectorXd> grads(nb_loc, Eigen::VectorXd(2));
-            Eigen::VectorXd x_phys = Eigen::VectorXd::Zero(2);
+            x_phys.setZero();
             for (size_t a = 0; a < nb_loc; ++a) {
                 grads[a][0] = invJ11 * g.dRdu[a] + invJ21 * g.dRdv[a];
                 grads[a][1] = invJ12 * g.dRdu[a] + invJ22 * g.dRdv[a];
@@ -566,7 +576,7 @@ Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContributionNURBS(
             double factor = w * std::abs(detJ);
             for (size_t a = 0; a < nb_loc; ++a) {
                 for (size_t b = a; b < nb_loc; ++b) {
-                    Eigen::MatrixXd block =
+                    PhysMatrix block =
                         law_->stiffness_density(grads[a], grads[b], x_phys) * factor;
                     K_loc.block(n*a, n*b, n, n) += block;
                     if (b != a)

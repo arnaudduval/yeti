@@ -1,14 +1,14 @@
 #include "ConstitutiveLaw.hpp"
 
-Eigen::MatrixXd IsotropicElastic::stiffness_density(
-    const Eigen::VectorXd& v,
-    const Eigen::VectorXd& w,
-    const Eigen::VectorXd& /*x_phys*/) const
+PhysMatrix IsotropicElastic::stiffness_density(
+    const PhysVector& v,
+    const PhysVector& w,
+    const PhysVector& /*x_phys*/) const
 {
     int n = static_cast<int>(v.size());
     return lambda_ * (v * w.transpose())
          + mu_     * (w * v.transpose())
-         + (mu_ * v.dot(w)) * Eigen::MatrixXd::Identity(n, n);
+         + (mu_ * v.dot(w)) * PhysMatrix::Identity(n, n);
 }
 
 PlaneStress::PlaneStress(const Material& m) : IsotropicElastic(m) {

@@ -94,3 +94,47 @@ def refine_from(assembly, patches, start_index, start_direction, refiner_factory
 
     assembly.detect_shared_control_points()
     return refined_direction
+
+
+def refine_assembly_uniform(assembly, patches, directions=(0, 1), refiner_factory=None):
+    """Refine every patch of an assembly, along every direction in `directions`,
+    exactly once each -- regardless of topology (loops, crossed interfaces,
+    disconnected components).
+
+    Repeatedly calls `refine_from()` from the first not-yet-covered
+    `(patch_index, direction)` pair, letting propagation cover as much of the
+    assembly as it can reach; any patch/direction propagation doesn't reach
+    (e.g. a disconnected patch, or a direction with no matching interface) is
+    picked up by a later trigger in the loop. Use this for uniform h-refinement
+    or degree elevation of a whole multipatch model, as opposed to `refine_from`'s
+    single localized trigger.
+
+    Parameters
+    ----------
+    assembly : PatchAssembly
+    patches : list of Patch
+        Patches in `assembly.add_patch()` order.
+    directions : iterable of int, default (0, 1)
+        Parametric directions to cover for every patch.
+    refiner_factory : callable(direction) -> refiner, optional
+        See `refine_from`. Applied identically for every direction in
+        `directions`.
+
+    Returns
+    -------
+    set of (int, int)
+        Every (patch_index, direction) pair that ended up refined.
+    """
+    done = set()
+    for direction in directions:
+        for idx in range(len(patches)):
+            if (idx, direction) in done:
+                continue
+            touched = refine_from(assembly, patches, start_index=idx,
+                                  start_direction=direction, refiner_factory=refiner_factory)
+            # Record whatever direction each patch ACTUALLY got (a crossed
+            # interface can hand a patch a different direction than requested),
+            # so a later outer-loop iteration still fills in any direction a
+            # patch didn't happen to receive here.
+            done.update(touched.items())
+    return done

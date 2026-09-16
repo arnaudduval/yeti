@@ -76,13 +76,13 @@ public:
         PYBIND11_OVERRIDE_PURE_NAME(
             int, ConstitutiveLaw, "n_dofs_per_cp", n_dofs_per_cp);
     }
-    Eigen::MatrixXd stiffness_density(
-        const Eigen::VectorXd& grad_a,
-        const Eigen::VectorXd& grad_b,
-        const Eigen::VectorXd& x_phys) const override
+    PhysMatrix stiffness_density(
+        const PhysVector& grad_a,
+        const PhysVector& grad_b,
+        const PhysVector& x_phys) const override
     {
         PYBIND11_OVERRIDE_PURE_NAME(
-            Eigen::MatrixXd, ConstitutiveLaw, "stiffness_density", stiffness_density,
+            PhysMatrix, ConstitutiveLaw, "stiffness_density", stiffness_density,
             grad_a, grad_b, x_phys);
     }
 };
