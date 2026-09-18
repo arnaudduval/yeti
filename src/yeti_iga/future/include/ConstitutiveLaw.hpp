@@ -17,6 +17,14 @@ using PhysMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, 3, 3
 // This avoids Voigt encoding, is dimension-agnostic, and is ~10x more efficient
 // than B^T D B for isotropic materials (3 rank-1 updates vs one 3x3 product).
 // Python subclassing is supported via the PyConstitutiveLaw trampoline in bindings.cpp.
+//
+// NOTE: Kirchhoff-Love shells (ShellKinematics.hpp, KirchhoffLoveShellLaw) do
+// NOT subclass this. The B-free identity above only holds because isotropic
+// solid elasticity's bilinear form happens to factor into a function of two
+// physical-space scalar-basis gradients; a shell's per-node contribution is a
+// genuine 3x3 strain-displacement matrix B_a (from covariant/contravariant
+// metric + curvature), with K_ab = B_a^T * matH * B_b -- a classical B^T*D*B
+// kernel, structurally incompatible with stiffness_density()'s signature.
 class ConstitutiveLaw {
 public:
     // Number of displacement DOFs per control point (2 for plane problems, 3 for 3D solid).
