@@ -10,8 +10,11 @@ struct SpanGauss1D {
     std::vector<double> u_param;    // Gauss point in BSpline parametric space
     std::vector<double> weight;     // Gauss integration wieght
 
-    std::vector<Eigen::VectorXd> N; // functions values at Gauss points
-    std::vector<Eigen::VectorXd> dN;// functions derivatives at Gauss points
+    std::vector<Eigen::VectorXd> N;  // functions values at Gauss points
+    std::vector<Eigen::VectorXd> dN; // functions derivatives at Gauss points
+    std::vector<Eigen::VectorXd> d2N;// 2nd derivatives at Gauss points; empty unless
+                                      // IGABasis1D::build() was called with deriv_order>=2
+                                      // (e.g. Kirchhoff-Love shell curvature terms)
 };
 
 
@@ -23,7 +26,10 @@ struct IGABasis1D {
 
     // Build from a BSpline object
     // - gauss_n : number of Gauss points per span
-    static IGABasis1D build(const BSpline& bspline, int ngauss) {
+    // - deriv_order : highest basis-function derivative order to precompute (1 by
+    //   default, matching every existing solid/plane-stress caller byte-for-byte).
+    //   Pass 2 to additionally fill SpanGauss1D::d2N (needed by shell curvature terms).
+    static IGABasis1D build(const BSpline& bspline, int ngauss, int deriv_order = 1) {
         IGABasis1D out;
         const auto& kv = bspline.getKnotVector();
         int p = bspline.getDegree();
@@ -44,6 +50,7 @@ struct IGABasis1D {
             sg.weight.reserve(ngauss);
             sg.N.reserve(ngauss);
             sg.dN.reserve(ngauss);
+            if (deriv_order >= 2) sg.d2N.reserve(ngauss);
 
             double a = kv[span];
             double b = kv[span+1];
@@ -56,9 +63,14 @@ struct IGABasis1D {
                 sg.u_param.push_back(up);
                 sg.weight.push_back(gauss_weights[i] * half);    // weight * jacobian of mapping
 
-                // compute functions + 1st derivative (output in ders)
-                std::vector<double> ders(2*(p+1));  // 2 lines : 1 for function, 1 for derivatives
-                bspline.BasisFunsDerivatives(span, up, 1, ders.data());
+                // compute functions + derivatives up to deriv_order (output in ders,
+                // one row of (p+1) values per derivative order 0..deriv_order).
+                // Zero-initialized: if deriv_order > p, BasisFunsDerivatives caps its
+                // internal order at p and leaves higher rows untouched, which is
+                // mathematically correct (a degree-p basis has zero derivatives beyond
+                // order p) as long as the buffer starts at zero.
+                std::vector<double> ders((deriv_order+1)*(p+1), 0.0);
+                bspline.BasisFunsDerivatives(span, up, deriv_order, ders.data());
 
                 // Extract functions and derivatives
                 Eigen::VectorXd N(p+1);
@@ -70,6 +82,13 @@ struct IGABasis1D {
 
                 sg.N.push_back(std::move(N));
                 sg.dN.push_back(std::move(dN));
+
+                if (deriv_order >= 2) {
+                    Eigen::VectorXd d2N(p+1);
+                    for (int j = 0; j <= p; ++j)
+                        d2N(j) = ders[2*(p+1) + j];
+                    sg.d2N.push_back(std::move(d2N));
+                }
             }
             out.gauss_spans.push_back(std::move(sg));
         }
