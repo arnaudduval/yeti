@@ -323,7 +323,15 @@ def _write_vtu_xml(
     if has_point_data:
         # Active Scalars = user field (if any), otherwise leave unset
         scalars_attr = f' Scalars="{field_name}"' if field_bz is not None else ''
-        L.append(f'      <PointData{scalars_attr}>')
+        # RationalWeights attribute tells VTK which PointData array holds the
+        # per-control-point weights for rational Bezier cells -- exactly like
+        # HigherOrderDegrees does for CellData above. Without it, VTK silently
+        # falls back to treating the cell as non-rational (plain polynomial),
+        # which for a weighted control net (e.g. a circular arc) distorts the
+        # geometry rather than erroring -- confirmed against the VTK/Kitware
+        # "Implementation of rational Bezier cells into VTK" report.
+        rational_attr = ' RationalWeights="RationalWeights"' if rat_weights is not None else ''
+        L.append(f'      <PointData{scalars_attr}{rational_attr}>')
         if rat_weights is not None:
             L += [
                 '        <DataArray type="Float64" Name="RationalWeights"'
