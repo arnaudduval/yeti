@@ -28,10 +28,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-viz = ["matplotlib>=3.7"]
+# trame-vtk>=2.11.15 pinned explicitly: trame-pyvista checks VTK/trame-vtk
+# compatibility at RUNTIME (not just via pip's dependency resolution), and an
+# unpinned install can otherwise land on a trame-vtk too old for the vtk
+# version pyvista pulls in, breaking the 'trame' interactive Jupyter backend
+# with "No handler registered for notebook backend trame".
+viz = ["matplotlib>=3.7", "pyvista[jupyter]>=0.44", "trame-vtk>=2.11.15"]
 fem = ["meshpy>=2022.1"]
-all = ["matplotlib>=3.7", "meshpy>=2022.1"]
-dev = ["nbstripout", "jupyter", "matplotlib"]
+all = ["matplotlib>=3.7", "pyvista[jupyter]>=0.44", "trame-vtk>=2.11.15", "meshpy>=2022.1"]
+dev = ["nbstripout", "jupyter", "matplotlib", "pyvista[jupyter]>=0.44", "trame-vtk>=2.11.15"]
 
 [project.urls]
 Homepage = "https://lamcosplm.insa-lyon.fr/projects/yeti"
