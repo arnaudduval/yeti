@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-from .bspline import Patch, PatchAssembly
+from ..bspline import Patch, PatchAssembly
 
 
 def _as_patch_list(patches):

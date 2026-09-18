@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 from pathlib import Path
 
-from .bspline import BezierExtractor
+from ..bspline import BezierExtractor
 
 
 # ---------------------------------------------------------------------------
