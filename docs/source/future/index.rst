@@ -5,7 +5,8 @@ future module
 machinery, exposed to Python through pybind11 and built independently of the legacy
 Fortran/f2py layer documented under *API reference*. It is the direction of active
 development for the library, currently centered on multipatch assembly (shared control
-points, propagated refinement across patch interfaces, and consistent DOF numbering).
+points, propagated refinement across patch interfaces, and consistent DOF numbering)
+and mechanical formulations (2D plane-stress/strain solids and Kirchhoff-Love shells).
 
 This section documents it in two complementary parts:
 

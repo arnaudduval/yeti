@@ -4,6 +4,7 @@ Changelog
 
 Version 0.2.x - 2026-xx-xx
 --------------------------
+ - Add Kirchhoff-Love shell elements to the ``future`` module (single-patch and C0-continuous multipatch, including distributed surface loads
  - Add propagation of refinement in multipatch assemblies
 
 Version 0.2.0 - 2026-09-08

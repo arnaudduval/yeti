@@ -636,6 +636,190 @@ constructor inaccessible from the binding layer. The trampoline therefore define
 explicit ``public`` constructor that delegates to the protected base, which is the
 canonical fix for this pattern.
 
+Kirchhoff-Love shells: a parallel path, not a ConstitutiveLaw
+------------------------------------------------------------------
+
+Why not a ``ConstitutiveLaw`` subclass
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``future`` also implements a rotation-free Kirchhoff-Love (KL) shell element,
+ported from the legacy Fortran ``UELMAT3`` (element type ``'U3'``). Every control
+point keeps 3 translational DOFs only — there is no independent rotation field, and
+both membrane and bending strain are derived from the surface's own position
+derivatives.
+
+The B-free ``stiffness_density()`` identity described above is specific to
+isotropic solid elasticity: it exploits a pairwise-gradient factorization that has
+no equivalent once the per-node contribution becomes a genuine **matrix**. A shell's
+per-node operator is a 3x3 strain-displacement matrix :math:`\mathbf{B}_a`
+(:func:`~yeti_iga.future.bspline.membrane_B` or
+:func:`~yeti_iga.future.bspline.bending_B`), combined as the classical
+:math:`\mathbf{K}^{ab} = \mathbf{B}_a^T \mathbf{H} \mathbf{B}_b`. For this reason
+:class:`~yeti_iga.future.bspline.KirchhoffLoveShellLaw` is a **new, parallel**
+class — it does not subclass :class:`~yeti_iga.future.bspline.ConstitutiveLaw`, and
+:class:`~yeti_iga.future.bspline.PatchIntegrator` gained dedicated
+``integrate_shell_stiffness()`` / ``integrate_shell_mass()`` /
+``assemble_shell_stiffness()`` / ``assemble_shell_mass()`` methods that take a
+``KirchhoffLoveShellLaw`` as an explicit argument instead.
+
+The a<=b/mirror optimization used by the solid stiffness kernel still applies: the
+legacy Fortran's own node-pair loop (``do nodj=1,NNODE; do nodi=1,nodj``) has the
+same triangular shape, since the material matrix :math:`\mathbf{H}` is symmetric
+and therefore :math:`\mathbf{K}^{ba} = (\mathbf{K}^{ab})^T`.
+
+Everything else in ``future`` generalizes to shells with **no changes**: control
+points already store 3D coordinates, DOFs per control point are already fully
+generic at runtime in :class:`~yeti_iga.future.bspline.GlobalDOFManager` /
+:class:`~yeti_iga.future.bspline.PatchDOFManager`, and the span-iteration/
+triplet-scattering machinery hardcodes neither the DOF count nor the spatial
+dimension.
+
+Surface kinematics and the material matrix
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:func:`~yeti_iga.future.bspline.compute_shell_geometry` (direct translation of the
+legacy ``curvilinear()`` subroutine) builds
+:class:`~yeti_iga.future.bspline.ShellGeometry` from the physical-space basis
+derivatives at one Gauss point: covariant tangents :math:`\mathbf{a}_1, \mathbf{a}_2`
+and unit normal :math:`\mathbf{a}_3`, second-derivative vectors
+:math:`\mathbf{a}_{11}, \mathbf{a}_{12}, \mathbf{a}_{22}`, the covariant metric
+``AAI`` (:math:`AAI_{ij} = \mathbf{a}_i \cdot \mathbf{a}_j`), its inverse the
+contravariant metric ``AAE``, and the area element
+:math:`\text{Area} = |\mathbf{a}_1 \times \mathbf{a}_2|`. It is exposed read-only
+precisely so this step can be cross-checked in isolation — against a hand-computed
+flat-plate case, or against the legacy subroutine — before trusting a full
+assembled stiffness matrix.
+
+:meth:`KirchhoffLoveShellLaw.matH() <yeti_iga.future.bspline.KirchhoffLoveShellLaw.matH>`
+builds the isotropic material matrix from the contravariant metric alone — it is
+**not** a fixed material-frame matrix, it varies at every Gauss point on a curved
+shell:
+
+.. math::
+
+   H_{11} = AAE_{11}^2, \quad H_{22} = AAE_{22}^2, \quad
+   H_{33} = \tfrac{1}{2}\left((1-\nu) AAE_{11} AAE_{22} + (1+\nu) AAE_{12}^2\right)
+
+.. math::
+
+   H_{12} = \nu\, AAE_{11} AAE_{22} + (1-\nu) AAE_{12}^2, \quad
+   H_{13} = AAE_{11} AAE_{12}, \quad H_{23} = AAE_{22} AAE_{12}
+
+scaled by :math:`E/(1-\nu^2)`. The caller then scales this *same* ``matH`` by the
+thickness :math:`t` for the membrane term and by :math:`t^3/12` for the bending
+term — there is no membrane-bending coupling term, consistent with the legacy
+element's single homogeneous isotropic layer.
+
+The 2nd-derivative NURBS quotient rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Shell curvature needs second parametric derivatives of the basis functions, which
+the existing solid integration path never computed. :class:`~yeti_iga.future.bspline.IGABasis1D`
+therefore takes an optional ``deriv_order`` (default ``1``, so every existing solid
+call site is unaffected): with ``deriv_order=2``,
+:attr:`SpanGauss1D.d2N <yeti_iga.future.bspline.SpanGauss1D.d2N>` is additionally
+populated per span.
+
+For a NURBS (rational) patch, rationalizing a *second* derivative needs a quotient
+rule with no precedent elsewhere in ``future`` (the existing NURBS code path only
+ever needed the first-derivative rule). With :math:`W = \sum_b w_b N_b` the weighted
+basis sum:
+
+.. math::
+
+   \frac{\partial^2 R}{\partial \xi_i^2} =
+   \frac{w \dfrac{\partial^2 N}{\partial \xi_i^2}
+         - R \dfrac{\partial^2 W}{\partial \xi_i^2}
+         - 2 \dfrac{\partial R}{\partial \xi_i} \dfrac{\partial W}{\partial \xi_i}}{W}
+
+.. math::
+
+   \frac{\partial^2 R}{\partial \xi \partial \eta} =
+   \frac{w \dfrac{\partial^2 N}{\partial \xi \partial \eta}
+         - R \dfrac{\partial^2 W}{\partial \xi \partial \eta}
+         - \dfrac{\partial R}{\partial \xi} \dfrac{\partial W}{\partial \eta}
+         - \dfrac{\partial R}{\partial \eta} \dfrac{\partial W}{\partial \xi}}{W}
+
+No separate parametric-to-physical Jacobian is needed for shells: unlike the solid
+kernels, the shell integration factor is simply ``w * Area`` (the Gauss weight times
+the surface area element). Reading the legacy ``nurbsbasisfuns.f`` closely showed
+that its ``DetJac`` is *not* a physical Jacobian — it is purely the reference-element-
+to-knot-span affine mapping factor, which is already folded into
+``SpanGauss1D.weight`` by :meth:`IGABasis1D.build() <yeti_iga.future.bspline.IGABasis1D.build>`
+(the same ``gauss_weights[i]*half`` computation the solid path already relies on).
+An early implementation carried an extra ``detJ`` field and multiplied it in a
+second time, matching the legacy comment's ``dvol=weight*DetJac*Area`` literally —
+this double-counted the parametric mapping and was caught before it shipped, precisely
+by tracing where each factor actually enters the Fortran computation rather than
+assuming the comment described the full ``future`` factor.
+
+Validating curved shells without a curved fixture
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every ``'U3'`` shell fixture that ships in :file:`benchs/` — ``catenary/shellArch``,
+``squareShellRoof(Disp)``, ``Tbeam2cplg`` — turns out, on inspection of its node
+coordinates, to be a **flat** panel (some are just tilted at an angle in 3D). None
+has non-planar geometry or a rational weight != 1. The flat fixtures do cross-check
+the membrane/bending B-matrices and ``matH`` against the legacy element to machine
+precision, but since every curvature term (:math:`\mathbf{a}_{11}, \mathbf{a}_{12},
+\mathbf{a}_{22}`) is identically zero on a flat patch, they cannot exercise the
+bending B-matrix's curvature-dependent terms or the 2nd-derivative NURBS quotient
+rule above.
+
+In the absence of a legacy reference, curved/rational shells are instead validated
+with the classical **rigid body mode** test: on an exact NURBS quarter-cylinder
+patch (degree 2 in the hoop direction with a non-unit weight — the standard exact
+circular-arc NURBS representation — degree 1, straight, in the axial direction), any
+linearized rigid translation or infinitesimal rigid rotation applied to every
+control point must be exactly annihilated by the assembled stiffness matrix
+(:math:`\mathbf{K}\mathbf{d} = \mathbf{0}`), since a rigid motion produces zero
+strain in any consistent linear shell formulation. This holds to machine precision
+for a correct implementation and exercises the curvature machinery and the
+quotient rule end-to-end, without requiring a legacy matrix to compare against. See
+:file:`examples/future/13_kirchhoff_love_shell.ipynb` for the worked example
+(both the flat-plate legacy cross-check and the curved rigid-body-mode test).
+
+Scope: C0 multipatch only, no bending strips
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Single-patch and C0-continuous multipatch shells (control points shared at patch
+boundaries, exactly like the existing solid multipatch path) are supported.
+C1 continuity across patch boundaries via bending strips (legacy
+``bendingstrip.f``, needed to keep folded or multi-panel shells tangent across an
+interface) is explicitly out of scope for this phase.
+
+Distributed surface loads: a constant vector, not yet a normal pressure
+------------------------------------------------------------------------
+
+A structural computation needs a right-hand side, not just ``K``. The legacy element
+integrates a *surface* Dload (over the whole 2D domain, unlike the solid path's
+edge-only :class:`~yeti_iga.future.bspline.Traction`) inside its main Gauss loop:
+``RHS_a += ADLMAG*R_a*VectNorm*dvol``, where ``VectNorm`` depends on the legacy
+``KTypeDload`` code -- a fixed global-axis direction (types 1/2/3), the local unit
+normal (type 0), or a "snow load" convention, the local normal's Z component times a
+global Z force (type 6, ``shell/UELMAT_shell.f:190-208``).
+
+:meth:`PatchIntegrator.integrate_shell_surface_load(direction, magnitude) <yeti_iga.future.bspline.PatchIntegrator.integrate_shell_surface_load>`
+implements only the first case: a **constant** force-per-unit-(true, curved)-area
+vector, ``F_a = magnitude*direction*R_a*w*Area`` (no B-matrix, unlike stiffness --
+this is a plain scalar-times-vector accumulation, closer to the mass kernel's
+structure than the stiffness one). This reproduces legacy types 1/2/3 exactly, and
+types 0/6 too **on a flat patch**, where the unit normal is itself constant -- exactly
+the case exercised in :file:`examples/future/13_kirchhoff_love_shell.ipynb`'s Part 2/
+Part 5 (the ``squareShellRoof`` fixture's ``U66`` "snow load" reduces to a constant
+vertical vector there, cross-checked against legacy to machine precision). A
+direction-varying normal-pressure variant (legacy type 0 on genuinely curved geometry,
+needing the local ``ShellGeometry::a3`` per Gauss point rather than a value fixed at
+construction time) is a natural extension, added only when a curved-geometry load
+case actually needs it -- following the same "add capability as needed, not
+speculatively" approach as :class:`~yeti_iga.future.bspline.Traction`/
+:class:`~yeti_iga.future.bspline.ConstantTraction` for the solid boundary-load path.
+
+:meth:`assemble_shell_surface_load() <yeti_iga.future.bspline.PatchIntegrator.assemble_shell_surface_load>`
+mirrors :meth:`assemble_shell_stiffness() <yeti_iga.future.bspline.PatchIntegrator.assemble_shell_stiffness>`'s
+per-patch convention (one ``direction``/``magnitude`` entry per patch, in
+``add_patch()`` order) for multipatch assemblies.
+
 Solution evaluation and scalar integrals
 ------------------------------------------
 

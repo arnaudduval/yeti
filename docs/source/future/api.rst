@@ -125,6 +125,23 @@ Integration and assembly
     :special-members: __init__
     :members:
 
+Kirchhoff-Love shells
+------------------------
+
+.. autoclass:: yeti_iga.future.bspline.ShellGeometry
+    :special-members: __init__
+    :members:
+
+.. autofunction:: yeti_iga.future.bspline.compute_shell_geometry
+
+.. autofunction:: yeti_iga.future.bspline.membrane_B
+
+.. autofunction:: yeti_iga.future.bspline.bending_B
+
+.. autoclass:: yeti_iga.future.bspline.KirchhoffLoveShellLaw
+    :special-members: __init__
+    :members:
+
 Solution evaluation
 ----------------------
 
