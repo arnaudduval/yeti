@@ -20,6 +20,7 @@
 #include "refinement/PRefiner.hpp"
 #include "refinement/BezierExtractor.hpp"
 #include "PatchEvaluator.hpp"
+#include "ShellKinematics.hpp"
 
 
 namespace py = pybind11;
@@ -409,9 +410,18 @@ PYBIND11_MODULE(bspline, m)
             }
             return arrays;
         }, "list of arrays, one per Gauss point: first parametric derivatives of the "
-           "p+1 active basis functions (same order as N).");
-        // .def_property_readonly("N", [](const SpanGauss1D& self) {return self.N;})
-        // .def_property_readonly("dN", [](const SpanGauss1D& self) {return self.dN;});
+           "p+1 active basis functions (same order as N).")
+        .def_property_readonly("d2N", [](const SpanGauss1D& self) {
+            std::vector<py::array_t<double>> arrays;
+            for (const auto& vec : self.d2N) {
+                py::array_t<double> arr(vec.size());
+                Eigen::Map<Eigen::VectorXd>(arr.mutable_data(), vec.size()) = vec;
+                arrays.push_back(arr);
+            }
+            return arrays;
+        }, "list of arrays, one per Gauss point: second parametric derivatives of the "
+           "p+1 active basis functions (same order as N). Empty unless the owning "
+           "IGABasis1D was built with deriv_order>=2.");
 
     py::class_<IGABasis1D>(m, "IGABasis1D",
         R"doc(
@@ -448,14 +458,15 @@ PatchIntegrator : uses two IGABasis1D objects (one per parametric direction)
             },
             "Dict mapping each non-empty knot span index to its position in gauss_spans. "
             "Mirrors the internal span_indices used by PatchIntegrator.")
-        .def_static("build", &IGABasis1D::build, py::arg("b"), py::arg("gauss_n"),
+        .def_static("build", &IGABasis1D::build,
+            py::arg("b"), py::arg("gauss_n"), py::arg("deriv_order") = 1,
             R"doc(
 Build an IGABasis1D from a BSpline and a Gauss-point count.
 
 Iterates over every non-empty knot span ``[U[i], U[i+1]]``, maps the
 ``gauss_n`` Gauss-Legendre reference points from ``[-1, 1]`` into the span,
-and evaluates both the B-spline basis functions and their first derivatives
-there via de Boor's algorithm.
+and evaluates the B-spline basis functions and their parametric derivatives
+(up to ``deriv_order``) there via de Boor's algorithm.
 
 Parameters
 ----------
@@ -466,6 +477,11 @@ gauss_n : int
     order-``p`` B-spline, ``gauss_n = p + 1`` integrates polynomials of
     degree ``2p`` exactly (sufficient for the stiffness matrix of a
     Laplacian-like bilinear form).
+deriv_order : int, default 1
+    Highest basis-function derivative order to precompute. 1 (the default)
+    fills ``N``/``dN`` only, identical to every existing solid/plane-stress
+    caller. Pass 2 to additionally fill ``d2N`` (needed for Kirchhoff-Love
+    shell curvature terms).
 
 Returns
 -------
@@ -531,6 +547,70 @@ IGABasis1D
         .def(py::init<const Material&>(), py::arg("material"),
             "Construct from a Material. "
             "Use for thick cross-sections where the out-of-plane strain is zero.");
+
+    py::class_<ShellGeometry>(m, "ShellGeometry",
+        "Covariant/contravariant surface kinematics at one Gauss point of a "
+        "Kirchhoff-Love shell, computed by compute_shell_geometry(). Exposed "
+        "read-only, primarily so this geometry step can be cross-checked in "
+        "isolation (e.g. against a hand-computed flat-plate case, or against "
+        "the legacy Fortran curvilinear() subroutine) before trusting a full "
+        "assembled shell stiffness matrix.")
+        .def_readonly("a1", &ShellGeometry::a1, "Covariant tangent d(x)/du.")
+        .def_readonly("a2", &ShellGeometry::a2, "Covariant tangent d(x)/dv.")
+        .def_readonly("a3", &ShellGeometry::a3, "Unit normal, ``(a1 x a2)/|a1 x a2|``.")
+        .def_readonly("a11", &ShellGeometry::a11, "Second derivative d2(x)/du2.")
+        .def_readonly("a12", &ShellGeometry::a12, "Second derivative d2(x)/dudv.")
+        .def_readonly("a22", &ShellGeometry::a22, "Second derivative d2(x)/dv2.")
+        .def_readonly("AAI", &ShellGeometry::AAI, "Covariant metric, AAI(i,j) = a_i . a_j.")
+        .def_readonly("AAE", &ShellGeometry::AAE, "Contravariant metric, inverse of AAI.")
+        .def_readonly("Area", &ShellGeometry::Area, "Surface metric determinant ``|a1 x a2|``.");
+
+    m.def("compute_shell_geometry",
+        [](const std::vector<Eigen::Vector3d>& pts,
+           const std::vector<double>& dRdu, const std::vector<double>& dRdv,
+           const std::vector<double>& d2Rdu2, const std::vector<double>& d2Rdv2,
+           const std::vector<double>& d2Rdudv) {
+            std::vector<const double*> raw_pts;
+            raw_pts.reserve(pts.size());
+            for (const auto& p : pts) raw_pts.push_back(p.data());
+            return computeShellGeometry(raw_pts, dRdu, dRdv, d2Rdu2, d2Rdv2, d2Rdudv);
+        },
+        py::arg("pts"), py::arg("dRdu"), py::arg("dRdv"),
+        py::arg("d2Rdu2"), py::arg("d2Rdv2"), py::arg("d2Rdudv"),
+        "Build a ShellGeometry from the physical-space 1st/2nd basis-function "
+        "derivatives and the 3D control points active at one Gauss point "
+        "(u-fastest order, as returned by Patch.control_points_for_span()). "
+        "pts: list of length-3 (x,y,z) arrays, one per active control point. "
+        "This Python-facing overload copies pts into contiguous storage; the "
+        "internal C++ API used by PatchIntegrator instead takes raw pointers "
+        "directly into ControlPointManager's storage, with no copy.");
+
+    m.def("membrane_B", &membraneB, py::arg("geometry"), py::arg("dRdu_a"), py::arg("dRdv_a"),
+        "Membrane strain-displacement operator (3x3) for one control point, "
+        "given its physical-space basis-function first derivatives.");
+
+    m.def("bending_B", &bendingB,
+        py::arg("geometry"), py::arg("dRdu_a"), py::arg("dRdv_a"),
+        py::arg("d2Rdu2_a"), py::arg("d2Rdv2_a"), py::arg("d2Rdudv_a"),
+        "Bending (curvature) strain-displacement operator (3x3) for one "
+        "control point, given its physical-space basis-function first and "
+        "second derivatives.");
+
+    py::class_<KirchhoffLoveShellLaw, std::shared_ptr<KirchhoffLoveShellLaw>>(
+        m, "KirchhoffLoveShellLaw",
+        "Isotropic Kirchhoff-Love (rotation-free) shell constitutive law. "
+        "NOT a ConstitutiveLaw subclass -- see ConstitutiveLaw's docstring "
+        "for why shells need a parallel B^T*D*B kernel instead of the "
+        "B-free stiffness_density() identity used by solids.")
+        .def(py::init<const Material&>(), py::arg("material"),
+            "Construct from a Material (E, nu, rho, thickness all used).")
+        .def_property_readonly("material", &KirchhoffLoveShellLaw::material,
+            "The Material this law was constructed with.")
+        .def("matH", &KirchhoffLoveShellLaw::matH, py::arg("AAE"),
+            "Isotropic membrane/bending material matrix (3x3) at the given "
+            "contravariant metric AAE -- varies over a curved shell. Caller "
+            "scales by thickness (membrane) or thickness^3/12 (bending); "
+            "same matH for both, no membrane-bending coupling term.");
 
     py::class_<Traction, PyTraction, std::shared_ptr<Traction>>(m, "Traction",
         "Base class for a distributed boundary load (force per unit length), "
@@ -602,6 +682,12 @@ IGABasis1D
              "Construct for the given patch and precomputed Gauss data (one IGABasis1D "
              "per parametric direction). law defines the mechanical behaviour and the "
              "number of DOFs per control point.")
+        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>(),
+             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"),
+             "Construct without a ConstitutiveLaw, for integrate_shell_stiffness()/"
+             "integrate_shell_mass() (which take a KirchhoffLoveShellLaw explicitly, "
+             "since it is not a ConstitutiveLaw) or integrate_operator(). "
+             "basis_u/basis_v must be built with deriv_order=2 for shell use.")
         .def("integrate_stiffness", &PatchIntegrator::integrateStiffness,
             "Assemble the stiffness matrix of this single patch. "
             "Returns a scipy.sparse.csc_matrix of size (n_dof, n_dof) where "
@@ -624,6 +710,48 @@ IGABasis1D
             py::arg("assembly"), py::arg("laws"), py::arg("gauss_n") = 0,
             "Same as assemble_stiffness(), but for the consistent mass matrix of "
             "the whole PatchAssembly. Every entry in laws must have material().rho > 0.")
+        .def("integrate_shell_stiffness", &PatchIntegrator::integrateShellStiffness,
+            py::arg("shell_law"),
+            "Assemble the Kirchhoff-Love shell stiffness matrix of this single "
+            "patch (membrane + bending). Returns a scipy.sparse.csc_matrix of "
+            "size (n_dof, n_dof) where n_dof = n_cp * 3 (translations only). "
+            "basis_u/basis_v must have been built with deriv_order=2 (shell "
+            "curvature needs second derivatives). For multi-patch assemblies "
+            "use assemble_shell_stiffness() instead.")
+        .def("integrate_shell_mass", &PatchIntegrator::integrateShellMass,
+            py::arg("shell_law"),
+            "Same as integrate_shell_stiffness(), but for the consistent shell "
+            "mass matrix (rho*thickness*R_a*R_b*I_3) of this single patch. "
+            "Requires shell_law.material().rho > 0.")
+        .def_static("assemble_shell_stiffness", &PatchIntegrator::assembleShellStiffness,
+            py::arg("assembly"), py::arg("laws"), py::arg("gauss_n") = 0,
+            "Assemble the global Kirchhoff-Love shell stiffness matrix of a "
+            "whole PatchAssembly. laws must have one entry per patch, in "
+            "assembly.get_patchs() (add_patch()) order -- same shared-dof "
+            "summation semantics as assemble_stiffness().")
+        .def_static("assemble_shell_mass", &PatchIntegrator::assembleShellMass,
+            py::arg("assembly"), py::arg("laws"), py::arg("gauss_n") = 0,
+            "Same as assemble_shell_stiffness(), but for the consistent shell "
+            "mass matrix. Every entry in laws must have material().rho > 0.")
+        .def("integrate_shell_surface_load", &PatchIntegrator::integrateShellSurfaceLoad,
+            py::arg("direction"), py::arg("magnitude"),
+            "Distributed surface load on a Kirchhoff-Love shell: a constant "
+            "force-per-unit-(true, curved)-area vector (direction * magnitude), "
+            "integrated against R_a over the WHOLE patch -- unlike "
+            "integrate_boundary_load(), which only covers one edge. This "
+            "reproduces the legacy Dload types U_1/U_2/U_3 (global-axis "
+            "pressure) exactly, and U_0/U_6 (normal pressure / 'snow load') "
+            "too on a FLAT patch, where the unit normal is itself constant. "
+            "A direction-varying normal-pressure variant for curved geometry "
+            "is not implemented yet. Returns a vector sized like "
+            "integrate_shell_stiffness()'s matrix.")
+        .def_static("assemble_shell_surface_load", &PatchIntegrator::assembleShellSurfaceLoad,
+            py::arg("assembly"), py::arg("directions"), py::arg("magnitudes"),
+            py::arg("gauss_n") = 0,
+            "Assemble the shell surface load of a whole PatchAssembly. "
+            "directions/magnitudes must each have one entry per patch, in "
+            "assembly.get_patchs() (add_patch()) order -- same per-patch "
+            "convention as assemble_shell_stiffness()'s laws.")
         .def("integrate_operator", &PatchIntegrator::integrateOperator, py::arg("op"),
             "Integrate a custom LocalOperator over this single patch. For "
             "development/testing: subclass LocalOperator in Python and override "

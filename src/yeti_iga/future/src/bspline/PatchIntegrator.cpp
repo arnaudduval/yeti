@@ -767,3 +767,494 @@ double PatchIntegrator::integrateScalarOperator(ScalarLocalOperator& op,
 
     return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kirchhoff-Love shell implementation
+// ─────────────────────────────────────────────────────────────────────────────
+
+PatchIntegrator::ShellGaussPointGeometry PatchIntegrator::evaluateShellGaussPointGeometry(
+    const std::vector<const double*>& pts,
+    const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu, const Eigen::VectorXd& d2Nu,
+    const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv, const Eigen::VectorXd& d2Nv) const
+{
+    size_t nb_loc = pts.size();
+    ShellGaussPointGeometry g;
+    g.R.resize(nb_loc); g.dRdu.resize(nb_loc); g.dRdv.resize(nb_loc);
+    g.d2Rdu2.resize(nb_loc); g.d2Rdv2.resize(nb_loc); g.d2Rdudv.resize(nb_loc);
+
+    size_t idx = 0;
+    for (size_t jv = 0; jv < static_cast<size_t>(Nv.size()); ++jv) {
+        for (size_t iu = 0; iu < static_cast<size_t>(Nu.size()); ++iu) {
+            g.R[idx]       = Nu(iu) * Nv(jv);
+            g.dRdu[idx]    = dNu(iu) * Nv(jv);
+            g.dRdv[idx]    = Nu(iu) * dNv(jv);
+            g.d2Rdu2[idx]  = d2Nu(iu) * Nv(jv);
+            g.d2Rdv2[idx]  = Nu(iu) * d2Nv(jv);
+            g.d2Rdudv[idx] = dNu(iu) * dNv(jv);
+            ++idx;
+        }
+    }
+
+    g.geom = computeShellGeometry(pts, g.dRdu, g.dRdv, g.d2Rdu2, g.d2Rdv2, g.d2Rdudv);
+    return g;
+}
+
+// NURBS variant: rationalizes R/dRdu/dRdv exactly as evaluateGaussPointGeometryNURBS
+// does, then applies the 2nd-order quotient rule derived from the same
+// w_a*N_a/W identity (see ConstitutiveLaw.hpp-style header comments in
+// ShellKinematics.hpp for the formula). Order matters: d2R at each CP needs
+// that same CP's already-rationalized dRdu/dRdv, computed just above it.
+PatchIntegrator::ShellGaussPointGeometry PatchIntegrator::evaluateShellGaussPointGeometryNURBS(
+    const std::vector<const double*>& pts,
+    const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu, const Eigen::VectorXd& d2Nu,
+    const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv, const Eigen::VectorXd& d2Nv,
+    const std::vector<double>& weights) const
+{
+    size_t nb_loc = pts.size();
+    ShellGaussPointGeometry g;
+    g.R.resize(nb_loc); g.dRdu.resize(nb_loc); g.dRdv.resize(nb_loc);
+    g.d2Rdu2.resize(nb_loc); g.d2Rdv2.resize(nb_loc); g.d2Rdudv.resize(nb_loc);
+
+    std::vector<double> rawR(nb_loc), rawDu(nb_loc), rawDv(nb_loc),
+                        rawDu2(nb_loc), rawDv2(nb_loc), rawDudv(nb_loc);
+    size_t idx = 0;
+    for (size_t jv = 0; jv < static_cast<size_t>(Nv.size()); ++jv) {
+        for (size_t iu = 0; iu < static_cast<size_t>(Nu.size()); ++iu) {
+            rawR[idx]     = Nu(iu) * Nv(jv);
+            rawDu[idx]    = dNu(iu) * Nv(jv);
+            rawDv[idx]    = Nu(iu) * dNv(jv);
+            rawDu2[idx]   = d2Nu(iu) * Nv(jv);
+            rawDv2[idx]   = Nu(iu) * d2Nv(jv);
+            rawDudv[idx]  = dNu(iu) * dNv(jv);
+            ++idx;
+        }
+    }
+
+    double W = 0.0, dWdu = 0.0, dWdv = 0.0, d2Wdu2 = 0.0, d2Wdv2 = 0.0, d2Wdudv = 0.0;
+    for (size_t a = 0; a < nb_loc; ++a) {
+        W       += weights[a] * rawR[a];
+        dWdu    += weights[a] * rawDu[a];
+        dWdv    += weights[a] * rawDv[a];
+        d2Wdu2  += weights[a] * rawDu2[a];
+        d2Wdv2  += weights[a] * rawDv2[a];
+        d2Wdudv += weights[a] * rawDudv[a];
+    }
+    const double inv_W = 1.0 / W;
+    for (size_t a = 0; a < nb_loc; ++a) {
+        const double Ra = weights[a] * rawR[a] * inv_W;
+        const double dRdu_a = (weights[a] * rawDu[a] - Ra * dWdu) * inv_W;
+        const double dRdv_a = (weights[a] * rawDv[a] - Ra * dWdv) * inv_W;
+        g.R[a] = Ra;
+        g.dRdu[a] = dRdu_a;
+        g.dRdv[a] = dRdv_a;
+        g.d2Rdu2[a]  = (weights[a] * rawDu2[a]  - Ra * d2Wdu2  - 2.0 * dRdu_a * dWdu) * inv_W;
+        g.d2Rdv2[a]  = (weights[a] * rawDv2[a]  - Ra * d2Wdv2  - 2.0 * dRdv_a * dWdv) * inv_W;
+        g.d2Rdudv[a] = (weights[a] * rawDudv[a] - Ra * d2Wdudv
+                       - dRdu_a * dWdv - dRdv_a * dWdu) * inv_W;
+    }
+
+    g.geom = computeShellGeometry(pts, g.dRdu, g.dRdv, g.d2Rdu2, g.d2Rdv2, g.d2Rdudv);
+    return g;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalShellStiffnessContribution(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const std::vector<int>& span, const KirchhoffLoveShellLaw& shell_law)
+{
+    const int n = 3;   // Kirchhoff-Love: 3 translational DOFs per control point
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd K_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+    std::vector<Eigen::Matrix3d> Bmem(nb_loc), Bbnd(nb_loc);
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+            ShellGaussPointGeometry g = evaluateShellGaussPointGeometry(
+                pts, sg_u.N[gu], sg_u.dN[gu], sg_u.d2N[gu],
+                sg_v.N[gv], sg_v.dN[gv], sg_v.d2N[gv]);
+            if (g.geom.Area < 1.e-14) continue;
+
+            const double t = shell_law.material().thickness;
+            const Eigen::Matrix3d Hm = shell_law.matH(g.geom.AAE) * t;
+            const Eigen::Matrix3d Hb = shell_law.matH(g.geom.AAE) * (t * t * t / 12.0);
+            const double factor = w * g.geom.Area;
+
+            for (size_t a = 0; a < nb_loc; ++a) {
+                Bmem[a] = membraneB(g.geom, g.dRdu[a], g.dRdv[a]);
+                Bbnd[a] = bendingB(g.geom, g.dRdu[a], g.dRdv[a],
+                                   g.d2Rdu2[a], g.d2Rdv2[a], g.d2Rdudv[a]);
+            }
+
+            // Only a<=b pairs are computed; matH is symmetric so
+            // K_ba = (B_a^T*matH*B_b)^T = K_ab^T (same mirror trick as the
+            // solid B-free kernel's stiffness_density invariant).
+            for (size_t a = 0; a < nb_loc; ++a) {
+                for (size_t b = a; b < nb_loc; ++b) {
+                    Eigen::Matrix3d block =
+                        (Bmem[a].transpose() * Hm * Bmem[b]
+                       + Bbnd[a].transpose() * Hb * Bbnd[b]) * factor;
+                    K_loc.block(n*a, n*b, n, n) += block;
+                    if (b != a)
+                        K_loc.block(n*b, n*a, n, n) += block.transpose();
+                }
+            }
+        }
+    }
+    return K_loc;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalShellStiffnessContributionNURBS(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const std::vector<int>& span, const std::vector<double>& weights,
+    const KirchhoffLoveShellLaw& shell_law)
+{
+    const int n = 3;
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd K_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+    std::vector<Eigen::Matrix3d> Bmem(nb_loc), Bbnd(nb_loc);
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+            ShellGaussPointGeometry g = evaluateShellGaussPointGeometryNURBS(
+                pts, sg_u.N[gu], sg_u.dN[gu], sg_u.d2N[gu],
+                sg_v.N[gv], sg_v.dN[gv], sg_v.d2N[gv], weights);
+            if (g.geom.Area < 1.e-14) continue;
+
+            const double t = shell_law.material().thickness;
+            const Eigen::Matrix3d Hm = shell_law.matH(g.geom.AAE) * t;
+            const Eigen::Matrix3d Hb = shell_law.matH(g.geom.AAE) * (t * t * t / 12.0);
+            const double factor = w * g.geom.Area;
+
+            for (size_t a = 0; a < nb_loc; ++a) {
+                Bmem[a] = membraneB(g.geom, g.dRdu[a], g.dRdv[a]);
+                Bbnd[a] = bendingB(g.geom, g.dRdu[a], g.dRdv[a],
+                                   g.d2Rdu2[a], g.d2Rdv2[a], g.d2Rdudv[a]);
+            }
+
+            for (size_t a = 0; a < nb_loc; ++a) {
+                for (size_t b = a; b < nb_loc; ++b) {
+                    Eigen::Matrix3d block =
+                        (Bmem[a].transpose() * Hm * Bmem[b]
+                       + Bbnd[a].transpose() * Hb * Bbnd[b]) * factor;
+                    K_loc.block(n*a, n*b, n, n) += block;
+                    if (b != a)
+                        K_loc.block(n*b, n*a, n, n) += block.transpose();
+                }
+            }
+        }
+    }
+    return K_loc;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalShellMassContribution(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const std::vector<int>& span, const KirchhoffLoveShellLaw& shell_law)
+{
+    const int n = 3;
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd M_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+    const double rho_t = shell_law.material().rho * shell_law.material().thickness;
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+            ShellGaussPointGeometry g = evaluateShellGaussPointGeometry(
+                pts, sg_u.N[gu], sg_u.dN[gu], sg_u.d2N[gu],
+                sg_v.N[gv], sg_v.dN[gv], sg_v.d2N[gv]);
+            if (g.geom.Area < 1.e-14) continue;
+
+            // M^ab = rho*thickness*w*Area*R_a*R_b*I_3 -- same structure as
+            // computeLocalMassContribution, scaled by thickness and using
+            // the surface metric Area in place of the flat |detJ|.
+            double factor = rho_t * w * g.geom.Area;
+            for (size_t a = 0; a < nb_loc; ++a) {
+                for (size_t b = a; b < nb_loc; ++b) {
+                    double Ra_Rb = g.R[a] * g.R[b] * factor;
+                    for (int i = 0; i < n; ++i) {
+                        M_loc(n*a + i, n*b + i) += Ra_Rb;
+                        if (b != a)
+                            M_loc(n*b + i, n*a + i) += Ra_Rb;
+                    }
+                }
+            }
+        }
+    }
+    return M_loc;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalShellMassContributionNURBS(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const std::vector<int>& span, const std::vector<double>& weights,
+    const KirchhoffLoveShellLaw& shell_law)
+{
+    const int n = 3;
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd M_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+    const double rho_t = shell_law.material().rho * shell_law.material().thickness;
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+            ShellGaussPointGeometry g = evaluateShellGaussPointGeometryNURBS(
+                pts, sg_u.N[gu], sg_u.dN[gu], sg_u.d2N[gu],
+                sg_v.N[gv], sg_v.dN[gv], sg_v.d2N[gv], weights);
+            if (g.geom.Area < 1.e-14) continue;
+
+            double factor = rho_t * w * g.geom.Area;
+            for (size_t a = 0; a < nb_loc; ++a) {
+                for (size_t b = a; b < nb_loc; ++b) {
+                    double Ra_Rb = g.R[a] * g.R[b] * factor;
+                    for (int i = 0; i < n; ++i) {
+                        M_loc(n*a + i, n*b + i) += Ra_Rb;
+                        if (b != a)
+                            M_loc(n*b + i, n*a + i) += Ra_Rb;
+                    }
+                }
+            }
+        }
+    }
+    return M_loc;
+}
+
+Eigen::SparseMatrix<double> PatchIntegrator::assembleShellGeneric(
+    const PatchAssembly& assembly,
+    const std::vector<std::shared_ptr<const KirchhoffLoveShellLaw>>& laws,
+    int gauss_n,
+    const std::function<void(PatchIntegrator&, const KirchhoffLoveShellLaw&,
+                             std::vector<Eigen::Triplet<double>>&)>& collect)
+{
+    const auto& patches = assembly.getPatchs();
+    if (laws.size() != patches.size())
+        throw std::invalid_argument(
+            "PatchIntegrator::assembleShellGeneric: laws.size() must equal the "
+            "number of patches in the assembly (one entry per patch, in "
+            "add_patch() order).");
+
+    std::vector<Eigen::Triplet<double>> tripletList;
+    size_t total_dofs = 0;
+
+    std::vector<IGABasis1D> bases_u, bases_v;
+    bases_u.reserve(patches.size());
+    bases_v.reserve(patches.size());
+
+    for (size_t p = 0; p < patches.size(); ++p) {
+        const Patch& patch = *patches[p];
+
+        int p_u = patch.tensor.components[0].getDegree();
+        int p_v = patch.tensor.components[1].getDegree();
+        int n_u = (gauss_n > 0) ? gauss_n : p_u + 1;
+        int n_v = (gauss_n > 0) ? gauss_n : p_v + 1;
+
+        // deriv_order=2: shells need curvature (2nd derivatives), unlike the
+        // solid path's assembleGeneric() which builds these at deriv_order=1.
+        bases_u.push_back(IGABasis1D::build(patch.tensor.components[0], n_u, 2));
+        bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v, 2));
+
+        PatchIntegrator integrator(patch, bases_u.back(), bases_v.back());  // no-law ctor
+        collect(integrator, *laws[p], tripletList);
+        total_dofs = std::max(total_dofs, integrator.localTotalDofs());
+    }
+
+    Eigen::SparseMatrix<double> result(total_dofs, total_dofs);
+    result.setFromTriplets(tripletList.begin(), tripletList.end());
+    return result;
+}
+
+Eigen::SparseMatrix<double> PatchIntegrator::assembleShellStiffness(
+    const PatchAssembly& assembly,
+    const std::vector<std::shared_ptr<const KirchhoffLoveShellLaw>>& laws,
+    int gauss_n)
+{
+    return assembleShellGeneric(assembly, laws, gauss_n,
+        [](PatchIntegrator& pi, const KirchhoffLoveShellLaw& law,
+           std::vector<Eigen::Triplet<double>>& t) {
+            if (pi.patch_.cp_manager->is_rational())
+                pi.collectShellTripletsImpl<true>(law, t);
+            else
+                pi.collectShellTripletsImpl<false>(law, t);
+        });
+}
+
+Eigen::SparseMatrix<double> PatchIntegrator::assembleShellMass(
+    const PatchAssembly& assembly,
+    const std::vector<std::shared_ptr<const KirchhoffLoveShellLaw>>& laws,
+    int gauss_n)
+{
+    for (const auto& law : laws) {
+        if (law->material().rho <= 0.0)
+            throw std::invalid_argument(
+                "PatchIntegrator::assembleShellMass: every law must have "
+                "material.rho > 0.");
+    }
+    return assembleShellGeneric(assembly, laws, gauss_n,
+        [](PatchIntegrator& pi, const KirchhoffLoveShellLaw& law,
+           std::vector<Eigen::Triplet<double>>& t) {
+            if (pi.patch_.cp_manager->is_rational())
+                pi.collectShellMassTripletsImpl<true>(law, t);
+            else
+                pi.collectShellMassTripletsImpl<false>(law, t);
+        });
+}
+
+Eigen::VectorXd PatchIntegrator::computeLocalShellSurfaceLoadContribution(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const std::vector<int>& span, const Eigen::Vector3d& direction, double magnitude)
+{
+    const int n = 3;
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::VectorXd F_loc = Eigen::VectorXd::Zero(n * nb_loc);
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+            ShellGaussPointGeometry g = evaluateShellGaussPointGeometry(
+                pts, sg_u.N[gu], sg_u.dN[gu], sg_u.d2N[gu],
+                sg_v.N[gv], sg_v.dN[gv], sg_v.d2N[gv]);
+            if (g.geom.Area < 1.e-14) continue;
+
+            double factor = magnitude * w * g.geom.Area;
+            for (size_t a = 0; a < nb_loc; ++a)
+                F_loc.segment<n>(n * a) += (g.R[a] * factor) * direction;
+        }
+    }
+    return F_loc;
+}
+
+Eigen::VectorXd PatchIntegrator::computeLocalShellSurfaceLoadContributionNURBS(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const std::vector<int>& span, const std::vector<double>& weights,
+    const Eigen::Vector3d& direction, double magnitude)
+{
+    const int n = 3;
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::VectorXd F_loc = Eigen::VectorXd::Zero(n * nb_loc);
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            double w = sg_u.weight[gu] * sg_v.weight[gv];
+
+            ShellGaussPointGeometry g = evaluateShellGaussPointGeometryNURBS(
+                pts, sg_u.N[gu], sg_u.dN[gu], sg_u.d2N[gu],
+                sg_v.N[gv], sg_v.dN[gv], sg_v.d2N[gv], weights);
+            if (g.geom.Area < 1.e-14) continue;
+
+            double factor = magnitude * w * g.geom.Area;
+            for (size_t a = 0; a < nb_loc; ++a)
+                F_loc.segment<n>(n * a) += (g.R[a] * factor) * direction;
+        }
+    }
+    return F_loc;
+}
+
+Eigen::VectorXd PatchIntegrator::integrateShellSurfaceLoad(
+    const Eigen::Vector3d& direction, double magnitude)
+{
+    Eigen::VectorXd global_load = Eigen::VectorXd::Zero(localTotalDofs());
+
+    const bool rational = patch_.cp_manager->is_rational();
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        int idx_u = basis_u_.span_indices.at(span[0]);
+        int idx_v = basis_v_.span_indices.at(span[1]);
+        const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+        const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+        Eigen::VectorXd local_load;
+        if (rational) {
+            auto w = patch_.weights_for_span(span);
+            local_load = computeLocalShellSurfaceLoadContributionNURBS(
+                patch_, sg_u, sg_v, span, w, direction, magnitude);
+        } else {
+            local_load = computeLocalShellSurfaceLoadContribution(
+                patch_, sg_u, sg_v, span, direction, magnitude);
+        }
+        assembleLocalLoadContribution(local_load, span, global_load);
+    }
+    return global_load;
+}
+
+Eigen::VectorXd PatchIntegrator::assembleShellSurfaceLoad(
+    const PatchAssembly& assembly,
+    const std::vector<Eigen::Vector3d>& directions,
+    const std::vector<double>& magnitudes,
+    int gauss_n)
+{
+    const auto& patches = assembly.getPatchs();
+    if (directions.size() != patches.size() || magnitudes.size() != patches.size())
+        throw std::invalid_argument(
+            "PatchIntegrator::assembleShellSurfaceLoad: directions.size() and "
+            "magnitudes.size() must equal the number of patches in the "
+            "assembly (one entry per patch, in add_patch() order).");
+
+    size_t total_dofs = 0;
+    for (const auto& patch : patches) {
+        if (!patch->dof_manager) continue;
+        const auto& l2g = patch->dof_manager->local_to_global_dofs;
+        if (!l2g.empty())
+            total_dofs = std::max(total_dofs, *std::max_element(l2g.begin(), l2g.end()) + 1);
+    }
+    Eigen::VectorXd global_load = Eigen::VectorXd::Zero(total_dofs);
+
+    std::vector<IGABasis1D> bases_u, bases_v;
+    bases_u.reserve(patches.size());
+    bases_v.reserve(patches.size());
+
+    for (size_t p = 0; p < patches.size(); ++p) {
+        const Patch& patch = *patches[p];
+
+        int p_u = patch.tensor.components[0].getDegree();
+        int p_v = patch.tensor.components[1].getDegree();
+        int n_u = (gauss_n > 0) ? gauss_n : p_u + 1;
+        int n_v = (gauss_n > 0) ? gauss_n : p_v + 1;
+
+        // deriv_order=2: shells need curvature (2nd derivatives), even though
+        // this particular kernel only uses R and Area -- kept consistent with
+        // assembleShellGeneric() so a single basis pair could serve stiffness,
+        // mass, and load for the same patch.
+        bases_u.push_back(IGABasis1D::build(patch.tensor.components[0], n_u, 2));
+        bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v, 2));
+
+        PatchIntegrator integrator(patch, bases_u.back(), bases_v.back());  // no-law ctor
+        Eigen::VectorXd local_result = integrator.integrateShellSurfaceLoad(
+            directions[p], magnitudes[p]);
+
+        global_load.head(local_result.size()) += local_result;
+    }
+    return global_load;
+}

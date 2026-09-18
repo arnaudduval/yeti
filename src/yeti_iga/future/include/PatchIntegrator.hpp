@@ -14,6 +14,7 @@
 #include "ScalarLocalOperator.hpp"
 #include "Traction.hpp"
 #include "ConstitutiveLaw.hpp"
+#include "ShellKinematics.hpp"
 
 
 
@@ -36,10 +37,93 @@ private:
     const IGABasis1D& basis_v_;
     std::shared_ptr<const ConstitutiveLaw> law_;
 
-    // No-law constructor for assembleOperator() / assembleBoundaryLoad() which
-    // never call the stiffness/mass kernels. Static methods can access it.
-    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v)
-        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), law_(nullptr) {}
+    // Geometry needed by the shell kernels at one Gauss point: basis values
+    // and first/second parametric derivatives (u-fastest), and the derived
+    // ShellGeometry (covariant frame, metric, curvature). Unlike the solid
+    // GaussPointGeometry below, there is no separate "detJ" field here: the
+    // legacy Fortran's `DetJac` is confirmed (nurbsbasisfuns.f:162-166) to be
+    // just the reference-to-knot-span affine mapping factor (product of the
+    // two span half-lengths) -- exactly what SpanGauss1D::weight already
+    // bakes in via IGABasis1D::build()'s `gauss_weights[i]*half`. The
+    // physical surface area element is ShellGeometry::Area (|a1 x a2|), a
+    // genuinely new quantity with no solid-code analogue (a 2D-parameter/
+    // 3D-physical surface has no square "physical Jacobian" the way a flat
+    // 2D solid does). So `factor = w*Area` is the shell equivalent of the
+    // solid kernels' `factor = w*|detJ|`; Area itself signals degeneracy.
+    struct ShellGaussPointGeometry {
+        std::vector<double> R, dRdu, dRdv, d2Rdu2, d2Rdv2, d2Rdudv;
+        ShellGeometry geom;
+    };
+    ShellGaussPointGeometry evaluateShellGaussPointGeometry(
+        const std::vector<const double*>& pts,
+        const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu, const Eigen::VectorXd& d2Nu,
+        const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv, const Eigen::VectorXd& d2Nv) const;
+    // NURBS variant -- applies the 2nd-order rational quotient rule on top of
+    // the raw tensor-product derivatives above.
+    ShellGaussPointGeometry evaluateShellGaussPointGeometryNURBS(
+        const std::vector<const double*>& pts,
+        const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu, const Eigen::VectorXd& d2Nu,
+        const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv, const Eigen::VectorXd& d2Nv,
+        const std::vector<double>& weights) const;
+
+    // Local Kirchhoff-Love shell stiffness for one span: nodal-pair (a<=b)
+    // loop over membraneB(a)^T*matH_m*membraneB(b) + bendingB(a)^T*matH_b*bendingB(b),
+    // mirroring computeLocalStiffnessContribution's structure (matH is
+    // symmetric, so the same a<=b/transpose-mirror optimization applies).
+    Eigen::MatrixXd computeLocalShellStiffnessContribution(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const std::vector<int>& span, const KirchhoffLoveShellLaw& shell_law);
+    Eigen::MatrixXd computeLocalShellStiffnessContributionNURBS(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const std::vector<int>& span, const std::vector<double>& weights,
+        const KirchhoffLoveShellLaw& shell_law);
+
+    // Local Kirchhoff-Love shell mass for one span: M^ab = rho*thickness*w*
+    // |detJ|*Area*R_a*R_b*I_3 -- pure scalar arithmetic, same structure as
+    // computeLocalMassContribution but scaled by thickness and using the
+    // surface metric Area in place of the flat |detJ| alone.
+    Eigen::MatrixXd computeLocalShellMassContribution(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const std::vector<int>& span, const KirchhoffLoveShellLaw& shell_law);
+    Eigen::MatrixXd computeLocalShellMassContributionNURBS(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const std::vector<int>& span, const std::vector<double>& weights,
+        const KirchhoffLoveShellLaw& shell_law);
+
+    template<bool IsRational>
+    void collectShellTripletsImpl(const KirchhoffLoveShellLaw& shell_law,
+                                  std::vector<Eigen::Triplet<double>>& tripletList);
+    template<bool IsRational>
+    void collectShellMassTripletsImpl(const KirchhoffLoveShellLaw& shell_law,
+                                      std::vector<Eigen::Triplet<double>>& tripletList);
+
+    // Local Kirchhoff-Love shell surface (distributed) load for one span:
+    // F_a = magnitude*direction*R_a*w*Area -- a constant force-per-unit-area
+    // vector, uniform in both magnitude and direction over the whole patch
+    // (unlike integrateBoundaryLoad()'s Traction, which varies with the
+    // physical point but only applies along one edge). This covers the
+    // legacy KTypeDload in {1,2,3} exactly (global-axis pressure), and {0,6}
+    // too on a FLAT patch, where the unit normal a3 is itself constant. A
+    // direction-varying normal-pressure variant (legacy KTypeDload=0 on
+    // curved geometry) is a natural future extension, not needed yet.
+    Eigen::VectorXd computeLocalShellSurfaceLoadContribution(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const std::vector<int>& span, const Eigen::Vector3d& direction, double magnitude);
+    Eigen::VectorXd computeLocalShellSurfaceLoadContributionNURBS(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const std::vector<int>& span, const std::vector<double>& weights,
+        const Eigen::Vector3d& direction, double magnitude);
+
+    // Shared orchestration for assembleShellStiffness()/assembleShellMass():
+    // kept SEPARATE from assembleGeneric() (rather than adding a deriv_order
+    // parameter there) so the solid assembly code path stays textually
+    // untouched. Builds IGABasis1D with deriv_order=2 (shells need curvature).
+    static Eigen::SparseMatrix<double> assembleShellGeneric(
+        const PatchAssembly& assembly,
+        const std::vector<std::shared_ptr<const KirchhoffLoveShellLaw>>& laws,
+        int gauss_n,
+        const std::function<void(PatchIntegrator&, const KirchhoffLoveShellLaw&,
+                                 std::vector<Eigen::Triplet<double>>&)>& collect);
 
     // Geometry shared by the stiffness and mass kernels at one Gauss point:
     // basis values/derivatives in physical-mapping order (u-fastest), the
@@ -130,6 +214,14 @@ public:
                     std::shared_ptr<const ConstitutiveLaw> law)
         : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), law_(std::move(law)) {}
 
+    // No-law constructor: for assembleOperator()/assembleBoundaryLoad() (which
+    // never call the solid stiffness/mass kernels) and for shell integration,
+    // where the KirchhoffLoveShellLaw is passed explicitly to each
+    // integrate_shell_*()/assemble_shell_*() call instead of being bound here
+    // (KirchhoffLoveShellLaw is not a ConstitutiveLaw -- see its docstring).
+    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v)
+        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), law_(nullptr) {}
+
     // Append this patch's contribution to a (possibly shared) triplet list,
     // using GLOBAL dof indices. Does not size or build any matrix -- this is
     // what lets assembleStiffness() merge several patches' contributions
@@ -210,6 +302,67 @@ public:
     static Eigen::SparseMatrix<double> assembleMass(
         const PatchAssembly& assembly,
         const std::vector<std::shared_ptr<const ConstitutiveLaw>>& laws,
+        int gauss_n = 0);
+
+    // Kirchhoff-Love shell equivalents of integrateStiffness()/integrateMass().
+    // shell_law is passed explicitly (rather than bound at construction, as
+    // ConstitutiveLaw is) since KirchhoffLoveShellLaw is not a ConstitutiveLaw
+    // -- construct this PatchIntegrator with the no-law constructor above,
+    // and build basis_u/basis_v with deriv_order=2 (shells need curvature).
+    Eigen::SparseMatrix<double> integrateShellStiffness(const KirchhoffLoveShellLaw& shell_law) {
+        std::vector<Eigen::Triplet<double>> tripletList;
+        if (patch_.cp_manager->is_rational())
+            collectShellTripletsImpl<true>(shell_law, tripletList);
+        else
+            collectShellTripletsImpl<false>(shell_law, tripletList);
+
+        size_t total_dofs = localTotalDofs();
+        Eigen::SparseMatrix<double> stiffness_matrix(total_dofs, total_dofs);
+        stiffness_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
+        return stiffness_matrix;
+    }
+
+    Eigen::SparseMatrix<double> integrateShellMass(const KirchhoffLoveShellLaw& shell_law) {
+        if (shell_law.material().rho <= 0.0)
+            throw std::invalid_argument(
+                "PatchIntegrator::integrateShellMass: material.rho must be set (> 0).");
+        std::vector<Eigen::Triplet<double>> tripletList;
+        if (patch_.cp_manager->is_rational())
+            collectShellMassTripletsImpl<true>(shell_law, tripletList);
+        else
+            collectShellMassTripletsImpl<false>(shell_law, tripletList);
+
+        size_t total_dofs = localTotalDofs();
+        Eigen::SparseMatrix<double> mass_matrix(total_dofs, total_dofs);
+        mass_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
+        return mass_matrix;
+    }
+
+    // Assemble the global shell stiffness/mass matrix of a whole PatchAssembly.
+    // laws must have one entry per patch, in assembly.get_patchs() (add_patch()) order.
+    static Eigen::SparseMatrix<double> assembleShellStiffness(
+        const PatchAssembly& assembly,
+        const std::vector<std::shared_ptr<const KirchhoffLoveShellLaw>>& laws,
+        int gauss_n = 0);
+    static Eigen::SparseMatrix<double> assembleShellMass(
+        const PatchAssembly& assembly,
+        const std::vector<std::shared_ptr<const KirchhoffLoveShellLaw>>& laws,
+        int gauss_n = 0);
+
+    // Distributed surface load on a Kirchhoff-Love shell: a constant force-
+    // per-unit-(true, curved)-area vector, integrated against R_a over the
+    // WHOLE patch (unlike integrateBoundaryLoad(), which only covers one
+    // edge). See computeLocalShellSurfaceLoadContribution()'s comment for
+    // exactly which legacy load types this does and does not reproduce.
+    Eigen::VectorXd integrateShellSurfaceLoad(const Eigen::Vector3d& direction, double magnitude);
+
+    // Assemble the shell surface load of a whole PatchAssembly. directions/
+    // magnitudes must each have one entry per patch, in assembly.get_patchs()
+    // (add_patch()) order -- same per-patch convention as assembleShellStiffness()'s laws.
+    static Eigen::VectorXd assembleShellSurfaceLoad(
+        const PatchAssembly& assembly,
+        const std::vector<Eigen::Vector3d>& directions,
+        const std::vector<double>& magnitudes,
         int gauss_n = 0);
 
     // Same as collectTriplets()/collectMassTriplets(), but the per-Gauss-
@@ -304,6 +457,50 @@ void PatchIntegrator::collectMassTripletsImpl(std::vector<Eigen::Triplet<double>
             lc = computeLocalMassContributionNURBS(patch_, sg_u, sg_v, span, w);
         } else {
             lc = computeLocalMassContribution(patch_, sg_u, sg_v, span);
+        }
+        assembleLocalContribution(lc, span, tripletList);
+    }
+}
+
+template<bool IsRational>
+void PatchIntegrator::collectShellTripletsImpl(
+    const KirchhoffLoveShellLaw& shell_law, std::vector<Eigen::Triplet<double>>& tripletList)
+{
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        int idx_u = basis_u_.span_indices.at(span[0]);
+        int idx_v = basis_v_.span_indices.at(span[1]);
+        const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+        const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+        Eigen::MatrixXd lc;
+        if constexpr (IsRational) {
+            auto w = patch_.weights_for_span(span);
+            lc = computeLocalShellStiffnessContributionNURBS(patch_, sg_u, sg_v, span, w, shell_law);
+        } else {
+            lc = computeLocalShellStiffnessContribution(patch_, sg_u, sg_v, span, shell_law);
+        }
+        assembleLocalContribution(lc, span, tripletList);
+    }
+}
+
+template<bool IsRational>
+void PatchIntegrator::collectShellMassTripletsImpl(
+    const KirchhoffLoveShellLaw& shell_law, std::vector<Eigen::Triplet<double>>& tripletList)
+{
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        int idx_u = basis_u_.span_indices.at(span[0]);
+        int idx_v = basis_v_.span_indices.at(span[1]);
+        const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+        const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+
+        Eigen::MatrixXd lc;
+        if constexpr (IsRational) {
+            auto w = patch_.weights_for_span(span);
+            lc = computeLocalShellMassContributionNURBS(patch_, sg_u, sg_v, span, w, shell_law);
+        } else {
+            lc = computeLocalShellMassContribution(patch_, sg_u, sg_v, span, shell_law);
         }
         assembleLocalContribution(lc, span, tripletList);
     }
