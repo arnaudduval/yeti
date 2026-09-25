@@ -71,6 +71,11 @@ class ExplicitDynamicsModel(MechanicalModel):
     
     def solve_linearized_system(self, array_in: np.ndarray, **kwargs) -> np.ndarray:
         if self.mass_type == "consistent_mass":
+            # MechanicalModel.solve_linearized_system() now defaults to pure
+            # stiffness (static elasticity); explicit dynamics needs pure mass
+            # instead, so ask for it explicitly rather than relying on a
+            # base-class default meant for a different caller.
+            kwargs.setdefault("scalar_coefs", (1, 0))
             return super().solve_linearized_system(array_in, **kwargs)
 
         # masse lumpée : résolution directe diagonale

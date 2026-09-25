@@ -4,7 +4,7 @@ from yeti_iga.pymfiga.common.material.mechanical import IsotropicMat
 from yeti_iga.pymfiga.common.numerics.operations import MatrixFree
 from yeti_iga.pymfiga.iga.geometry import SinglePatch
 from .cls.cspace import SingleSpatialModel
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Sequence
 from time import time
 import numpy as np
 import logging
@@ -152,6 +152,23 @@ class MechanicalModel(SingleSpatialModel):
         logger.debug(f"Matrix free stiffness in {time() - start:.2e} seconds")
         return np.ravel(array_out)
 
+    def compute_mf_tangent(self, array_in: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        A = scalar_coefs[0] * M + scalar_coefs[1] * K -- same combined-operator
+        convention as ThermalModel.compute_mf_tangent, so a single
+        solve_linearized_system() can serve static linear elasticity
+        (scalar_coefs=(0, 1), the default: pure stiffness), a pure mass solve
+        (scalar_coefs=(1, 0), what ExplicitDynamicsModel's "consistent_mass"
+        case asks for), or a genuine implicit-dynamics combination.
+        """
+        scalar_coefs: Sequence[float] = kwargs.get("scalar_coefs", (0, 1))
+        array_out = np.zeros(self.get_size_of_arrays())
+        if scalar_coefs[0] != 0:
+            array_out += scalar_coefs[0] * self.compute_mf_mass(array_in)
+        if scalar_coefs[1] != 0:
+            array_out += scalar_coefs[1] * self.compute_mf_stiffness(array_in)
+        return array_out
+
     def interpolate_strain(
         self, array_in: np.ndarray, convert_to_3d: bool = False
     ) -> np.ndarray:
@@ -216,7 +233,13 @@ class MechanicalModel(SingleSpatialModel):
         residual = external_force - internal_force
         self.clear_bcs(residual)
         logger.debug(f"Computing residual in {time() - start:.2e} seconds")
-        return residual, internal_force, mf_args
+        # 2-tuple: every caller (nonlinear_solver.py, fem_contact.py,
+        # multi_model/mechanical.py) unpacks exactly (residual, mf_args) --
+        # internal_force is folded into mf_args instead of a 3rd positional
+        # return, so it stays available (mf_args["internal_force"]) without
+        # breaking that shared calling convention.
+        mf_args = {**mf_args, "internal_force": internal_force}
+        return residual, mf_args
 
 
     
@@ -234,6 +257,12 @@ class MechanicalModel(SingleSpatialModel):
 
         use_preconditioner = kwargs.get("use_preconditioner", True)
         preconditioner_type = kwargs.get("preconditioner_type", "fastdiag")
+        # Default (0, 1) = pure stiffness: static linear elasticity, what every
+        # caller that omits scalar_coefs needs (StaticElastoPlasticity,
+        # IncrementalElastoPlasticity). ExplicitDynamicsModel's "consistent_mass"
+        # case passes scalar_coefs=(1, 0) itself before delegating here, for a
+        # pure-mass solve -- see explicit_dynamics.py.
+        scalar_coefs: Sequence[float] = kwargs.setdefault("scalar_coefs", (0, 1))
 
         if (not use_preconditioner) or (preconditioner_type is None):
             Pfun = None
@@ -242,10 +271,11 @@ class MechanicalModel(SingleSpatialModel):
 
             if self.update_manager.should_update_preconditioner:
                 self.preconditioner.add_scalar_space_time_correctors(
-                    mass_corrector=self.scalar_mean_mass
+                    mass_corrector=self.scalar_mean_mass,
+                    stiffness_corrector=self.scalar_mean_stiffness,
                 )
 
-            self.preconditioner.update_space_eigenvalues(scalar_coefs=(1, 0))
+            self.preconditioner.update_space_eigenvalues(scalar_coefs=scalar_coefs)
             Pfun = self.preconditioner.apply_spatial_preconditioner
 
         elif preconditioner_type == "scaled_mass":
@@ -258,7 +288,7 @@ class MechanicalModel(SingleSpatialModel):
             )
 
         sol = linear_solver.solve(
-            self.compute_mf_mass,
+            self.compute_mf_tangent,
             array_in,
             Pfun=Pfun,
             **kwargs,
@@ -268,5 +298,5 @@ class MechanicalModel(SingleSpatialModel):
             self.clear_properties()
 
         logger.debug(f"Solving linearized system in {time() - start:.2e} seconds")
-        return sol   
-    
+        return sol
+
