@@ -197,6 +197,18 @@ class SinglePatchNorm:
         if tmp2 == 0:
             logger.warning("Warning: Dividing by zero")
 
+        # 3-tuple: this method's own type hint still says Tuple[float, float]
+        # (stale -- an incomplete edit, same pattern as the compute_residual
+        # arity bugs elsewhere in this vendored copy), but tmp2 (the exact
+        # solution's own norm) IS genuinely consumed downstream -- e.g.
+        # benchs/pymfiga/dynamic/*.py's spacetime L2-error accumulation does
+        # `norm_error, _, norm_exact = SpaceNormSinglePatch(...).eval(...)`.
+        # Reverting this to a 2-tuple (to match pymfiga_jcf's own older,
+        # pre-tmp2 version) breaks those. Scripts written against the older
+        # 2-tuple convention (iga/beams/timoshenko_arc.py, timoshenko_line.py
+        # in pymfiga_jcf) need `abserr, relerr, _ = ...` instead -- a
+        # necessary source change on their side, not something this return
+        # arity can satisfy for both conventions simultaneously.
         return abserror, relerror, tmp2
 
 
@@ -415,4 +427,14 @@ class SpaceTimeNormSinglePatch(SinglePatchNorm):
         )
 
     def eval(self, u_ctrlpts: np.ndarray) -> Tuple[float, float]:
-        return super()._eval(u_ctrlpts, self._prepare_norm_computation, True)
+        # 2-tuple here specifically (unlike SpaceNormSinglePatch.eval(),
+        # which passes _eval()'s 3-tuple straight through for
+        # benchs/pymfiga's own spacetime-L2-accumulation callers): every
+        # known caller of THIS class (pymfiga_jcf's iga/heat_transfer/
+        # spacetime_1d.py, spacetime_2d.py, comparison.py) does
+        # `.eval(...)[-1]` expecting the relative error last, which only
+        # SpaceTimeNormSinglePatch's own callers need -- dropping tmp2 here
+        # keeps that indexing correct without touching the shared _eval()
+        # or SpaceNormSinglePatch's own (different) contract.
+        abserror, relerror, _ = super()._eval(u_ctrlpts, self._prepare_norm_computation, True)
+        return abserror, relerror

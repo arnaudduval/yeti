@@ -169,7 +169,13 @@ class MechanicalModel(SingleModel):
         # Compute residual
         residual = external_force - internal_force
         self.clear_bcs(residual)
-        return residual,internal_force, mechargs
+        # 2-tuple: every caller (nonlinear_solver.py, fem_contact.py) unpacks
+        # exactly (residual, mechargs) -- internal_force is folded into
+        # mechargs instead of a 3rd positional return, so it stays available
+        # (mechargs["internal_force"]) without breaking that shared calling
+        # convention (same fix as iga/single_model/mechanical.py).
+        mechargs = {**mechargs, "internal_force": internal_force}
+        return residual, mechargs
 
     def solve_linearized_system(self, array_in: np.ndarray, **kwargs) -> np.ndarray:
         tangent_matrix = self.assemble_stiffness(**kwargs)

@@ -123,6 +123,17 @@ class ExplicitLinearDynamics(Physics):
         use_preconditioner: bool = True,
         preconditioner_type: Literal["fastdiag", "scaled_mass", None] = "fastdiag",
     ):
+        displacement_initial = np.asarray(displacement_initial)
+
+        # Backwards compatibility with the original (pymfiga_jcf) calling
+        # convention: full preallocated (nsteps, ndof) history arrays,
+        # mutated in place, no velocity_initial/nb_save/preconditioner
+        # choice. Detected by displacement_initial being 2D -- the new
+        # convention below always passes a 1D initial state.
+        if displacement_initial.ndim == 2:
+            return self._solve_legacy(
+                model, displacement_initial, np.asarray(external_force), time_list
+            )
 
         assert displacement_initial.ndim == 1
 
@@ -248,5 +259,68 @@ class ExplicitLinearDynamics(Physics):
             f"Solve explicit dynamics problem in {time() - total_start:.2e} seconds"
         )
 
-        return np.array(saved_displacements), np.array(saved_times) 
-        
+        return np.array(saved_displacements), np.array(saved_times)
+
+    def _solve_legacy(
+        self,
+        model,
+        displacement_list: np.ndarray,
+        external_force_list: np.ndarray,
+        time_list,
+    ):
+        """
+        Exact port of pymfiga_jcf's own ExplicitLinearDynamics.solve() --
+        full preallocated (nsteps, ndof) history arrays, mutated in place,
+        constant per-step acceleration solver ("cg" was not yet the default
+        here; this used self.linear_solver, i.e. Physics' own configured
+        solver/tolerances). Kept so unmodified pymfiga_jcf benchmark scripts
+        (iga/dynamics/dynamics_1d.py, dynamics_2d.py) give the same results
+        against this vendored copy as they do against pymfiga_jcf itself.
+        """
+        assert displacement_list.ndim == 2 and external_force_list.ndim == 2
+        external_force_list = external_force_list.copy()
+        clear_bcs(model, displacement_list, external_force_list)
+        model.set_update_manager(self.update_manager)
+
+        def predict_displacement(dis, vel, acc, dt):
+            return dis + dt * vel + 0.5 * dt**2 * acc
+
+        def update_velocity(vel, acc_old, acc_new, dt):
+            return vel + 0.5 * dt * (acc_old + acc_new)
+
+        def compute_acceleration(res):
+            return model.solve_linearized_system(
+                res, linear_solver_backend=self.linear_solver
+            )
+
+        logger.info("Explicit dynamics solver")
+        start = time()
+
+        Fext = np.copy(external_force_list[0])
+        d_n0 = np.copy(displacement_list[0])
+        v_n0, a_n0 = np.zeros_like(d_n0), np.zeros_like(d_n0)
+
+        nsteps = len(time_list) - 1
+        for it in range(1, nsteps + 1):
+            start = time()
+            logger.info(f"Time marching step: {it}/{nsteps}")
+            self.update_manager.increment_step()
+
+            dt = time_list[it] - time_list[it - 1]
+
+            Fext = np.copy(external_force_list[it])
+            d_n1 = predict_displacement(d_n0, v_n0, a_n0, dt)
+            a_n1 = np.zeros_like(d_n0)
+
+            residual = model.compute_residual(d_n1, external_force=Fext)[0]
+            a_n1 += compute_acceleration(residual)
+            v_n1 = update_velocity(v_n0, a_n0, a_n1, dt)
+
+            displacement_list[it] = np.copy(d_n1)
+            d_n0 = np.copy(d_n1)
+            v_n0 = np.copy(v_n1)
+            a_n0 = np.copy(a_n1)
+
+            logger.info(f"Time-step {it} in {time() - start:.2e} seconds")
+
+        logger.info(f"Solve explicit dynamics problem in {time() - start:.2e} seconds")
