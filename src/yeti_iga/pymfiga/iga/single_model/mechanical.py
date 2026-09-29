@@ -160,13 +160,23 @@ class MechanicalModel(SingleSpatialModel):
         (scalar_coefs=(0, 1), the default: pure stiffness), a pure mass solve
         (scalar_coefs=(1, 0), what ExplicitDynamicsModel's "consistent_mass"
         case asks for), or a genuine implicit-dynamics combination.
+
+        The rest of kwargs (e.g. consistent_tangent, forwarded here from
+        compute_residual()'s mf_args via nonlinear_solver.py's
+        increment_args.update(extra_args)) is passed straight through to
+        compute_mf_mass()/compute_mf_stiffness() -- dropping it silently
+        would make compute_stiffness_property() fall back to the purely
+        elastic tangent on every Newton iteration instead of the actual
+        (consistent/algorithmic) elastoplastic one, breaking convergence for
+        any nonlinear material.
         """
         scalar_coefs: Sequence[float] = kwargs.get("scalar_coefs", (0, 1))
+        mf_args = {k: v for k, v in kwargs.items() if k != "scalar_coefs"}
         array_out = np.zeros(self.get_size_of_arrays())
         if scalar_coefs[0] != 0:
-            array_out += scalar_coefs[0] * self.compute_mf_mass(array_in)
+            array_out += scalar_coefs[0] * self.compute_mf_mass(array_in, **mf_args)
         if scalar_coefs[1] != 0:
-            array_out += scalar_coefs[1] * self.compute_mf_stiffness(array_in)
+            array_out += scalar_coefs[1] * self.compute_mf_stiffness(array_in, **mf_args)
         return array_out
 
     def interpolate_strain(
