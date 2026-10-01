@@ -21,6 +21,9 @@
 #include "refinement/BezierExtractor.hpp"
 #include "PatchEvaluator.hpp"
 #include "ShellKinematics.hpp"
+#include "WeightedQuadrature1D.hpp"
+#include "MatrixFree2D.hpp"
+#include "WQMatrixFreeStiffness.hpp"
 
 
 namespace py = pybind11;
@@ -611,6 +614,75 @@ IGABasis1D
             "contravariant metric AAE -- varies over a curved shell. Caller "
             "scales by thickness (membrane) or thickness^3/12 (bending); "
             "same matH for both, no membrane-bending coupling term.");
+
+    py::class_<WeightedQuadrature1D>(m, "WeightedQuadrature1D",
+        "Weighted-quadrature (WQ) data for one parametric direction: a "
+        "reduced set of quadrature points (fewer than standard Gauss for the "
+        "same target accuracy), each basis function carrying its own weight "
+        "at each point. Direct C++ port of pymfiga's weighted_quadrature.py, "
+        "both variants ('method 1' and 'method 2' -- 'method 2' is the one "
+        "exercised by pymfiga's own validated regression benchmarks). "
+        "Exposed read-only for cross-checking against the pymfiga Python "
+        "reference in isolation before trusting anything built on top of it.")
+        .def_readonly("degree", &WeightedQuadrature1D::degree)
+        .def_readonly("nbctrlpts", &WeightedQuadrature1D::nbctrlpts)
+        .def_readonly("quadtype", &WeightedQuadrature1D::quadtype,
+            "Which pymfiga method was used to build this rule, \"1\" or \"2\".")
+        .def_readonly("quadpts", &WeightedQuadrature1D::quadpts,
+            "WQ quadrature point positions (parametric space).")
+        .def_readonly("B0", &WeightedQuadrature1D::B0,
+            "Basis values at the WQ points, shape (nbquadpts x nbctrlpts).")
+        .def_readonly("B1", &WeightedQuadrature1D::B1,
+            "Basis first derivatives at the WQ points, same shape as B0.")
+        .def_readonly("W00", &WeightedQuadrature1D::W00,
+            "WQ weight matrix, shape (nbctrlpts x nbquadpts): value*value "
+            "term (mass-like). Equal to W01 for method 2 (differs for method 1).")
+        .def_readonly("W01", &WeightedQuadrature1D::W01)
+        .def_readonly("W10", &WeightedQuadrature1D::W10,
+            "WQ weight matrix: derivative*derivative term (stiffness-like). "
+            "Equal to W11 for method 2 (differs for method 1).")
+        .def_readonly("W11", &WeightedQuadrature1D::W11)
+        .def_static("build", &WeightedQuadrature1D::build, py::arg("bspline"), py::arg("quadtype") = "2",
+            "Build the WQ rule for a BSpline's degree/knot vector "
+            "(non-periodic, knot vector spanning [0, 1]). quadtype: \"1\" or "
+            "\"2\" (default), matching pymfiga's own method naming.");
+
+    m.def("matrix_free_apply_2d", &matrix_free_apply_2d,
+        py::arg("Mu"), py::arg("Mv"), py::arg("v_in"), py::arg("is_transpose") = false,
+        "Matrix-free application of a 2D tensor-product (Kronecker) operator "
+        "to a vector, without ever forming the Kronecker product matrix -- "
+        "direct 2D port of pymfiga's MatrixFree.apply. v_in is interpreted "
+        "as a (nu_in x nv_in) matrix with u varying fastest (v_in[iv*nu_in "
+        "+ iu]), matching future's own control-point/DOF ordering "
+        "convention. Mu acts along u, Mv along v. is_transpose=False: "
+        "ravel(Mu @ V @ Mv.T), equal to kron(Mv, Mu) @ v_in. "
+        "is_transpose=True: ravel(Mu.T @ V @ Mv), equal to "
+        "kron(Mv, Mu).T @ v_in -- lets the same (Mu, Mv) pair serve as "
+        "both a gather (interpolation) and, via the flag, a scatter "
+        "(redistribution) operator.");
+
+    py::class_<WQMatrixFreeStiffness>(m, "WQMatrixFreeStiffness",
+        "Matrix-free elasticity stiffness action K @ v for a single "
+        "standalone 2D solid Patch with an isotropic PlaneStress/"
+        "PlaneStrain law, using weighted quadrature and the 2D Kronecker "
+        "sandwich product instead of ever assembling K. Direct C++ port of "
+        "pymfiga's MechanicalModel.compute_stiffness_property/"
+        "compute_mf_stiffness, corrected to match future's own "
+        "ConstitutiveLaw::stiffness_density material-tensor convention "
+        "(see the .cpp for the derivation). Validate apply(v) against "
+        "PatchIntegrator.integrate_stiffness() @ v.")
+        .def(py::init<const Patch&, const ConstitutiveLaw&, const std::string&>(),
+            py::arg("patch"), py::arg("law"), py::arg("quadtype") = "2",
+            "Precomputes both directions' WeightedQuadrature1D rules and "
+            "the pulled-back material+geometry tensor at every WQ point. "
+            "law must have n_dofs_per_cp() == 2 (PlaneStress/PlaneStrain).")
+        .def("apply", &WQMatrixFreeStiffness::apply, py::arg("v"),
+            "K @ v without ever assembling K. v/output: length "
+            "nbctrlpts_u * nbctrlpts_v * 2, indexed the same way as "
+            "PatchIntegrator.integrate_stiffness()'s assembled matrix "
+            "(component-interleaved per control point).")
+        .def_property_readonly("nq_u", &WQMatrixFreeStiffness::nq_u)
+        .def_property_readonly("nq_v", &WQMatrixFreeStiffness::nq_v);
 
     py::class_<Traction, PyTraction, std::shared_ptr<Traction>>(m, "Traction",
         "Base class for a distributed boundary load (force per unit length), "

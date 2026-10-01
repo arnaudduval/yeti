@@ -31,6 +31,9 @@ pybind11_add_module(${MODULE_NAME}
     src/bspline/Patch.cpp
     src/bspline/ConstitutiveLaw.cpp
     src/bspline/ShellKinematics.cpp
+    src/bspline/WeightedQuadrature1D.cpp
+    src/bspline/MatrixFree2D.cpp
+    src/bspline/WQMatrixFreeStiffness.cpp
     src/bspline/PatchIntegrator.cpp
     src/bspline/PatchEvaluator.cpp
     src/bspline/refinement/HRefiner.cpp
