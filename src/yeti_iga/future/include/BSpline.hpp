@@ -8,6 +8,10 @@ namespace py = pybind11;
 class BSpline {
 public:
     BSpline(int degree_, py::array_t<double>kvector_);
+    // Pure-C++ constructor (no pybind11/numpy dependency) -- for building
+    // BSpline objects internally in C++-only code paths
+    BSpline(int degree_, std::vector<double> kvector_)
+        : degree(degree_), kvector(std::move(kvector_)) {}
     py::array_t<double> kvView() const;
     int FindSpan(double u) const;
     py::array_t<double> BasisFuns(int span, double u) const;
