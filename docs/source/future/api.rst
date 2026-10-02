@@ -125,6 +125,23 @@ Integration and assembly
     :special-members: __init__
     :members:
 
+Weighted quadrature and matrix-free stiffness
+-------------------------------------------------
+
+See :doc:`weighted_quadrature` for the design/theory behind these.
+
+.. autoclass:: yeti_iga.future.bspline.WeightedQuadrature1D
+    :special-members: __init__
+    :members:
+
+.. autofunction:: yeti_iga.future.bspline.matrix_free_apply_2d
+
+.. autoclass:: yeti_iga.future.bspline.WQMatrixFreeStiffness
+    :special-members: __init__
+    :members:
+
+.. autofunction:: yeti_iga.future.matrix_free_solver.solve
+
 Kirchhoff-Love shells
 ------------------------
 

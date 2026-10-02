@@ -14,4 +14,5 @@ This section documents it in two complementary parts:
    :maxdepth: 2
 
    design
+   weighted_quadrature
    api

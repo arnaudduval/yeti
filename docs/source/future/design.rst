@@ -617,6 +617,53 @@ The practical advantages over the B-matrix approach are:
   thermoelasticity) implement ``stiffness_density`` with their own algebra, with no
   changes to the integration loop and no Voigt convention to maintain.
 
+This exact tensor convention is load-bearing beyond ``PatchIntegrator`` itself:
+:class:`~yeti_iga.future.bspline.WQMatrixFreeStiffness` (the matrix-free stiffness
+action built on top of weighted quadrature — see :doc:`weighted_quadrature`) has to
+reproduce it bit-for-bit to match
+:meth:`PatchIntegrator::integrate_stiffness() <yeti_iga.future.bspline.PatchIntegrator.integrate_stiffness>`,
+rather than the textbook Voigt form
+:math:`C_{ijkl} = \lambda\,\delta_{ij}\delta_{kl} + \mu\,(\delta_{ik}\delta_{jl}+\delta_{il}\delta_{jk})`
+that ``pymfiga``'s own material classes build instead. Both are mathematically valid
+elasticity tensors once fully contracted against a *symmetrized* strain — they agree on
+every physical prediction — but they differ **termwise** before that contraction, which
+matters for any code (such as a matrix-free operator probing the tensor directly rather
+than calling ``stiffness_density()`` itself) that needs to reproduce this specific
+kernel's numbers exactly, not just an equivalent one.
+
+Exploiting symmetry: only :math:`a \le b` is computed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``stiffness_density()`` is called once per basis-function pair per Gauss point — the
+hottest loop in the whole integrator — so one more structural fact is exploited to halve
+that count. Every physically valid elastic law has a symmetric bilinear energy form,
+which forces the invariant :class:`~yeti_iga.future.bspline.ConstitutiveLaw` documents as
+a requirement on every subclass:
+
+.. math::
+
+   \text{stiffness\_density}(a, b, x)^T = \text{stiffness\_density}(b, a, x)
+
+Rather than evaluating both orderings, the Gauss loop only calls
+``stiffness_density(grads[a], grads[b], x_phys)`` for :math:`a \le b`, and fills the
+:math:`b < a` block by transposing that one result instead of recomputing it:
+
+.. code-block:: cpp
+
+    // grads[a] = basis function a's physical-space gradient at this Gauss point
+    // (already computed from the inverse Jacobian for every local basis function)
+    for (size_t a = 0; a < nb_loc; ++a) {
+        for (size_t b = a; b < nb_loc; ++b) {
+            PhysMatrix block = law_->stiffness_density(grads[a], grads[b], x_phys) * factor;
+            K_loc.block(n*a, n*b, n, n) += block;
+            if (b != a)
+                K_loc.block(n*b, n*a, n, n) += block.transpose();
+        }
+    }
+
+A custom ``stiffness_density()`` subclassed from Python (see below) must preserve this
+symmetry itself — the integrator relies on it unconditionally and does not check it.
+
 Python subclassing via pybind11 trampoline
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
