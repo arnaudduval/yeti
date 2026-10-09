@@ -651,15 +651,16 @@ CSV_COLUMNS = ["degree", "nbel", "pipeline", "ndof", "l2_error", "h1_error",
                "peak_rss_mb", "status", "error_message"]
 
 
-def _read_done_cases(csv_path):
+def _read_done_cases(csv_path, retry_failed):
     done = set()
     if not csv_path.exists():
         return done
     import csv
     with open(csv_path, newline="") as f:
         for row in csv.DictReader(f):
-            if row.get("status") == "ok":
-                done.add((int(row["degree"]), int(row["nbel"]), row["pipeline"]))
+            if retry_failed and row.get("status") != "ok":
+                continue
+            done.add((int(row["degree"]), int(row["nbel"]), row["pipeline"]))
     return done
 
 
@@ -685,12 +686,12 @@ def cmd_sweep(args):
 
     csv_path = Path(args.results_csv)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    done = _read_done_cases(csv_path) if args.resume else set()
+    done = _read_done_cases(csv_path, args.retry_failed) if args.resume else set()
 
     grid = [(d, n, p) for d in args.degrees for n in args.nbels for p in args.pipelines]
     for degree, nbel, pipeline in grid:
         if (degree, nbel, pipeline) in done:
-            print(f"[skip, already ok] degree={degree} nbel={nbel} pipeline={pipeline}")
+            print(f"[skip, already recorded] degree={degree} nbel={nbel} pipeline={pipeline}")
             continue
         print(f"[running] degree={degree} nbel={nbel} pipeline={pipeline} ...", flush=True)
         if args.dry_run:
@@ -1057,7 +1058,19 @@ def cmd_plot(args):
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(args.results_csv)
-    df.loc[df["status"] != "ok", ["h1_error", "wall_time_s", "peak_rss_mb"]] = np.nan
+    # a case re-run with --retry-failed appends a second row; keep only the latest
+    df = df.drop_duplicates(subset=["degree", "nbel", "pipeline"], keep="last")
+    # wall_time_s spans run_one_case() end to end, including the shared
+    # geometry construction (pymfiga's one-knot-at-a-time insertion, paid
+    # once per (degree, nbel) before any pipeline-specific code runs) --
+    # at high degree/fine mesh this dwarfs the actual solve (>95% of
+    # wall_time_s at degree=10, nbel=512), so it isn't a fair per-pipeline
+    # cost to plot under an "assembly + solve" title. assembly_time_s +
+    # solve_time_s is the part each pipeline actually controls ("abaqus"
+    # rows have no such breakdown -- assembly_time_s/solve_time_s are None
+    # there -- so they're simply absent from this plot, not misrepresented).
+    df["solver_time_s"] = df["assembly_time_s"] + df["solve_time_s"]
+    df.loc[df["status"] != "ok", ["h1_error", "solver_time_s", "peak_rss_mb"]] = np.nan
 
     degrees = sorted(df["degree"].unique())
     # "abaqus" (degree=1, from `abaqus-results`) is not one of the 4 internal
@@ -1074,7 +1087,7 @@ def cmd_plot(args):
 
     specs = [
         ("h1_error", "H1 error vs exact Kirsch solution", "H1 error", True, "kirsch_h1_error"),
-        ("wall_time_s", "Wall-clock time (assembly + solve)", "time (s)", True, "kirsch_wall_time"),
+        ("solver_time_s", "Solver time (assembly + solve)", "time (s)", True, "kirsch_solver_time"),
         ("peak_rss_mb", "Peak memory (RSS)", "peak RSS (MB)", True, "kirsch_peak_memory"),
     ]
     for col, title, ylabel, logy, basename in specs:
@@ -1143,6 +1156,9 @@ def main():
     p_sweep.add_argument("--timeout-s", type=float, default=3600.0)
     p_sweep.add_argument("--resume", dest="resume", action="store_true", default=True)
     p_sweep.add_argument("--no-resume", dest="resume", action="store_false")
+    p_sweep.add_argument("--retry-failed", action="store_true",
+                         help="with --resume, re-run cases whose recorded status is not 'ok' "
+                              "(default: any case already in the CSV is skipped)")
     p_sweep.add_argument("--dry-run", action="store_true")
     _add_physics_args(p_sweep)
     p_sweep.set_defaults(func=cmd_sweep)
