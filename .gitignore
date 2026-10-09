@@ -46,3 +46,6 @@ temp
 
 
 examples/future/output
+
+.ipynb_checkpoints/
+examples/future/kirsch_hpc_sweep/results
