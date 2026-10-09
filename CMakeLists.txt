@@ -33,6 +33,27 @@ endif()
 # Project definition, use languages Fortran and C
 project(${SKBUILD_PROJECT_NAME} LANGUAGES Fortran C)
 
+# gfortran < 6 doesn't support deferred-length allocatable CHARACTER components
+# in derived types (src/yeti_iga/main/m_nurbspatch.f90's elt_type_patch/
+# tensor_patch), failing with a cryptic "Error: Deferred-length character
+# component ... is not yet supported" deep inside the Fortran compile --
+# confirmed to fail with gfortran 4.8.5 and succeed with 9.3.1. On HPC/RHEL-style
+# systems the system-default `f95`/`gfortran` is often this old, even when a
+# newer compiler (e.g. via devtoolset) is already selected for C/CXX: CMake's
+# Fortran compiler search is independent of CC/CXX, so it must be pointed at
+# the newer compiler explicitly if they differ.
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU" AND CMAKE_Fortran_COMPILER_VERSION VERSION_LESS 6.0)
+    message(FATAL_ERROR
+        "gfortran ${CMAKE_Fortran_COMPILER_VERSION} (${CMAKE_Fortran_COMPILER}) is too old "
+        "to build Yeti: deferred-length allocatable CHARACTER components in derived "
+        "types (src/yeti_iga/main/m_nurbspatch.f90) require gfortran >= 6. This often "
+        "happens on HPC/RHEL-style systems where the system-default Fortran compiler is "
+        "old even though a newer C/C++ toolchain (e.g. devtoolset) is already in use. "
+        "Point CMake at a newer gfortran explicitly, e.g.:\n"
+        "  CMAKE_ARGS=\"-DCMAKE_Fortran_COMPILER=/path/to/newer/gfortran\" pipx run build\n"
+        "or export FC=/path/to/newer/gfortran before building.")
+endif()
+
 # CMake Variable printer for debug
 include(CMakePrintHelpers)
 
