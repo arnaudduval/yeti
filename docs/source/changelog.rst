@@ -4,6 +4,7 @@ Changelog
 
 Version 0.2.x - 2026-xx-xx
 --------------------------
+ - Add weighted quadrature matrix free in ``future`` submodule
  - Add examples for :mod:`yeti_iga.pymfiga`
  - Fix :mod:`yeti_iga.pymfiga` to run eiether static analysis or explicite dynamics
  - Add Kirchhoff-Love shell elements to the ``future`` module (single-patch and C0-continuous multipatch, including distributed surface loads
