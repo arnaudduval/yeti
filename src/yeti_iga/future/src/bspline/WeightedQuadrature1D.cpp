@@ -129,12 +129,63 @@ std::vector<double> compute_knot_support(const std::vector<double>& quadpts) {
 // solved via CompleteOrthogonalDecomposition -- like numpy.linalg.lstsq
 // (rcond=None), this returns the minimum-norm solution for a rank-deficient
 // system, matching pymfiga's solve_optimization_problem exactly.
+//
+// PERFORMANCE: A/Z/b are sized for the WHOLE patch (O(n) rows/columns, n =
+// total basis functions / WQ points in this direction), but the problem is
+// intrinsically LOCAL: Z is exactly zero outside this basis function's
+// support (~2*degree+1 elements, by construction -- see build()'s callers),
+// and any row of A whose own B-spline support doesn't overlap that same
+// window contributes an all-zero coefficient row (compact support), hence no
+// constraint. Running CompleteOrthogonalDecomposition on the full, mostly-zero
+// O(n) x O(n) dense matrix costs O(n^3) per call, called once per basis
+// function (O(n) calls) -- O(n^4) total for one direction, confirmed
+// empirically (WQMatrixFreeStiffness's constructor time grew ~60x faster
+// than pymfiga's equivalent setup between nbel=64 and 512 at degree 10).
+// Restricting to the nonzero rows/columns first makes each call O(p^3),
+// independent of n -- the minimum-norm solution is provably unchanged
+// (dropped columns are exactly zero in A, so the minimum-norm y has no
+// reason to be nonzero there; dropped rows are exactly zero across every
+// surviving column, so they add no real constraint).
 Eigen::RowVectorXd solve_wq_row(const Eigen::MatrixXd& A, const Eigen::RowVectorXd& Z,
                                  const Eigen::VectorXd& b)
 {
-    Eigen::MatrixXd A_scaled = A * Z.asDiagonal();
-    Eigen::VectorXd y = A_scaled.completeOrthogonalDecomposition().solve(b);
-    return (Z.asDiagonal() * y).transpose();
+    const int ncols = static_cast<int>(Z.size());
+    const int nrows = static_cast<int>(A.rows());
+
+    std::vector<int> cols;
+    cols.reserve(32);
+    for (int q = 0; q < ncols; ++q)
+        if (Z(q) != 0.0) cols.push_back(q);
+
+    Eigen::RowVectorXd w = Eigen::RowVectorXd::Zero(ncols);
+    if (cols.empty()) return w;  // no support at all (shouldn't happen, but safe)
+
+    std::vector<int> rows;
+    rows.reserve(32);
+    for (int j = 0; j < nrows; ++j) {
+        for (int q : cols) {
+            if (A(j, q) != 0.0) { rows.push_back(j); break; }
+        }
+    }
+    if (rows.empty()) return w;  // this basis function's row has no overlap in A
+
+    Eigen::MatrixXd A_local(static_cast<int>(rows.size()), static_cast<int>(cols.size()));
+    for (size_t jj = 0; jj < rows.size(); ++jj)
+        for (size_t qq = 0; qq < cols.size(); ++qq)
+            A_local(static_cast<int>(jj), static_cast<int>(qq)) = A(rows[jj], cols[qq]);
+
+    Eigen::RowVectorXd Z_local(static_cast<int>(cols.size()));
+    for (size_t qq = 0; qq < cols.size(); ++qq) Z_local(static_cast<int>(qq)) = Z(cols[qq]);
+
+    Eigen::VectorXd b_local(static_cast<int>(rows.size()));
+    for (size_t jj = 0; jj < rows.size(); ++jj) b_local(static_cast<int>(jj)) = b(rows[jj]);
+
+    Eigen::MatrixXd A_scaled = A_local * Z_local.asDiagonal();
+    Eigen::VectorXd y_local = A_scaled.completeOrthogonalDecomposition().solve(b_local);
+    Eigen::RowVectorXd w_local = (Z_local.asDiagonal() * y_local).transpose();
+
+    for (size_t qq = 0; qq < cols.size(); ++qq) w(cols[qq]) = w_local(static_cast<int>(qq));
+    return w;
 }
 
 Eigen::SparseMatrix<double> to_sparse(const Eigen::MatrixXd& dense) {
