@@ -551,6 +551,14 @@ IGABasis1D
             "Construct from a Material. "
             "Use for thick cross-sections where the out-of-plane strain is zero.");
 
+    py::class_<Elasticity3D, ConstitutiveLaw, std::shared_ptr<Elasticity3D>>(m, "Elasticity3D",
+        "Full 3D isotropic linear elastic constitutive law (no plane reduction). "
+        "lambda_eff = lambda_3d = nu*E / ((1+nu)*(1-2*nu)), mu = E / (2*(1+nu)). "
+        "n_dofs_per_cp() == 3 -- pair with a BSplineVolume Patch and the 3-basis "
+        "(basis_u, basis_v, basis_w) PatchIntegrator constructor.")
+        .def(py::init<const Material&>(), py::arg("material"),
+            "Construct from a Material. Use for genuine 3D solid (BSplineVolume) patches.");
+
     py::class_<ShellGeometry>(m, "ShellGeometry",
         "Covariant/contravariant surface kinematics at one Gauss point of a "
         "Kirchhoff-Love shell, computed by compute_shell_geometry(). Exposed "

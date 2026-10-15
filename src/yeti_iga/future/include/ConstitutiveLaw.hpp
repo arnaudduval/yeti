@@ -79,3 +79,15 @@ public:
     explicit PlaneStrain(const Material& m);
     int n_dofs_per_cp() const override { return 2; }
 };
+
+// Full 3D isotropic linear elasticity (no plane reduction): lambda_eff =
+// lambda_3d = nu*E / ((1+nu)*(1-2*nu)) -- the same Lame lambda PlaneStrain
+// already uses, but here n_dofs_per_cp() == 3 so stiffness_density()
+// operates on genuine 3-vectors instead of a 2D plane-strain embedding.
+// Pair with a BSplineVolume Patch and the 3-basis (basis_u, basis_v,
+// basis_w) PatchIntegrator constructor.
+class Elasticity3D : public IsotropicElastic {
+public:
+    explicit Elasticity3D(const Material& m);
+    int n_dofs_per_cp() const override { return 3; }
+};

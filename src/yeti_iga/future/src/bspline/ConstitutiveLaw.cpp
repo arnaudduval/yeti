@@ -20,3 +20,8 @@ PlaneStrain::PlaneStrain(const Material& m) : IsotropicElastic(m) {
     mu_     = m.mu();
     lambda_ = m.lambda_3d();
 }
+
+Elasticity3D::Elasticity3D(const Material& m) : IsotropicElastic(m) {
+    mu_     = m.mu();
+    lambda_ = m.lambda_3d();
+}
