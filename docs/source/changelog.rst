@@ -4,6 +4,7 @@ Changelog
 
 Version 0.2.x - 2026-xx-xx
 --------------------------
+ - Add Gauss integration for 3D solid case
  - Add weighted quadrature matrix free in ``future`` submodule
  - Add examples for :mod:`yeti_iga.pymfiga`
  - Fix :mod:`yeti_iga.pymfiga` to run eiether static analysis or explicite dynamics
