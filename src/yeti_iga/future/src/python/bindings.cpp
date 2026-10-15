@@ -827,26 +827,40 @@ IGABasis1D
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&,
                       std::shared_ptr<const ConstitutiveLaw>>(),
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("law"),
+             py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>(),
              "Construct for the given patch and precomputed Gauss data (one IGABasis1D "
              "per parametric direction). law defines the mechanical behaviour and the "
-             "number of DOFs per control point.")
+             "number of DOFs per control point. patch/basis_u/basis_v are stored as C++ "
+             "references (not copied): this constructor keeps them alive in Python for "
+             "as long as the PatchIntegrator itself is alive.")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&>(),
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"),
+             py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>(),
              "Construct without a ConstitutiveLaw, for integrate_shell_stiffness()/"
              "integrate_shell_mass() (which take a KirchhoffLoveShellLaw explicitly, "
              "since it is not a ConstitutiveLaw) or integrate_operator(). "
-             "basis_u/basis_v must be built with deriv_order=2 for shell use.")
+             "basis_u/basis_v must be built with deriv_order=2 for shell use. "
+             "patch/basis_u/basis_v are kept alive in Python for as long as this "
+             "PatchIntegrator is alive (see the 4-argument constructor's docstring).")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&,
                       const IGABasis1D&, std::shared_ptr<const ConstitutiveLaw>>(),
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("basis_w"),
              py::arg("law"),
+             py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>(),
+             py::keep_alive<1, 5>(),
              "3D solid (BSplineVolume) constructor: one IGABasis1D per parametric "
              "direction (u, v, w). law must have n_dofs_per_cp() == 3 (Elasticity3D). "
-             "Non-rational (B-spline) volumes only for now.")
+             "Non-rational (B-spline) volumes only for now. patch/basis_u/basis_v/"
+             "basis_w are kept alive in Python for as long as this PatchIntegrator is "
+             "alive (see the 4-argument 2D constructor's docstring).")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const IGABasis1D&>(),
              py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("basis_w"),
+             py::keep_alive<1, 2>(), py::keep_alive<1, 3>(), py::keep_alive<1, 4>(),
+             py::keep_alive<1, 5>(),
              "3D solid constructor without a ConstitutiveLaw, for "
-             "integrate_scalar_operator_3d().")
+             "integrate_scalar_operator_3d(). patch/basis_u/basis_v/basis_w are kept "
+             "alive in Python for as long as this PatchIntegrator is alive (see the "
+             "4-argument 2D constructor's docstring).")
         .def("integrate_stiffness", &PatchIntegrator::integrateStiffness,
             "Assemble the stiffness matrix of this single patch. "
             "Returns a scipy.sparse.csc_matrix of size (n_dof, n_dof) where "
