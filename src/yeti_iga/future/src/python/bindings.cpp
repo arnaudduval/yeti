@@ -71,6 +71,34 @@ public:
     }
 };
 
+// 3D equivalent of PyTraction (see Traction.hpp's Traction3D).
+class PyTraction3D : public Traction3D {
+public:
+    using Traction3D::Traction3D;
+    Eigen::Vector3d evaluate(const Eigen::Vector3d& physical_point) const override {
+        PYBIND11_OVERRIDE_PURE_NAME(
+            Eigen::Vector3d, Traction3D, "evaluate", evaluate,
+            physical_point);
+    }
+};
+
+// 3D equivalent of PyScalarLocalOperator (see ScalarLocalOperator.hpp's
+// ScalarLocalOperator3D).
+class PyScalarLocalOperator3D : public ScalarLocalOperator3D {
+public:
+    using ScalarLocalOperator3D::ScalarLocalOperator3D;
+    double computeScalarIntegrand(
+        const std::vector<double>& R, const std::vector<double>& dRdx,
+        const std::vector<double>& dRdy, const std::vector<double>& dRdz,
+        const Eigen::Vector3d& physical_point,
+        const Eigen::VectorXd& u_local) const override {
+        PYBIND11_OVERRIDE_PURE_NAME(
+            double, ScalarLocalOperator3D, "compute_scalar_integrand",
+            computeScalarIntegrand,
+            R, dRdx, dRdy, dRdz, physical_point, u_local);
+    }
+};
+
 // Trampoline letting ConstitutiveLaw be subclassed from Python.
 // Explicit public constructor calls the protected base constructor.
 class PyConstitutiveLaw : public ConstitutiveLaw {
@@ -711,6 +739,20 @@ IGABasis1D
         .def(py::init<const Eigen::Vector2d&>(), py::arg("value"),
             "Construct with a constant traction vector value (shape (2,) for 2D).");
 
+    py::class_<Traction3D, PyTraction3D, std::shared_ptr<Traction3D>>(m, "Traction3D",
+        "3D equivalent of Traction, for a boundary load on a 3D solid patch's "
+        "FACE (see PatchIntegrator.integrate_boundary_load_3d()). Subclass from "
+        "Python and override evaluate(physical_point) -> np.ndarray (length 3).")
+        .def(py::init<>(), "Construct a Traction3D base object; subclass and override evaluate().")
+        .def("evaluate", &Traction3D::evaluate, py::arg("physical_point"),
+            "Override in a Python subclass: return the traction vector at "
+            "physical_point as a 1D NumPy array of length 3.");
+
+    py::class_<ConstantTraction3D, Traction3D, std::shared_ptr<ConstantTraction3D>>(m, "ConstantTraction3D",
+        "A uniform traction vector (tx, ty, tz), constant over the whole loaded face.")
+        .def(py::init<const Eigen::Vector3d&>(), py::arg("value"),
+            "Construct with a constant traction vector value (shape (3,)).");
+
     py::class_<BoundaryLoadSpec>(m, "BoundaryLoadSpec",
         "One distributed boundary load to assemble over a whole "
         "PatchAssembly (see PatchIntegrator.assemble_boundary_load()). "
@@ -749,6 +791,32 @@ IGABasis1D
             "Last knot-span index (inclusive) of the loaded sub-range. "
             "-1 means end at the last non-degenerate span (default: load whole edge).");
 
+    py::class_<BoundaryLoadSpec3D>(m, "BoundaryLoadSpec3D",
+        "3D equivalent of BoundaryLoadSpec, for PatchIntegrator.assemble_boundary_load_3d(). "
+        "Unlike the 2D version, span_min/span_max sub-range restriction on a face is not "
+        "supported yet (always loads the whole face).")
+        .def(py::init([](size_t patch_index, int direction, int side,
+                          std::shared_ptr<Traction3D> traction) {
+                BoundaryLoadSpec3D spec;
+                spec.patch_index = patch_index;
+                spec.direction = direction;
+                spec.side = side;
+                spec.traction = traction;
+                return spec;
+            }),
+            py::arg("patch_index"), py::arg("direction"), py::arg("side"), py::arg("traction"),
+            "Construct a 3D boundary load spec. patch_index: 0-based index in the assembly. "
+            "direction: fixed parametric direction (0=u, 1=v, 2=w). side: 0=first, 1=last. "
+            "traction: Traction3D object (e.g. ConstantTraction3D).")
+        .def_readwrite("patch_index", &BoundaryLoadSpec3D::patch_index,
+            "0-based index of the patch this load applies to, in PatchAssembly.get_patchs() order.")
+        .def_readwrite("direction", &BoundaryLoadSpec3D::direction,
+            "Fixed parametric direction of the loaded face (0=u, 1=v, 2=w).")
+        .def_readwrite("side", &BoundaryLoadSpec3D::side,
+            "0 for the first boundary, 1 for the last.")
+        .def_readwrite("traction", &BoundaryLoadSpec3D::traction,
+            "Traction3D object evaluated at each Gauss point on the loaded face.");
+
     py::class_<PatchIntegrator>(m, "PatchIntegrator",
         "Gauss-quadrature integrator over a single 2D patch. Assembles stiffness "
         "and mass matrices, boundary load vectors, and custom scalar integrals via "
@@ -768,6 +836,17 @@ IGABasis1D
              "integrate_shell_mass() (which take a KirchhoffLoveShellLaw explicitly, "
              "since it is not a ConstitutiveLaw) or integrate_operator(). "
              "basis_u/basis_v must be built with deriv_order=2 for shell use.")
+        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&,
+                      const IGABasis1D&, std::shared_ptr<const ConstitutiveLaw>>(),
+             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("basis_w"),
+             py::arg("law"),
+             "3D solid (BSplineVolume) constructor: one IGABasis1D per parametric "
+             "direction (u, v, w). law must have n_dofs_per_cp() == 3 (Elasticity3D). "
+             "Non-rational (B-spline) volumes only for now.")
+        .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const IGABasis1D&>(),
+             py::arg("patch"), py::arg("basis_u"), py::arg("basis_v"), py::arg("basis_w"),
+             "3D solid constructor without a ConstitutiveLaw, for "
+             "integrate_scalar_operator_3d().")
         .def("integrate_stiffness", &PatchIntegrator::integrateStiffness,
             "Assemble the stiffness matrix of this single patch. "
             "Returns a scipy.sparse.csc_matrix of size (n_dof, n_dof) where "
@@ -872,6 +951,25 @@ IGABasis1D
             "(local DOF values in [u_x0,u_y0,u_x1,u_y1,...] order). Typical "
             "use: error norms and energy functionals that depend on the current "
             "FE solution. Subclass ScalarLocalOperator in Python and override "
+            "compute_scalar_integrand().")
+        .def("integrate_boundary_load_3d", &PatchIntegrator::integrateBoundaryLoad3D,
+            py::arg("direction"), py::arg("side"), py::arg("traction"),
+            "3D equivalent of integrate_boundary_load(): integrates a Traction3D "
+            "over this single patch's FACE obtained by fixing `direction` "
+            "(0=u, 1=v, 2=w) at its first (side=0) or last (side=1) local index. "
+            "Requires the 3-basis (3D solid) constructor. Non-rational "
+            "(B-spline) volumes only.")
+        .def_static("assemble_boundary_load_3d", &PatchIntegrator::assembleBoundaryLoad3D,
+            py::arg("assembly"), py::arg("specs"), py::arg("gauss_n") = 0,
+            "Assemble several 3D distributed boundary loads (each on a "
+            "specific patch/face, via a list of BoundaryLoadSpec3D) over a "
+            "whole PatchAssembly.")
+        .def("integrate_scalar_operator_3d", &PatchIntegrator::integrateScalarOperator3D,
+            py::arg("op"), py::arg("u_global"),
+            "3D equivalent of integrate_scalar_operator(): the operator "
+            "additionally receives dRdz and a 3-component physical_point. "
+            "Requires the 3-basis (3D solid) constructor. Subclass "
+            "ScalarLocalOperator3D in Python and override "
             "compute_scalar_integrand().");
 
     py::class_<ScalarLocalOperator, PyScalarLocalOperator,
@@ -895,6 +993,24 @@ IGABasis1D
              "R, dRdx, dRdy: lists (length n_active) of basis values and physical-space gradients. "
              "physical_point: (x, y) physical coordinates (shape (2,)). "
              "u_local: flat DOF values [u_x0, u_y0, u_x1, u_y1, ...] for the active control points. "
+             "The returned float is multiplied by |detJ| * gauss_weight and accumulated over the patch.");
+
+    py::class_<ScalarLocalOperator3D, PyScalarLocalOperator3D,
+               std::shared_ptr<ScalarLocalOperator3D>>(m, "ScalarLocalOperator3D",
+        "3D equivalent of ScalarLocalOperator, for "
+        "PatchIntegrator.integrate_scalar_operator_3d() (error norms/energy "
+        "functionals on a 3D solid patch). "
+        "Override compute_scalar_integrand(R, dRdx, dRdy, dRdz, physical_point, "
+        "u_local) -> float, where u_local has layout "
+        "[u_x_cp0, u_y_cp0, u_z_cp0, u_x_cp1, ...] (3 DOFs per CP).")
+        .def(py::init<>(), "Construct; subclass and override compute_scalar_integrand().")
+        .def("compute_scalar_integrand", &ScalarLocalOperator3D::computeScalarIntegrand,
+             py::arg("R"), py::arg("dRdx"), py::arg("dRdy"), py::arg("dRdz"),
+             py::arg("physical_point"), py::arg("u_local"),
+             "Override in a Python subclass: return the scalar integrand at one Gauss point. "
+             "R, dRdx, dRdy, dRdz: lists (length n_active) of basis values and physical-space "
+             "gradients. physical_point: (x, y, z) physical coordinates (shape (3,)). "
+             "u_local: flat DOF values [u_x0, u_y0, u_z0, u_x1, ...] for the active control points. "
              "The returned float is multiplied by |detJ| * gauss_weight and accumulated over the patch.");
 
     py::class_<LocalOperator, PyLocalOperator, std::shared_ptr<LocalOperator>>(m, "LocalOperator",

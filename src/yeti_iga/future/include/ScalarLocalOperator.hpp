@@ -35,3 +35,20 @@ public:
         const Eigen::Vector2d& physical_point,
         const Eigen::VectorXd& u_local) const = 0;
 };
+
+// 3D equivalent of ScalarLocalOperator, for PatchIntegrator::
+// integrateScalarOperator3D() (error norms/energy functionals on a 3D solid
+// patch). Same contract, with a third physical-space gradient (dRdz) and a
+// 3-component physical point.
+class ScalarLocalOperator3D {
+public:
+    virtual ~ScalarLocalOperator3D() = default;
+
+    virtual double computeScalarIntegrand(
+        const std::vector<double>& R,
+        const std::vector<double>& dRdx,
+        const std::vector<double>& dRdy,
+        const std::vector<double>& dRdz,
+        const Eigen::Vector3d& physical_point,
+        const Eigen::VectorXd& u_local) const = 0;
+};

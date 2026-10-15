@@ -151,6 +151,172 @@ Eigen::MatrixXd PatchIntegrator::computeLocalMassContribution(
     return M_loc;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 3D solid (BSplineVolume) implementation -- parallel, explicitly-named
+// siblings of the 2D kernels above (see PatchIntegrator.hpp's comment on
+// why this is not a generic N-D rewrite). Non-rational (B-spline) only.
+// ─────────────────────────────────────────────────────────────────────────────
+
+PatchIntegrator::GaussPointGeometry3D PatchIntegrator::evaluateGaussPointGeometry3D(
+    const std::vector<const double*>& pts,
+    const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu,
+    const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv,
+    const Eigen::VectorXd& Nw, const Eigen::VectorXd& dNw) const
+{
+    size_t nb_loc = pts.size();
+    GaussPointGeometry3D g;
+    g.R.resize(nb_loc);
+    g.dRdu.resize(nb_loc);
+    g.dRdv.resize(nb_loc);
+    g.dRdw.resize(nb_loc);
+
+    size_t idx = 0;
+    for (size_t kw = 0; kw < static_cast<size_t>(Nw.size()); ++kw) {
+        for (size_t jv = 0; jv < static_cast<size_t>(Nv.size()); ++jv) {
+            for (size_t iu = 0; iu < static_cast<size_t>(Nu.size()); ++iu) {
+                g.R[idx]    = Nu(iu) * Nv(jv) * Nw(kw);
+                g.dRdu[idx] = dNu(iu) * Nv(jv) * Nw(kw);
+                g.dRdv[idx] = Nu(iu) * dNv(jv) * Nw(kw);
+                g.dRdw[idx] = Nu(iu) * Nv(jv) * dNw(kw);
+                ++idx;
+            }
+        }
+    }
+
+    g.J11 = 0.0; g.J12 = 0.0; g.J13 = 0.0;
+    g.J21 = 0.0; g.J22 = 0.0; g.J23 = 0.0;
+    g.J31 = 0.0; g.J32 = 0.0; g.J33 = 0.0;
+    for (size_t a = 0; a < nb_loc; ++a) {
+        const double* P = pts[a];
+        g.J11 += g.dRdu[a] * P[0]; g.J21 += g.dRdu[a] * P[1]; g.J31 += g.dRdu[a] * P[2];
+        g.J12 += g.dRdv[a] * P[0]; g.J22 += g.dRdv[a] * P[1]; g.J32 += g.dRdv[a] * P[2];
+        g.J13 += g.dRdw[a] * P[0]; g.J23 += g.dRdw[a] * P[1]; g.J33 += g.dRdw[a] * P[2];
+    }
+
+    double detJ = g.J11*(g.J22*g.J33 - g.J23*g.J32)
+                - g.J12*(g.J21*g.J33 - g.J23*g.J31)
+                + g.J13*(g.J21*g.J32 - g.J22*g.J31);
+    g.detJ = (std::abs(detJ) < 1.e-14) ? 0.0 : detJ;
+
+    return g;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContribution3D(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const SpanGauss1D& sg_w, const std::vector<int>& span)
+{
+    int n = law_->n_dofs_per_cp();
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+    int ngauss_w = static_cast<int>(sg_w.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd K_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+
+    std::vector<PhysVector> grads(nb_loc, PhysVector(3));
+    PhysVector x_phys(3);
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            for (int gw = 0; gw < ngauss_w; ++gw) {
+                double w = sg_u.weight[gu] * sg_v.weight[gv] * sg_w.weight[gw];
+
+                const Eigen::VectorXd& Nu  = sg_u.N[gu];
+                const Eigen::VectorXd& dNu = sg_u.dN[gu];
+                const Eigen::VectorXd& Nv  = sg_v.N[gv];
+                const Eigen::VectorXd& dNv = sg_v.dN[gv];
+                const Eigen::VectorXd& Nw  = sg_w.N[gw];
+                const Eigen::VectorXd& dNw = sg_w.dN[gw];
+
+                GaussPointGeometry3D g = evaluateGaussPointGeometry3D(pts, Nu, dNu, Nv, dNv, Nw, dNw);
+                if (g.detJ == 0.0) continue;
+
+                double detJ = g.detJ;
+                double invJ11 = (g.J22*g.J33 - g.J23*g.J32) / detJ;
+                double invJ12 = (g.J13*g.J32 - g.J12*g.J33) / detJ;
+                double invJ13 = (g.J12*g.J23 - g.J13*g.J22) / detJ;
+                double invJ21 = (g.J23*g.J31 - g.J21*g.J33) / detJ;
+                double invJ22 = (g.J11*g.J33 - g.J13*g.J31) / detJ;
+                double invJ23 = (g.J13*g.J21 - g.J11*g.J23) / detJ;
+                double invJ31 = (g.J21*g.J32 - g.J22*g.J31) / detJ;
+                double invJ32 = (g.J12*g.J31 - g.J11*g.J32) / detJ;
+                double invJ33 = (g.J11*g.J22 - g.J12*g.J21) / detJ;
+
+                x_phys.setZero();
+                for (size_t a = 0; a < nb_loc; ++a) {
+                    grads[a][0] = invJ11*g.dRdu[a] + invJ21*g.dRdv[a] + invJ31*g.dRdw[a];
+                    grads[a][1] = invJ12*g.dRdu[a] + invJ22*g.dRdv[a] + invJ32*g.dRdw[a];
+                    grads[a][2] = invJ13*g.dRdu[a] + invJ23*g.dRdv[a] + invJ33*g.dRdw[a];
+                    x_phys[0] += g.R[a] * pts[a][0];
+                    x_phys[1] += g.R[a] * pts[a][1];
+                    x_phys[2] += g.R[a] * pts[a][2];
+                }
+
+                double factor = w * std::abs(detJ);
+                for (size_t a = 0; a < nb_loc; ++a) {
+                    for (size_t b = a; b < nb_loc; ++b) {
+                        PhysMatrix block =
+                            law_->stiffness_density(grads[a], grads[b], x_phys) * factor;
+                        K_loc.block(n*a, n*b, n, n) += block;
+                        if (b != a)
+                            K_loc.block(n*b, n*a, n, n) += block.transpose();
+                    }
+                }
+            }
+        }
+    }
+    return K_loc;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalMassContribution3D(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const SpanGauss1D& sg_w, const std::vector<int>& span)
+{
+    int n = law_->n_dofs_per_cp();
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+    int ngauss_w = static_cast<int>(sg_w.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd M_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+    double rho = law_->material().rho;
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            for (int gw = 0; gw < ngauss_w; ++gw) {
+                double w = sg_u.weight[gu] * sg_v.weight[gv] * sg_w.weight[gw];
+
+                const Eigen::VectorXd& Nu  = sg_u.N[gu];
+                const Eigen::VectorXd& dNu = sg_u.dN[gu];
+                const Eigen::VectorXd& Nv  = sg_v.N[gv];
+                const Eigen::VectorXd& dNv = sg_v.dN[gv];
+                const Eigen::VectorXd& Nw  = sg_w.N[gw];
+                const Eigen::VectorXd& dNw = sg_w.dN[gw];
+
+                GaussPointGeometry3D g = evaluateGaussPointGeometry3D(pts, Nu, dNu, Nv, dNv, Nw, dNw);
+                if (g.detJ == 0.0) continue;
+
+                double factor = rho * w * std::abs(g.detJ);
+                for (size_t a = 0; a < nb_loc; ++a) {
+                    for (size_t b = a; b < nb_loc; ++b) {
+                        double Ra_Rb = g.R[a] * g.R[b] * factor;
+                        for (int i = 0; i < n; ++i) {
+                            M_loc(n*a + i, n*b + i) += Ra_Rb;
+                            if (b != a)
+                                M_loc(n*b + i, n*a + i) += Ra_Rb;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return M_loc;
+}
+
 void PatchIntegrator::assembleLocalContribution(
     const Eigen::MatrixXd& local_contribution, const std::vector<int>& span,
     std::vector<Eigen::Triplet<double>>& tripletList)
@@ -195,12 +361,14 @@ Eigen::SparseMatrix<double> PatchIntegrator::assembleGeneric(
     std::vector<Eigen::Triplet<double>> tripletList;
     size_t total_dofs = 0;
 
-    std::vector<IGABasis1D> bases_u, bases_v;
+    std::vector<IGABasis1D> bases_u, bases_v, bases_w;
     bases_u.reserve(patches.size());
     bases_v.reserve(patches.size());
+    bases_w.reserve(patches.size());
 
     for (size_t p = 0; p < patches.size(); ++p) {
         const Patch& patch = *patches[p];
+        size_t ndim = patch.tensor.components.size();
 
         int p_u = patch.tensor.components[0].getDegree();
         int p_v = patch.tensor.components[1].getDegree();
@@ -210,9 +378,21 @@ Eigen::SparseMatrix<double> PatchIntegrator::assembleGeneric(
         bases_u.push_back(IGABasis1D::build(patch.tensor.components[0], n_u));
         bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v));
 
-        PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), laws[p]);
-        collect(integrator, tripletList);
-        total_dofs = std::max(total_dofs, integrator.localTotalDofs());
+        if (ndim == 2) {
+            PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), laws[p]);
+            collect(integrator, tripletList);
+            total_dofs = std::max(total_dofs, integrator.localTotalDofs());
+        } else if (ndim == 3) {
+            int p_w = patch.tensor.components[2].getDegree();
+            int n_w = (gauss_n > 0) ? gauss_n : p_w + 1;
+            bases_w.push_back(IGABasis1D::build(patch.tensor.components[2], n_w));
+            PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), bases_w.back(), laws[p]);
+            collect(integrator, tripletList);
+            total_dofs = std::max(total_dofs, integrator.localTotalDofs());
+        } else {
+            throw std::invalid_argument(
+                "PatchIntegrator::assembleGeneric: only 2D or 3D patches are supported.");
+        }
     }
 
     Eigen::SparseMatrix<double> result(total_dofs, total_dofs);
@@ -446,6 +626,215 @@ Eigen::VectorXd PatchIntegrator::assembleBoundaryLoad(
         PatchIntegrator integrator(patch, bases_u.back(), bases_v.back());  // no-law ctor
         Eigen::VectorXd local_result = integrator.integrateBoundaryLoad(
             spec.direction, spec.side, *spec.traction, spec.span_min, spec.span_max);
+
+        global_load.head(local_result.size()) += local_result;
+    }
+
+    return global_load;
+}
+
+// 3D equivalent of computeLocalBoundaryLoadContribution(): the boundary is a
+// whole FACE (2 "varying" directions p/q), not an edge, so it needs a
+// genuine surface-element Jacobian (|Tp x Tq|, the cross product of the
+// physical tangents along p and q) instead of a curve-tangent norm.
+Eigen::VectorXd PatchIntegrator::computeLocalBoundaryLoadContribution3D(
+    const Patch& patch, const std::vector<int>& span, int direction,
+    const SpanGauss1D& sg_p, const SpanGauss1D& sg_q,
+    const Eigen::VectorXd& N_fixed_boundary, const Traction3D& traction) const
+{
+    std::vector<int> varying_dirs;
+    for (int d = 0; d < 3; ++d)
+        if (d != direction) varying_dirs.push_back(d);
+    int dir_p = varying_dirs[0], dir_q = varying_dirs[1];
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    int ngauss_p = static_cast<int>(sg_p.u_param.size());
+    int ngauss_q = static_cast<int>(sg_q.u_param.size());
+
+    Eigen::VectorXd F_loc = Eigen::VectorXd::Zero(3 * nb_loc);
+    Eigen::VectorXd zero_deriv = Eigen::VectorXd::Zero(N_fixed_boundary.size());
+
+    for (int gp = 0; gp < ngauss_p; ++gp) {
+        for (int gq = 0; gq < ngauss_q; ++gq) {
+            double w = sg_p.weight[gp] * sg_q.weight[gq];
+
+            // Assign N / dN-wrt-p / dN-wrt-q to each of the 3 tensor slots
+            // (u,v,w) depending on whether that slot is `direction` (fixed,
+            // zero derivative), dir_p, or dir_q. Only the slot matching the
+            // direction actually being differentiated against gets a
+            // nonzero derivative -- the 3-term product-rule sums below then
+            // automatically collapse to the single correct term.
+            const Eigen::VectorXd* N[3];
+            const Eigen::VectorXd* dN_p[3];
+            const Eigen::VectorXd* dN_q[3];
+            for (int d = 0; d < 3; ++d) {
+                if (d == direction) {
+                    N[d] = &N_fixed_boundary; dN_p[d] = &zero_deriv; dN_q[d] = &zero_deriv;
+                } else if (d == dir_p) {
+                    N[d] = &sg_p.N[gp]; dN_p[d] = &sg_p.dN[gp]; dN_q[d] = &zero_deriv;
+                } else {  // d == dir_q
+                    N[d] = &sg_q.N[gq]; dN_p[d] = &zero_deriv; dN_q[d] = &sg_q.dN[gq];
+                }
+            }
+
+            size_t nu = N[0]->size(), nv = N[1]->size(), nw = N[2]->size();
+            std::vector<double> R(nb_loc), dRdp(nb_loc), dRdq(nb_loc);
+            size_t idx = 0;
+            for (size_t kw = 0; kw < nw; ++kw) {
+                for (size_t jv = 0; jv < nv; ++jv) {
+                    for (size_t iu = 0; iu < nu; ++iu) {
+                        double Nu_ = (*N[0])(iu), Nv_ = (*N[1])(jv), Nw_ = (*N[2])(kw);
+                        R[idx] = Nu_ * Nv_ * Nw_;
+                        double dNu_p = (*dN_p[0])(iu), dNv_p = (*dN_p[1])(jv), dNw_p = (*dN_p[2])(kw);
+                        double dNu_q = (*dN_q[0])(iu), dNv_q = (*dN_q[1])(jv), dNw_q = (*dN_q[2])(kw);
+                        dRdp[idx] = dNu_p * Nv_ * Nw_ + Nu_ * dNv_p * Nw_ + Nu_ * Nv_ * dNw_p;
+                        dRdq[idx] = dNu_q * Nv_ * Nw_ + Nu_ * dNv_q * Nw_ + Nu_ * Nv_ * dNw_q;
+                        ++idx;
+                    }
+                }
+            }
+
+            Eigen::Vector3d Tp = Eigen::Vector3d::Zero();
+            Eigen::Vector3d Tq = Eigen::Vector3d::Zero();
+            Eigen::Vector3d X  = Eigen::Vector3d::Zero();
+            for (size_t a = 0; a < nb_loc; ++a) {
+                const double* P = pts[a];
+                Tp[0] += dRdp[a]*P[0]; Tp[1] += dRdp[a]*P[1]; Tp[2] += dRdp[a]*P[2];
+                Tq[0] += dRdq[a]*P[0]; Tq[1] += dRdq[a]*P[1]; Tq[2] += dRdq[a]*P[2];
+                X[0]  += R[a]*P[0];    X[1]  += R[a]*P[1];    X[2]  += R[a]*P[2];
+            }
+            Eigen::Vector3d cross = Tp.cross(Tq);
+            double dA = cross.norm();
+            if (dA < 1.e-14) continue;
+
+            Eigen::Vector3d t = traction.evaluate(X);
+
+            for (size_t a = 0; a < nb_loc; ++a) {
+                F_loc[3*a]     += R[a] * t[0] * w * dA;
+                F_loc[3*a + 1] += R[a] * t[1] * w * dA;
+                F_loc[3*a + 2] += R[a] * t[2] * w * dA;
+            }
+        }
+    }
+
+    return F_loc;
+}
+
+Eigen::VectorXd PatchIntegrator::integrateBoundaryLoad3D(
+    int direction, int side, const Traction3D& traction)
+{
+    if (!basis_w_)
+        throw std::logic_error(
+            "PatchIntegrator::integrateBoundaryLoad3D: requires the 3-basis (3D solid) "
+            "constructor (basis_w not set).");
+    if (direction < 0 || direction > 2)
+        throw std::invalid_argument("PatchIntegrator::integrateBoundaryLoad3D: direction must be 0, 1 or 2.");
+    if (side != 0 && side != 1)
+        throw std::invalid_argument("PatchIntegrator::integrateBoundaryLoad3D: side must be 0 (min) or 1 (max).");
+    if (patch_.cp_manager->is_rational())
+        throw std::logic_error(
+            "PatchIntegrator::integrateBoundaryLoad3D: 3D NURBS solids are not implemented "
+            "yet; this phase supports non-rational (B-spline) 3D volumes only.");
+
+    std::vector<int> varying_dirs;
+    for (int d = 0; d < 3; ++d)
+        if (d != direction) varying_dirs.push_back(d);
+    int dir_p = varying_dirs[0], dir_q = varying_dirs[1];
+
+    auto basis_for = [this](int d) -> const IGABasis1D& {
+        return d == 0 ? basis_u_ : (d == 1 ? basis_v_ : *basis_w_);
+    };
+    const IGABasis1D& basis_p = basis_for(dir_p);
+    const IGABasis1D& basis_q = basis_for(dir_q);
+
+    const BSpline& bspline_fixed = patch_.tensor.components[direction];
+    const auto& kv_fixed = bspline_fixed.getKnotVector();
+    int p_fixed = bspline_fixed.getDegree();
+    int m_fixed = static_cast<int>(kv_fixed.size()) - 1;
+    int span_fixed = -1;
+    if (side == 0) {
+        for (int i = p_fixed; i <= m_fixed - p_fixed - 1; ++i)
+            if (kv_fixed[i+1] > kv_fixed[i]) { span_fixed = i; break; }
+    } else {
+        for (int i = m_fixed - p_fixed - 1; i >= p_fixed; --i)
+            if (kv_fixed[i+1] > kv_fixed[i]) { span_fixed = i; break; }
+    }
+    if (span_fixed < 0)
+        throw std::runtime_error(
+            "PatchIntegrator::integrateBoundaryLoad3D: no valid span found for the fixed direction.");
+
+    double u_boundary = (side == 0) ? kv_fixed.front() : kv_fixed.back();
+    std::vector<double> N_fixed_vals(p_fixed + 1);
+    bspline_fixed.BasisFuns_raw(span_fixed, u_boundary, N_fixed_vals.data());
+    Eigen::VectorXd N_fixed_boundary(p_fixed + 1);
+    for (int i = 0; i <= p_fixed; ++i) N_fixed_boundary[i] = N_fixed_vals[i];
+
+    Eigen::VectorXd global_load = Eigen::VectorXd::Zero(localTotalDofs());
+
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        if (span[direction] != span_fixed) continue;
+
+        int idx_p = basis_p.span_indices.at(span[dir_p]);
+        int idx_q = basis_q.span_indices.at(span[dir_q]);
+        const SpanGauss1D& sg_p = basis_p.gauss_spans[idx_p];
+        const SpanGauss1D& sg_q = basis_q.gauss_spans[idx_q];
+
+        Eigen::VectorXd local_load = computeLocalBoundaryLoadContribution3D(
+            patch_, span, direction, sg_p, sg_q, N_fixed_boundary, traction);
+
+        assembleLocalLoadContribution(local_load, span, global_load);
+    }
+
+    return global_load;
+}
+
+Eigen::VectorXd PatchIntegrator::assembleBoundaryLoad3D(
+    const PatchAssembly& assembly,
+    const std::vector<BoundaryLoadSpec3D>& specs,
+    int gauss_n)
+{
+    const auto& patches = assembly.getPatchs();
+
+    size_t total_dofs = 0;
+    for (const auto& patch : patches) {
+        if (!patch->dof_manager) continue;
+        const auto& l2g = patch->dof_manager->local_to_global_dofs;
+        if (!l2g.empty())
+            total_dofs = std::max(total_dofs, *std::max_element(l2g.begin(), l2g.end()) + 1);
+    }
+    Eigen::VectorXd global_load = Eigen::VectorXd::Zero(total_dofs);
+
+    std::vector<IGABasis1D> bases_u, bases_v, bases_w;
+    bases_u.reserve(specs.size());
+    bases_v.reserve(specs.size());
+    bases_w.reserve(specs.size());
+
+    for (const auto& spec : specs) {
+        if (spec.patch_index >= patches.size())
+            throw std::out_of_range("PatchIntegrator::assembleBoundaryLoad3D: patch_index out of range.");
+
+        const Patch& patch = *patches[spec.patch_index];
+        if (patch.tensor.components.size() != 3)
+            throw std::invalid_argument(
+                "PatchIntegrator::assembleBoundaryLoad3D: patch at patch_index is not 3D.");
+
+        int p_u = patch.tensor.components[0].getDegree();
+        int p_v = patch.tensor.components[1].getDegree();
+        int p_w = patch.tensor.components[2].getDegree();
+        int n_u = (gauss_n > 0) ? gauss_n : p_u + 1;
+        int n_v = (gauss_n > 0) ? gauss_n : p_v + 1;
+        int n_w = (gauss_n > 0) ? gauss_n : p_w + 1;
+
+        bases_u.push_back(IGABasis1D::build(patch.tensor.components[0], n_u));
+        bases_v.push_back(IGABasis1D::build(patch.tensor.components[1], n_v));
+        bases_w.push_back(IGABasis1D::build(patch.tensor.components[2], n_w));
+
+        PatchIntegrator integrator(patch, bases_u.back(), bases_v.back(), bases_w.back());  // no-law ctor
+        Eigen::VectorXd local_result = integrator.integrateBoundaryLoad3D(
+            spec.direction, spec.side, *spec.traction);
 
         global_load.head(local_result.size()) += local_result;
     }
@@ -742,6 +1131,96 @@ double PatchIntegrator::integrateScalarOperator(ScalarLocalOperator& op,
 
                 double integrand = op.computeScalarIntegrand(g.R, dRdx, dRdy, x_gp, u_local);
                 result += integrand * wg * std::abs(g.detJ);
+            }
+        }
+    }
+
+    return result;
+}
+
+// 3D equivalent of integrateScalarOperator() (error norms/energy functionals
+// on a 3D solid patch). Non-rational (B-spline) volumes only.
+double PatchIntegrator::integrateScalarOperator3D(ScalarLocalOperator3D& op,
+                                                  const Eigen::VectorXd& u_global)
+{
+    if (!basis_w_)
+        throw std::logic_error(
+            "PatchIntegrator::integrateScalarOperator3D: requires the 3-basis (3D solid) "
+            "constructor (basis_w not set).");
+    if (patch_.cp_manager->is_rational())
+        throw std::logic_error(
+            "PatchIntegrator::integrateScalarOperator3D: 3D NURBS solids are not "
+            "implemented yet; this phase supports non-rational (B-spline) 3D volumes only.");
+
+    const size_t dpc = patch_.dof_manager->dofs_per_control_point;
+    double result = 0.0;
+
+    SpanNDIterator it = patch_.spans();
+    for (auto span : it) {
+        int idx_u = basis_u_.span_indices.at(span[0]);
+        int idx_v = basis_v_.span_indices.at(span[1]);
+        int idx_w = basis_w_->span_indices.at(span[2]);
+        const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+        const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+        const SpanGauss1D& sg_w = basis_w_->gauss_spans[idx_w];
+
+        std::vector<const double*> pts = patch_.control_points_for_span(span);
+        size_t nb_loc = pts.size();
+
+        std::vector<size_t> span_local = buildSpanLocalIndices(patch_, span);
+
+        int ngauss_u = static_cast<int>(sg_u.u_param.size());
+        int ngauss_v = static_cast<int>(sg_v.u_param.size());
+        int ngauss_w = static_cast<int>(sg_w.u_param.size());
+
+        for (int gu = 0; gu < ngauss_u; ++gu) {
+            for (int gv = 0; gv < ngauss_v; ++gv) {
+                for (int gw = 0; gw < ngauss_w; ++gw) {
+                    double wg = sg_u.weight[gu] * sg_v.weight[gv] * sg_w.weight[gw];
+
+                    const Eigen::VectorXd& Nu  = sg_u.N[gu];
+                    const Eigen::VectorXd& dNu = sg_u.dN[gu];
+                    const Eigen::VectorXd& Nv  = sg_v.N[gv];
+                    const Eigen::VectorXd& dNv = sg_v.dN[gv];
+                    const Eigen::VectorXd& Nw  = sg_w.N[gw];
+                    const Eigen::VectorXd& dNw = sg_w.dN[gw];
+
+                    GaussPointGeometry3D g = evaluateGaussPointGeometry3D(pts, Nu, dNu, Nv, dNv, Nw, dNw);
+                    if (g.detJ == 0.0) continue;
+
+                    double detJ = g.detJ;
+                    double invJ11 = (g.J22*g.J33 - g.J23*g.J32) / detJ;
+                    double invJ12 = (g.J13*g.J32 - g.J12*g.J33) / detJ;
+                    double invJ13 = (g.J12*g.J23 - g.J13*g.J22) / detJ;
+                    double invJ21 = (g.J23*g.J31 - g.J21*g.J33) / detJ;
+                    double invJ22 = (g.J11*g.J33 - g.J13*g.J31) / detJ;
+                    double invJ23 = (g.J13*g.J21 - g.J11*g.J23) / detJ;
+                    double invJ31 = (g.J21*g.J32 - g.J22*g.J31) / detJ;
+                    double invJ32 = (g.J12*g.J31 - g.J11*g.J32) / detJ;
+                    double invJ33 = (g.J11*g.J22 - g.J12*g.J21) / detJ;
+
+                    std::vector<double> dRdx(nb_loc), dRdy(nb_loc), dRdz(nb_loc);
+                    Eigen::Vector3d x_gp = Eigen::Vector3d::Zero();
+                    for (size_t a = 0; a < nb_loc; ++a) {
+                        dRdx[a] = invJ11*g.dRdu[a] + invJ21*g.dRdv[a] + invJ31*g.dRdw[a];
+                        dRdy[a] = invJ12*g.dRdu[a] + invJ22*g.dRdv[a] + invJ32*g.dRdw[a];
+                        dRdz[a] = invJ13*g.dRdu[a] + invJ23*g.dRdv[a] + invJ33*g.dRdw[a];
+                        x_gp[0] += g.R[a] * pts[a][0];
+                        x_gp[1] += g.R[a] * pts[a][1];
+                        x_gp[2] += g.R[a] * pts[a][2];
+                    }
+
+                    Eigen::VectorXd u_local(static_cast<Eigen::Index>(nb_loc * dpc));
+                    for (size_t a = 0; a < nb_loc; ++a) {
+                        for (size_t d = 0; d < dpc; ++d) {
+                            size_t global_dof = patch_.dof_manager->get_global_dof(span_local[a], d);
+                            u_local[static_cast<Eigen::Index>(a * dpc + d)] = u_global[static_cast<Eigen::Index>(global_dof)];
+                        }
+                    }
+
+                    double integrand = op.computeScalarIntegrand(g.R, dRdx, dRdy, dRdz, x_gp, u_local);
+                    result += integrand * wg * std::abs(g.detJ);
+                }
             }
         }
     }

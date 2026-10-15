@@ -29,12 +29,23 @@ struct BoundaryLoadSpec {
     int span_min = -1, span_max = -1;
 };
 
+// 3D equivalent of BoundaryLoadSpec, for PatchIntegrator::assembleBoundaryLoad3D().
+// Kept genuinely separate (not unified via a template/variant): Traction and
+// Traction3D are different, non-interchangeable types.
+struct BoundaryLoadSpec3D {
+    size_t patch_index;
+    int direction, side;
+    std::shared_ptr<Traction3D> traction;
+};
+
 class PatchIntegrator {
 private:
     const Patch& patch_;
-    // TODO: generalize it for N dimensions
     const IGABasis1D& basis_u_;
     const IGABasis1D& basis_v_;
+    // Set only by the 3-basis (3D solid) constructors below; nullptr selects
+    // the existing 2D code path everywhere, byte-for-byte unchanged.
+    const IGABasis1D* basis_w_ = nullptr;
     std::shared_ptr<const ConstitutiveLaw> law_;
 
     // Geometry needed by the shell kernels at one Gauss point: basis values
@@ -161,6 +172,36 @@ private:
     // NURBS variant
     Eigen::MatrixXd computeLocalMassContributionNURBS(const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v, const std::vector<int>& span, const std::vector<double>& weights);
 
+    // ─────────────────────────────────────────────────────────────────
+    // 3D solid (BSplineVolume, 3 parametric directions) kernels. Parallel,
+    // explicitly-named siblings of the 2D kernels above -- NOT a generic
+    // N-D rewrite -- so the already-validated 2D numerics stay textually
+    // untouched. Non-rational (B-spline) volumes only for now: a 3D NURBS
+    // kernel does not exist yet (see collectTripletsImpl<true>'s guard).
+    // ─────────────────────────────────────────────────────────────────
+
+    // Geometry shared by the 3D stiffness and mass kernels at one Gauss
+    // point: basis values/derivatives (u-fastest), the 3x3 Jacobian and its
+    // determinant. detJ == 0.0 signals a degenerate point to be skipped.
+    struct GaussPointGeometry3D {
+        std::vector<double> R, dRdu, dRdv, dRdw;
+        double J11,J12,J13, J21,J22,J23, J31,J32,J33;
+        double detJ;
+    };
+    GaussPointGeometry3D evaluateGaussPointGeometry3D(
+        const std::vector<const double*>& pts,
+        const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu,
+        const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv,
+        const Eigen::VectorXd& Nw, const Eigen::VectorXd& dNw) const;
+
+    Eigen::MatrixXd computeLocalStiffnessContribution3D(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const SpanGauss1D& sg_w, const std::vector<int>& span);
+
+    Eigen::MatrixXd computeLocalMassContribution3D(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const SpanGauss1D& sg_w, const std::vector<int>& span);
+
     // Assemble local contribution into global matrix (shared by stiffness and mass)
     void assembleLocalContribution(const Eigen::MatrixXd& local_contribution, const std::vector<int>& span, std::vector<Eigen::Triplet<double>>& tripletList);
 
@@ -178,6 +219,14 @@ private:
         const Patch& patch, const std::vector<int>& span, int direction,
         const SpanGauss1D& sg_varying, const Eigen::VectorXd& N_fixed_boundary,
         const Traction& traction, const std::vector<double>& weights);
+
+    // 3D equivalent: the boundary is a whole FACE (2 "varying" directions,
+    // sg_p/sg_q), not an edge -- needs a genuine surface Jacobian (cross
+    // product of the 2 physical tangents along p/q), not a curve-tangent norm.
+    Eigen::VectorXd computeLocalBoundaryLoadContribution3D(
+        const Patch& patch, const std::vector<int>& span, int direction,
+        const SpanGauss1D& sg_p, const SpanGauss1D& sg_q,
+        const Eigen::VectorXd& N_fixed_boundary, const Traction3D& traction) const;
 
     // if constexpr dispatch helpers: IsRational=false generates code identical
     // to the current B-spline-only path; IsRational=true calls the NURBS
@@ -221,6 +270,20 @@ public:
     // (KirchhoffLoveShellLaw is not a ConstitutiveLaw -- see its docstring).
     PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v)
         : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), law_(nullptr) {}
+
+    // 3D solid (BSplineVolume) constructors -- same role as the two above,
+    // with a third basis_w. law must have n_dofs_per_cp() == 3 (Elasticity3D).
+    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v,
+                    const IGABasis1D& basis_w, std::shared_ptr<const ConstitutiveLaw> law)
+        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), basis_w_(&basis_w), law_(std::move(law)) {
+        if (law_ && law_->n_dofs_per_cp() != 3)
+            throw std::invalid_argument(
+                "PatchIntegrator: the 3-basis (3D solid) constructor requires a law with "
+                "n_dofs_per_cp() == 3 (Elasticity3D).");
+    }
+    PatchIntegrator(const Patch& patch, const IGABasis1D& basis_u, const IGABasis1D& basis_v,
+                    const IGABasis1D& basis_w)
+        : patch_(patch), basis_u_(basis_u), basis_v_(basis_v), basis_w_(&basis_w), law_(nullptr) {}
 
     // Append this patch's contribution to a (possibly shared) triplet list,
     // using GLOBAL dof indices. Does not size or build any matrix -- this is
@@ -414,6 +477,25 @@ public:
     double integrateScalarOperator(ScalarLocalOperator& op,
                                    const Eigen::VectorXd& u_global);
 
+    // 3D equivalent of integrateBoundaryLoad(): integrates over this single
+    // patch's FACE obtained by fixing `direction` at its first (side=0) or
+    // last (side=1) local index (not an edge -- see
+    // computeLocalBoundaryLoadContribution3D()). Requires the 3-basis
+    // constructor (basis_w set). Non-rational (B-spline) volumes only.
+    Eigen::VectorXd integrateBoundaryLoad3D(
+        int direction, int side, const Traction3D& traction);
+
+    // Assemble several 3D distributed boundary loads over a whole PatchAssembly.
+    static Eigen::VectorXd assembleBoundaryLoad3D(
+        const PatchAssembly& assembly,
+        const std::vector<BoundaryLoadSpec3D>& specs,
+        int gauss_n = 0);
+
+    // 3D equivalent of integrateScalarOperator() (error norms/energy
+    // functionals on a 3D solid patch). Requires the 3-basis constructor.
+    double integrateScalarOperator3D(ScalarLocalOperator3D& op,
+                                     const Eigen::VectorXd& u_global);
+
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -424,6 +506,26 @@ public:
 
 template<bool IsRational>
 void PatchIntegrator::collectTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList) {
+    if (basis_w_) {
+        if constexpr (IsRational) {
+            throw std::logic_error(
+                "PatchIntegrator: 3D NURBS solids are not implemented yet; this phase "
+                "supports non-rational (B-spline) 3D volumes only.");
+        } else {
+            SpanNDIterator it = patch_.spans();
+            for (auto span : it) {
+                int idx_u = basis_u_.span_indices.at(span[0]);
+                int idx_v = basis_v_.span_indices.at(span[1]);
+                int idx_w = basis_w_->span_indices.at(span[2]);
+                const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+                const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+                const SpanGauss1D& sg_w = basis_w_->gauss_spans[idx_w];
+                Eigen::MatrixXd lc = computeLocalStiffnessContribution3D(patch_, sg_u, sg_v, sg_w, span);
+                assembleLocalContribution(lc, span, tripletList);
+            }
+        }
+        return;
+    }
     SpanNDIterator it = patch_.spans();
     for (auto span : it) {
         int idx_u = basis_u_.span_indices.at(span[0]);
@@ -444,6 +546,26 @@ void PatchIntegrator::collectTripletsImpl(std::vector<Eigen::Triplet<double>>& t
 
 template<bool IsRational>
 void PatchIntegrator::collectMassTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList) {
+    if (basis_w_) {
+        if constexpr (IsRational) {
+            throw std::logic_error(
+                "PatchIntegrator: 3D NURBS solids are not implemented yet; this phase "
+                "supports non-rational (B-spline) 3D volumes only.");
+        } else {
+            SpanNDIterator it = patch_.spans();
+            for (auto span : it) {
+                int idx_u = basis_u_.span_indices.at(span[0]);
+                int idx_v = basis_v_.span_indices.at(span[1]);
+                int idx_w = basis_w_->span_indices.at(span[2]);
+                const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+                const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+                const SpanGauss1D& sg_w = basis_w_->gauss_spans[idx_w];
+                Eigen::MatrixXd lc = computeLocalMassContribution3D(patch_, sg_u, sg_v, sg_w, span);
+                assembleLocalContribution(lc, span, tripletList);
+            }
+        }
+        return;
+    }
     SpanNDIterator it = patch_.spans();
     for (auto span : it) {
         int idx_u = basis_u_.span_indices.at(span[0]);
