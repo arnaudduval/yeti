@@ -1363,9 +1363,12 @@ patch : Patch
     Patch with a PatchDOFManager attached.
         )doc")
         .def(py::init<const Patch&>(), py::arg("patch"),
+            py::keep_alive<1, 2>(),
             "Construct for the given patch. The patch must already carry a "
             "PatchDOFManager (attached at construction or via "
-            "PatchAssembly.update_dof_managers()).")
+            "PatchAssembly.update_dof_managers()). The patch is stored as a C++ "
+            "reference (not copied): this constructor keeps it alive in Python for "
+            "as long as the PatchEvaluator itself is alive.")
         .def("evaluate_solution", &PatchEvaluator::evaluateSolutionOMP,
              py::arg("params"), py::arg("u_global"),
              R"doc(
