@@ -176,26 +176,7 @@ void PatchIntegrator::assembleLocalContribution(
 }
 
 std::vector<size_t> PatchIntegrator::buildSpanLocalIndices(const Patch& patch, const std::vector<int>& span) const {
-    std::vector<size_t> span_local_positions;
-
-    int p_u = patch.tensor.components[0].getDegree();
-    int p_v = patch.tensor.components[1].getDegree();
-
-    int start_u = span[0] - p_u;
-    int start_v = span[1] - p_v;
-
-    ssize_t n_u = patch.local_shape[0];
-
-    for (int jv = 0; jv <= p_v; ++jv) {
-        int lv = start_v + jv;
-        for (int iu = 0; iu <= p_u; ++iu) {
-            int lu = start_u + iu;
-            size_t local_linear = static_cast<size_t>(lv * n_u + lu);
-            span_local_positions.push_back(local_linear);
-        }
-    }
-
-    return span_local_positions;
+    return patch.active_local_flat_indices(span);
 }
 
 Eigen::SparseMatrix<double> PatchIntegrator::assembleGeneric(

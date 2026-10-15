@@ -54,6 +54,14 @@ struct Patch {
     py::array_t<double> EvaluatePatchNDOMP(const py::array_t<int> spans,
                                            const py::array_t<double>& u) const;
 
+    // Patch-LOCAL flat positions (u-fastest) of all control points active
+    // in a span, i.e. prod_d(p_d+1) positions covering every parametric
+    // direction (2 or 3). Shared by control_points_for_span()/
+    // weights_for_span() below and PatchIntegrator::buildSpanLocalIndices()
+    // -- the same multi-index arithmetic BezierExtractor::extract_nd()
+    // already uses elsewhere in this codebase.
+    std::vector<size_t> active_local_flat_indices(const std::vector<int>& span) const;
+
     std::vector<const double*> control_points_for_span(const std::vector<int>& span) const;
 
     // NURBS weights of the (p_u+1)*(p_v+1) control points active in span,
@@ -68,7 +76,9 @@ struct Patch {
     // raw knot-span indices like the ones Patch::spans() yields), restricts
     // the selection to control points active over those spans of the
     // OTHER ("varying") direction; -1/-1 (default) selects the whole edge.
-    // 2D patches only (Phase 1 scope, like PatchAssembly's interfaces).
+    // 2D or 3D patches. For a 3D patch the "edge" is a whole 2D face (the
+    // span_min/span_max sub-range restriction is 2D-only for now -- pass
+    // -1/-1 for a 3D patch to select the whole face).
     //
     // Returned positions are suitable for
     // PatchDOFManager::get_global_dof_indices()/get_global_dof() -- this is

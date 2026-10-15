@@ -220,30 +220,45 @@ py::array_t<double> Patch::EvaluatePatchNDOMP(const py::array_t<int> spans,
     return result;
 }
 
-std::vector<const double*> Patch::control_points_for_span(const std::vector<int>& span) const {
-    std::vector<const double*> pts;
-    int p_u = tensor.components[0].getDegree();
-    int p_v = tensor.components[1].getDegree();
+std::vector<size_t> Patch::active_local_flat_indices(const std::vector<int>& span) const {
+    size_t ndim = tensor.components.size();
+    std::vector<int> p(ndim), start(ndim), n_loc(ndim);
 
-    int start_u = span[0] - p_u;
-    int start_v = span[1] - p_v;
+    std::vector<size_t> stride(ndim);
+    stride[0] = 1;
+    for (size_t d = 1; d < ndim; ++d)
+        stride[d] = stride[d-1] * local_shape[d-1];
 
-    ssize_t n_u = local_shape[0];
-    ssize_t n_v = local_shape[1];
-
-    // Réserver de l'espace pour les pointeurs
-    pts.reserve((p_u + 1) * (p_v + 1));
-
-    // u-fastest: direction 0 (u) fastest
-    for (int jv = 0; jv <= p_v; ++jv) {
-        int lv = start_v + jv;
-        for (int iu = 0; iu <= p_u; ++iu) {
-            int lu = start_u + iu;
-            size_t local_linear = static_cast<size_t>(lv * n_u + lu);
-            pts.push_back(local_cp_ptr(local_linear));
-        }
+    size_t n_local = 1;
+    for (size_t d = 0; d < ndim; ++d) {
+        p[d] = tensor.components[d].getDegree();
+        start[d] = span[d] - p[d];
+        n_loc[d] = p[d] + 1;
+        n_local *= static_cast<size_t>(n_loc[d]);
     }
 
+    std::vector<size_t> result;
+    result.reserve(n_local);
+    std::vector<int> li(ndim, 0);  // local multi-index within the span, u-fastest
+    for (size_t l = 0; l < n_local; ++l) {
+        size_t flat = 0;
+        for (size_t d = 0; d < ndim; ++d)
+            flat += static_cast<size_t>(start[d] + li[d]) * stride[d];
+        result.push_back(flat);
+
+        for (size_t d = 0; d < ndim; ++d) {  // increment li, direction 0 fastest
+            if (++li[d] < n_loc[d]) break;
+            li[d] = 0;
+        }
+    }
+    return result;
+}
+
+std::vector<const double*> Patch::control_points_for_span(const std::vector<int>& span) const {
+    std::vector<size_t> flat = active_local_flat_indices(span);
+    std::vector<const double*> pts;
+    pts.reserve(flat.size());
+    for (size_t idx : flat) pts.push_back(local_cp_ptr(idx));
     return pts;
 }
 
@@ -251,54 +266,37 @@ std::vector<const double*> Patch::control_points_for_span(const std::vector<int>
 std::vector<double> Patch::weights_for_span(const std::vector<int>& span) const {
     if (!cp_manager->is_rational()) return {};
 
-    int p_u = tensor.components[0].getDegree();
-    int p_v = tensor.components[1].getDegree();
-
-    int start_u = span[0] - p_u;
-    int start_v = span[1] - p_v;
-
-    ssize_t n_u = local_shape[0];
-
+    std::vector<size_t> flat = active_local_flat_indices(span);
     std::vector<double> w;
-    w.reserve((p_u + 1) * (p_v + 1));
-    for (int jv = 0; jv <= p_v; ++jv) {
-        int lv = start_v + jv;
-        for (int iu = 0; iu <= p_u; ++iu) {
-            int lu = start_u + iu;
-            size_t local_linear = static_cast<size_t>(lv * n_u + lu);
-            w.push_back(cp_manager->get_weight(global_indices[local_linear]));
-        }
-    }
+    w.reserve(flat.size());
+    for (size_t idx : flat) w.push_back(cp_manager->get_weight(global_indices[idx]));
     return w;
 }
 
 std::vector<size_t> Patch::boundary_control_points(int direction, int side,
                                                     int span_min, int span_max) const {
     size_t ndim = tensor.components.size();
-    if (ndim != 2)
+    if (ndim != 2 && ndim != 3)
         throw std::invalid_argument(
-            "Patch::boundary_control_points: only 2D patches are supported (Phase 1 scope).");
-    if (direction != 0 && direction != 1)
-        throw std::invalid_argument("Patch::boundary_control_points: direction must be 0 or 1.");
+            "Patch::boundary_control_points: only 2D or 3D patches are supported.");
+    if (direction < 0 || direction >= static_cast<int>(ndim))
+        throw std::invalid_argument("Patch::boundary_control_points: invalid direction.");
     if (side != 0 && side != 1)
         throw std::invalid_argument("Patch::boundary_control_points: side must be 0 (min) or 1 (max).");
     if ((span_min < 0) != (span_max < 0))
         throw std::invalid_argument(
             "Patch::boundary_control_points: span_min and span_max must be given together "
-            "(both >= 0), or both left at -1 for the whole edge.");
+            "(both >= 0), or both left at -1 for the whole edge/face.");
+    if (span_min >= 0 && ndim == 3)
+        throw std::invalid_argument(
+            "Patch::boundary_control_points: span_min/span_max sub-range restriction on a "
+            "3D face is not implemented yet. Pass -1/-1 to select the whole face.");
 
-    int varying = 1 - direction;
+    std::vector<int> varying_dirs;
+    for (size_t d = 0; d < ndim; ++d)
+        if (static_cast<int>(d) != direction) varying_dirs.push_back(static_cast<int>(d));
+
     size_t fixed_index = (side == 0) ? 0 : local_shape[direction] - 1;
-
-    size_t lo = 0;
-    size_t hi = local_shape[varying] - 1;
-    if (span_min >= 0) {
-        int p_varying = tensor.components[varying].getDegree();
-        int local_lo = span_min - p_varying;
-        int local_hi = span_max;
-        lo = static_cast<size_t>(std::max(local_lo, 0));
-        hi = static_cast<size_t>(std::min(local_hi, static_cast<int>(local_shape[varying]) - 1));
-    }
 
     std::vector<size_t> stride(ndim);
     stride[0] = 1;
@@ -306,11 +304,32 @@ std::vector<size_t> Patch::boundary_control_points(int direction, int side,
         stride[d] = stride[d-1] * local_shape[d-1];
 
     std::vector<size_t> result;
-    if (lo > hi) return result;
-    result.reserve(hi - lo + 1);
-    for (size_t i = lo; i <= hi; ++i) {
-        size_t flat = fixed_index * stride[direction] + i * stride[varying];
-        result.push_back(flat);
+    if (ndim == 2) {
+        // Unchanged 2D behavior (single varying direction, with the
+        // span_min/span_max sub-range restriction preserved as-is).
+        int varying = varying_dirs[0];
+        size_t lo = 0;
+        size_t hi = local_shape[varying] - 1;
+        if (span_min >= 0) {
+            int p_varying = tensor.components[varying].getDegree();
+            int local_lo = span_min - p_varying;
+            int local_hi = span_max;
+            lo = static_cast<size_t>(std::max(local_lo, 0));
+            hi = static_cast<size_t>(std::min(local_hi, static_cast<int>(local_shape[varying]) - 1));
+        }
+        if (lo > hi) return result;
+        result.reserve(hi - lo + 1);
+        for (size_t i = lo; i <= hi; ++i)
+            result.push_back(fixed_index * stride[direction] + i * stride[varying]);
+    } else {
+        // 3D: the boundary is a whole FACE -- nested loop over the 2
+        // varying directions at the fixed direction's index 0/last.
+        int v0 = varying_dirs[0], v1 = varying_dirs[1];
+        result.reserve(local_shape[v0] * local_shape[v1]);
+        for (size_t j = 0; j < local_shape[v1]; ++j)
+            for (size_t i = 0; i < local_shape[v0]; ++i)
+                result.push_back(fixed_index * stride[direction]
+                                  + i * stride[v0] + j * stride[v1]);
     }
     return result;
 }
