@@ -1087,20 +1087,27 @@ Typical workflow, in order:
             "any previously detected shared-CP map (call "
             "detect_shared_control_points() again afterwards if needed).")
         .def("detect_interfaces", &PatchAssembly::detectInterfaces,
-            "Detect compatible interfaces (shared edges) between all pairs of 2D "
-            "patches. For each match, records which (direction, side) facet of "
-            "each patch carries the edge, the direction to refine on each side "
-            "to propagate refinement (varying_direction_a/b), and whether "
-            "traversal order is reversed between the two patches. Throws if "
-            "two facets share control points but neither direct nor reversed "
-            "order matches.")
+            "Detect compatible interfaces (shared edges/faces) between all pairs "
+            "of 2D or 3D patches (2D-2D and 3D-3D pairs; mixed-dimension pairs are "
+            "not matched). For a 2D pair, records which (direction, side) facet of "
+            "each patch carries the shared edge, the direction to refine on each "
+            "side to propagate refinement (varying_direction_a/b), and whether "
+            "traversal order is reversed. For a 3D pair, the shared facet is a "
+            "FACE with two varying directions (varying_directions_a/b); the "
+            "correspondence between the two patches' face grids is one of 8 "
+            "possibilities (axis transpose x independent per-axis reversal -- see "
+            "get_interfaces()'s docstring). Throws if two facets share control "
+            "points but no compatible ordering/orientation matches.")
         .def("refine_with_propagation", &PatchAssembly::refineWithPropagation,
             py::arg("patch_index"), py::arg("direction"), py::arg("refine_1d_fn"),
             "Refine patches[patch_index] along `direction`, automatically "
             "propagating the same refinement to every neighbor connected "
             "through a detected interface (see detect_interfaces()) whose "
-            "varying direction matches, then merging the boundary control "
-            "points created independently on both sides. "
+            "varying direction(s) include `direction`, then merging the boundary "
+            "control points created independently on both sides. For a 3D face "
+            "interface, call this once per varying direction you refine (a face "
+            "has two) -- the stored orientation is reused unchanged by the "
+            "second call. "
             "refine_1d_fn(patch, direction, protected_global_ids) must refine "
             "`patch` in-place along `direction` while leaving "
             "protected_global_ids untouched. `direction` is passed explicitly "
@@ -1133,25 +1140,44 @@ Typical workflow, in order:
                     d["patch_a"] = itf.patch_a;
                     d["direction_a"] = itf.direction_a;
                     d["side_a"] = itf.side_a;
-                    d["varying_direction_a"] = itf.varying_direction_a;
                     d["patch_b"] = itf.patch_b;
                     d["direction_b"] = itf.direction_b;
                     d["side_b"] = itf.side_b;
-                    d["varying_direction_b"] = itf.varying_direction_b;
-                    d["reversed"] = itf.reversed;
+                    d["ndim"] = itf.ndim;
+                    if (itf.ndim == 2) {
+                        d["varying_direction_a"] = itf.varying_direction_a;
+                        d["varying_direction_b"] = itf.varying_direction_b;
+                        d["reversed"] = itf.reversed;
+                    } else if (itf.ndim == 3) {
+                        d["varying_directions_a"] = py::make_tuple(
+                            itf.varying_directions_a[0], itf.varying_directions_a[1]);
+                        d["varying_directions_b"] = py::make_tuple(
+                            itf.varying_directions_b[0], itf.varying_directions_b[1]);
+                        d["transpose"] = itf.transpose;
+                        d["reverse_0"] = itf.reverse_0;
+                        d["reverse_1"] = itf.reverse_1;
+                    }
                     result.append(d);
                 }
                 return result;
             },
-            "Return the list of detected interfaces (one dict per compatible shared edge). "
-            "Each dict has keys: "
-            "patch_a/patch_b (patch indices), "
-            "direction_a/direction_b (fixed parametric direction of the shared edge on each patch), "
-            "side_a/side_b (0=first, 1=last), "
-            "varying_direction_a/varying_direction_b (direction to refine on each patch "
-            "to propagate refinement across this interface), "
-            "reversed (bool: True if the shared edge is traversed in opposite senses on "
-            "the two patches, e.g. u of patch_a glued to v of patch_b). "
+            "Return the list of detected interfaces (one dict per compatible shared "
+            "edge/face). Every dict has: patch_a/patch_b (patch indices), "
+            "direction_a/direction_b (fixed parametric direction of the shared facet "
+            "on each patch), side_a/side_b (0=first, 1=last), ndim (2 or 3 -- which "
+            "of the key groups below is present). "
+            "ndim==2 (shared EDGE, one varying direction): "
+            "varying_direction_a/varying_direction_b (direction to refine on each "
+            "patch to propagate refinement across this interface), reversed (bool: "
+            "True if the edge is traversed in opposite senses on the two patches, "
+            "e.g. u of patch_a glued to v of patch_b). "
+            "ndim==3 (shared FACE, two varying directions): varying_directions_a/"
+            "varying_directions_b ((v0, v1) tuples, increasing index order -- "
+            "refine_with_propagation() once per entry to grow the whole face), "
+            "transpose (bool: True if patch_b's v0 axis lines up with patch_a's v1 "
+            "instead of v0 -- a LOCAL INDEX correspondence, not a physical rotation), "
+            "reverse_0/reverse_1 (bool: True if the matched axis is traversed in "
+            "opposite senses on patch_b, relative to patch_a's v0/v1 respectively). "
             "Empty until detect_interfaces() has been called.")
         .def("get_patchs_sharing_control_points", &PatchAssembly::getPatchsSharingControlPoints, py::arg("global_cp_index"),
             "Return the list of patch indices sharing the given global "

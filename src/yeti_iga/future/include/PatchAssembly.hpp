@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <vector>
 #include <unordered_map>
@@ -8,30 +9,56 @@
 #include <stdexcept>
 #include "Patch.hpp"
 
-// Describes a compatible interface between two 2D patches: a shared edge,
-// identified by which (direction, side) facet of each patch carries it.
+// Describes a compatible interface between two patches: a shared edge (2D)
+// or a shared face (3D), identified by which (direction, side) facet of
+// each patch carries it.
 //
 // "direction_a"/"side_a": the facet of patch_a is obtained by fixing
 // direction_a's local index at 0 (side_a == 0) or at its last index
-// (side_a == 1); the facet's control points vary over the OTHER direction
-// (varying_direction_a) -- this is the direction to refine on patch_a to
-// grow the shared edge.
+// (side_a == 1).
 //
-// "reversed": true if the shared control points, walked in increasing
-// varying_direction_a order on patch_a, appear in DECREASING
-// varying_direction_b order on patch_b (e.g. u of patch_a glued to v of
-// patch_b but parametrized in opposite senses).
+// "ndim" tags which field group below is meaningful -- added as genuinely
+// parallel fields for the 3D case rather than generalizing the 2D ones in
+// place, so 2D interfaces (and the 3 existing notebooks that read
+// get_interfaces() dicts) are completely unaffected.
 //
-// Phase 1 scope: only 2D patches (tensor.components.size() == 2) are
-// detected -- a 3D face interface has two varying directions and isn't
-// handled yet.
+// ndim == 2 (original, unchanged): the facet is an EDGE with a single
+// varying direction (varying_direction_a) -- the direction to refine on
+// patch_a to grow the shared edge. "reversed": true if the shared control
+// points, walked in increasing varying_direction_a order on patch_a, appear
+// in DECREASING varying_direction_b order on patch_b (e.g. u of patch_a
+// glued to v of patch_b but parametrized in opposite senses). Only 2
+// possible correspondences exist for a 1D edge (same order / reversed).
+//
+// ndim == 3: the facet is a FACE with TWO varying directions
+// (varying_directions_a/b, each (v0, v1) in increasing index order, same
+// convention as Patch::boundary_control_points). Two matching faces can
+// then correspond in up to 8 ways -- the symmetry group of a rectangle:
+// which of patch_b's two varying directions lines up with patch_a's v0 vs
+// v1 ("transpose"), and independently whether each matched axis is
+// traversed in the same or opposite sense on patch_b (reverse_0/reverse_1,
+// relative to patch_a's canonical (v0, v1) order). NOTE: "transpose" here
+// describes a correspondence of LOCAL INDICES between the two patches'
+// facets -- it does not imply patch_b is physically rotated in space.
 struct PatchInterface {
     size_t patch_a, patch_b;
     int direction_a, side_a;
     int direction_b, side_b;
-    int varying_direction_a;
-    int varying_direction_b;
-    bool reversed;
+
+    // ndim == 2 only (meaningless/untouched otherwise -- see ndim below).
+    int varying_direction_a = -1;
+    int varying_direction_b = -1;
+    bool reversed = false;
+
+    // 2 => the fields above are meaningful; 3 => the fields below are.
+    int ndim = 2;
+
+    // ndim == 3 only.
+    std::array<int, 2> varying_directions_a{-1, -1};
+    std::array<int, 2> varying_directions_b{-1, -1};
+    bool transpose = false;
+    bool reverse_0 = false;
+    bool reverse_1 = false;
 };
 
 class PatchAssembly {
@@ -52,28 +79,79 @@ private:
 
     // Ordered list of global ids on the facet of `patch` obtained by fixing
     // `direction` at index 0 (side == 0) or at its last index (side == 1).
-    // Order follows increasing index of the other (varying) direction.
-    // 2D patches only (see PatchInterface).
+    // 2D: a single varying direction, increasing order (unchanged
+    // behavior). 3D: a whole face, v0-fastest over the two varying
+    // directions (v0 < v1) -- delegates to Patch::boundary_control_points,
+    // already proven N-D generic and equivalent to this function's own
+    // former 2D-only arithmetic. boundary_control_points() returns LOCAL
+    // flat positions, not global ids -- mapped through global_indices here.
     static std::vector<size_t> extractFacet(const Patch& patch, int direction, int side) {
-        size_t ndim = patch.tensor.components.size();
-        if (ndim != 2)
-            throw std::invalid_argument("extractFacet: only 2D patches are supported (Phase 1 scope).");
-
-        int varying = 1 - direction;
-        size_t fixed_index = (side == 0) ? 0 : patch.local_shape[direction] - 1;
-
-        std::vector<size_t> stride(ndim);
-        stride[0] = 1;
-        for (size_t d = 1; d < ndim; ++d)
-            stride[d] = stride[d-1] * patch.local_shape[d-1];
-
+        std::vector<size_t> local_positions = patch.boundary_control_points(direction, side);
         std::vector<size_t> facet;
-        facet.reserve(patch.local_shape[varying]);
-        for (size_t i = 0; i < patch.local_shape[varying]; ++i) {
-            size_t flat = fixed_index * stride[direction] + i * stride[varying];
-            facet.push_back(patch.global_indices[flat]);
-        }
+        facet.reserve(local_positions.size());
+        for (size_t pos : local_positions)
+            facet.push_back(patch.global_indices[pos]);
         return facet;
+    }
+
+    // The two parametric directions other than `direction`, in increasing
+    // index order (v0, v1) -- same convention as
+    // Patch::boundary_control_points's internal "varying_dirs". 3D patches
+    // only (ndim == 3); meaningless for 2D (only 1 varying direction).
+    static std::array<int, 2> facetVaryingDirections(const Patch& patch, int direction) {
+        std::array<int, 2> result{-1, -1};
+        int idx = 0;
+        for (size_t d = 0; d < patch.tensor.components.size(); ++d)
+            if (static_cast<int>(d) != direction) result[idx++] = static_cast<int>(d);
+        return result;
+    }
+
+    // Try to match a 3D face grid `facet_b` (shape n0_b x n1_b, v0-fastest)
+    // onto `facet_a` (shape n0_a x n1_a) under one of the 8 symmetries of a
+    // rectangle: swap the two axes ("transpose") and/or reverse each axis
+    // independently. On success, fills out_transpose/out_reverse_0/
+    // out_reverse_1 (relative to facet_a's canonical (v0, v1) axes) and
+    // returns true. Returns false if no such correspondence makes the grids
+    // coincide position-by-position (not just as sets).
+    static bool matchFacetGrids(
+        const std::vector<size_t>& facet_a, size_t n0_a, size_t n1_a,
+        const std::vector<size_t>& facet_b, size_t n0_b, size_t n1_b,
+        bool& out_transpose, bool& out_reverse_0, bool& out_reverse_1)
+    {
+        for (bool transpose : {false, true}) {
+            size_t expect_n0_b = transpose ? n1_a : n0_a;
+            size_t expect_n1_b = transpose ? n0_a : n1_a;
+            if (n0_b != expect_n0_b || n1_b != expect_n1_b) continue;
+
+            for (bool rev0 : {false, true}) {
+                for (bool rev1 : {false, true}) {
+                    bool ok = true;
+                    for (size_t j = 0; j < n1_a && ok; ++j) {
+                        for (size_t i = 0; i < n0_a; ++i) {
+                            size_t i_b, j_b;
+                            if (!transpose) {
+                                i_b = rev0 ? (n0_b - 1 - i) : i;
+                                j_b = rev1 ? (n1_b - 1 - j) : j;
+                            } else {
+                                i_b = rev1 ? (n0_b - 1 - j) : j;
+                                j_b = rev0 ? (n1_b - 1 - i) : i;
+                            }
+                            if (facet_a[i + j * n0_a] != facet_b[i_b + j_b * n0_b]) {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (ok) {
+                        out_transpose = transpose;
+                        out_reverse_0 = rev0;
+                        out_reverse_1 = rev1;
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
 public:
@@ -237,6 +315,76 @@ public:
                 }
             }
         }
+
+        // 3D: a parallel loop, not a generalization of the one above -- a
+        // face has two varying directions, so matching needs the 8-way
+        // (transpose x 2 independent flips) check in matchFacetGrids()
+        // instead of the 2D loop's simple same/reversed-order comparison.
+        for (size_t i = 0; i < patches_.size(); ++i) {
+            const Patch& A = *patches_[i];
+            if (A.tensor.components.size() != 3) continue;
+
+            for (size_t j = i + 1; j < patches_.size(); ++j) {
+                const Patch& B = *patches_[j];
+                if (B.tensor.components.size() != 3) continue;
+
+                std::unordered_set<size_t> a_ids(A.global_indices.begin(), A.global_indices.end());
+                bool any_shared = false;
+                for (size_t idx : B.global_indices) {
+                    if (a_ids.count(idx)) { any_shared = true; break; }
+                }
+                if (!any_shared) continue;
+
+                for (int da = 0; da < 3; ++da) {
+                    for (int sa = 0; sa < 2; ++sa) {
+                        std::vector<size_t> facet_a = extractFacet(A, da, sa);
+                        std::array<int, 2> vdirs_a = facetVaryingDirections(A, da);
+                        size_t n0_a = A.local_shape[vdirs_a[0]];
+                        size_t n1_a = A.local_shape[vdirs_a[1]];
+                        std::unordered_set<size_t> set_a(facet_a.begin(), facet_a.end());
+
+                        for (int db = 0; db < 3; ++db) {
+                            for (int sb = 0; sb < 2; ++sb) {
+                                std::vector<size_t> facet_b = extractFacet(B, db, sb);
+                                if (facet_b.size() != facet_a.size()) continue;
+
+                                std::unordered_set<size_t> set_b(facet_b.begin(), facet_b.end());
+                                if (set_a != set_b) continue;
+
+                                std::array<int, 2> vdirs_b = facetVaryingDirections(B, db);
+                                size_t n0_b = B.local_shape[vdirs_b[0]];
+                                size_t n1_b = B.local_shape[vdirs_b[1]];
+
+                                bool transpose, rev0, rev1;
+                                if (!matchFacetGrids(facet_a, n0_a, n1_a, facet_b, n0_b, n1_b,
+                                                      transpose, rev0, rev1)) {
+                                    throw std::runtime_error(
+                                        "Incompatible 3D boundary ordering between patches "
+                                        + std::to_string(i) + " and " + std::to_string(j) +
+                                        ": shared control points' face grids don't match under "
+                                        "any axis permutation/reversal.");
+                                }
+
+                                PatchInterface interface;
+                                interface.patch_a = i;
+                                interface.direction_a = da;
+                                interface.side_a = sa;
+                                interface.patch_b = j;
+                                interface.direction_b = db;
+                                interface.side_b = sb;
+                                interface.ndim = 3;
+                                interface.varying_directions_a = vdirs_a;
+                                interface.varying_directions_b = vdirs_b;
+                                interface.transpose = transpose;
+                                interface.reverse_0 = rev0;
+                                interface.reverse_1 = rev1;
+                                interfaces_.push_back(interface);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Signature of a 1D refinement step: refine `patch` in-place along the
@@ -280,45 +428,123 @@ public:
         refine_1d_fn(*patches_[patch_index], direction, shared_ids_of(patch_index));
 
         for (const auto& itf : interfaces_) {
-            size_t other_index;
-            int other_direction;
-            if (itf.patch_a == patch_index && itf.varying_direction_a == direction) {
-                other_index = itf.patch_b;
-                other_direction = itf.varying_direction_b;
-            } else if (itf.patch_b == patch_index && itf.varying_direction_b == direction) {
-                other_index = itf.patch_a;
-                other_direction = itf.varying_direction_a;
-            } else {
-                continue;
-            }
-
-            refine_1d_fn(*patches_[other_index], other_direction, shared_ids_of(other_index));
-
-            // Merge the boundary CPs grown independently on both sides.
-            Patch& PA = *patches_[itf.patch_a];
-            Patch& PB = *patches_[itf.patch_b];
-            std::vector<size_t> facet_a = extractFacet(PA, itf.direction_a, itf.side_a);
-            std::vector<size_t> facet_b = extractFacet(PB, itf.direction_b, itf.side_b);
-            if (itf.reversed) std::reverse(facet_b.begin(), facet_b.end());
-
-            if (facet_a.size() != facet_b.size())
-                throw std::runtime_error(
-                    "Interface mismatch after propagated refinement: edge lengths differ "
-                    "between patches " + std::to_string(itf.patch_a) + " and "
-                    + std::to_string(itf.patch_b) + ".");
-
-            for (size_t k = 0; k < facet_a.size(); ++k) {
-                size_t keep = facet_a[k];
-                if (facet_a[k] != facet_b[k]) {
-                    size_t drop = facet_b[k];
-                    for (size_t& gid : PB.global_indices)
-                        if (gid == drop) gid = keep;
+            if (itf.ndim == 2) {
+                size_t other_index;
+                int other_direction;
+                if (itf.patch_a == patch_index && itf.varying_direction_a == direction) {
+                    other_index = itf.patch_b;
+                    other_direction = itf.varying_direction_b;
+                } else if (itf.patch_b == patch_index && itf.varying_direction_b == direction) {
+                    other_index = itf.patch_a;
+                    other_direction = itf.varying_direction_a;
+                } else {
+                    continue;
                 }
-                auto& plist = shared_control_points_[keep];
-                if (std::find(plist.begin(), plist.end(), itf.patch_a) == plist.end())
-                    plist.push_back(itf.patch_a);
-                if (std::find(plist.begin(), plist.end(), itf.patch_b) == plist.end())
-                    plist.push_back(itf.patch_b);
+
+                refine_1d_fn(*patches_[other_index], other_direction, shared_ids_of(other_index));
+
+                // Merge the boundary CPs grown independently on both sides.
+                Patch& PA = *patches_[itf.patch_a];
+                Patch& PB = *patches_[itf.patch_b];
+                std::vector<size_t> facet_a = extractFacet(PA, itf.direction_a, itf.side_a);
+                std::vector<size_t> facet_b = extractFacet(PB, itf.direction_b, itf.side_b);
+                if (itf.reversed) std::reverse(facet_b.begin(), facet_b.end());
+
+                if (facet_a.size() != facet_b.size())
+                    throw std::runtime_error(
+                        "Interface mismatch after propagated refinement: edge lengths differ "
+                        "between patches " + std::to_string(itf.patch_a) + " and "
+                        + std::to_string(itf.patch_b) + ".");
+
+                for (size_t k = 0; k < facet_a.size(); ++k) {
+                    size_t keep = facet_a[k];
+                    if (facet_a[k] != facet_b[k]) {
+                        size_t drop = facet_b[k];
+                        for (size_t& gid : PB.global_indices)
+                            if (gid == drop) gid = keep;
+                    }
+                    auto& plist = shared_control_points_[keep];
+                    if (std::find(plist.begin(), plist.end(), itf.patch_a) == plist.end())
+                        plist.push_back(itf.patch_a);
+                    if (std::find(plist.begin(), plist.end(), itf.patch_b) == plist.end())
+                        plist.push_back(itf.patch_b);
+                }
+            } else if (itf.ndim == 3) {
+                // A 3D face has TWO varying directions: find which one (if
+                // any) matches `direction` on whichever side patch_index is
+                // on, then pick the corresponding direction on the other
+                // side via the stored transpose flag (see PatchInterface).
+                bool is_a_side;
+                int k = -1;
+                if (itf.patch_a == patch_index) {
+                    is_a_side = true;
+                    for (int kk = 0; kk < 2; ++kk)
+                        if (itf.varying_directions_a[kk] == direction) { k = kk; break; }
+                } else if (itf.patch_b == patch_index) {
+                    is_a_side = false;
+                    for (int kk = 0; kk < 2; ++kk)
+                        if (itf.varying_directions_b[kk] == direction) { k = kk; break; }
+                } else {
+                    continue;
+                }
+                if (k < 0) continue;  // direction isn't one of this face's varying directions
+
+                size_t other_index;
+                int other_direction;
+                if (is_a_side) {
+                    other_index = itf.patch_b;
+                    other_direction = itf.varying_directions_b[itf.transpose ? (1 - k) : k];
+                } else {
+                    other_index = itf.patch_a;
+                    other_direction = itf.varying_directions_a[itf.transpose ? (1 - k) : k];
+                }
+
+                refine_1d_fn(*patches_[other_index], other_direction, shared_ids_of(other_index));
+
+                // Merge the two independently-grown 2D grids, position by
+                // position, using the transform detectInterfaces() already
+                // resolved (transpose/reverse_0/reverse_1) to align B's grid
+                // onto A's -- same precondition as the 2D merge above
+                // (deterministic, coordinate-identical new CPs on both
+                // sides), just over 2 indices instead of 1.
+                Patch& PA = *patches_[itf.patch_a];
+                Patch& PB = *patches_[itf.patch_b];
+                std::vector<size_t> facet_a = extractFacet(PA, itf.direction_a, itf.side_a);
+                std::vector<size_t> facet_b = extractFacet(PB, itf.direction_b, itf.side_b);
+                size_t n0_a = PA.local_shape[itf.varying_directions_a[0]];
+                size_t n1_a = PA.local_shape[itf.varying_directions_a[1]];
+                size_t n0_b = PB.local_shape[itf.varying_directions_b[0]];
+                size_t n1_b = PB.local_shape[itf.varying_directions_b[1]];
+
+                if (facet_a.size() != facet_b.size())
+                    throw std::runtime_error(
+                        "Interface mismatch after propagated refinement: face sizes differ "
+                        "between patches " + std::to_string(itf.patch_a) + " and "
+                        + std::to_string(itf.patch_b) + ".");
+
+                for (size_t j = 0; j < n1_a; ++j) {
+                    for (size_t i = 0; i < n0_a; ++i) {
+                        size_t i_b, j_b;
+                        if (!itf.transpose) {
+                            i_b = itf.reverse_0 ? (n0_b - 1 - i) : i;
+                            j_b = itf.reverse_1 ? (n1_b - 1 - j) : j;
+                        } else {
+                            i_b = itf.reverse_1 ? (n0_b - 1 - j) : j;
+                            j_b = itf.reverse_0 ? (n1_b - 1 - i) : i;
+                        }
+                        size_t keep = facet_a[i + j * n0_a];
+                        size_t drop = facet_b[i_b + j_b * n0_b];
+                        if (keep != drop) {
+                            for (size_t& gid : PB.global_indices)
+                                if (gid == drop) gid = keep;
+                        }
+                        auto& plist = shared_control_points_[keep];
+                        if (std::find(plist.begin(), plist.end(), itf.patch_a) == plist.end())
+                            plist.push_back(itf.patch_a);
+                        if (std::find(plist.begin(), plist.end(), itf.patch_b) == plist.end())
+                            plist.push_back(itf.patch_b);
+                    }
+                }
             }
         }
     }
