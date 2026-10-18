@@ -733,10 +733,7 @@ Eigen::VectorXd PatchIntegrator::integrateBoundaryLoad3D(
         throw std::invalid_argument("PatchIntegrator::integrateBoundaryLoad3D: direction must be 0, 1 or 2.");
     if (side != 0 && side != 1)
         throw std::invalid_argument("PatchIntegrator::integrateBoundaryLoad3D: side must be 0 (min) or 1 (max).");
-    if (patch_.cp_manager->is_rational())
-        throw std::logic_error(
-            "PatchIntegrator::integrateBoundaryLoad3D: 3D NURBS solids are not implemented "
-            "yet; this phase supports non-rational (B-spline) 3D volumes only.");
+    const bool rational = patch_.cp_manager->is_rational();
 
     std::vector<int> varying_dirs;
     for (int d = 0; d < 3; ++d)
@@ -782,8 +779,12 @@ Eigen::VectorXd PatchIntegrator::integrateBoundaryLoad3D(
         const SpanGauss1D& sg_p = basis_p.gauss_spans[idx_p];
         const SpanGauss1D& sg_q = basis_q.gauss_spans[idx_q];
 
-        Eigen::VectorXd local_load = computeLocalBoundaryLoadContribution3D(
-            patch_, span, direction, sg_p, sg_q, N_fixed_boundary, traction);
+        Eigen::VectorXd local_load = rational
+            ? computeLocalBoundaryLoadContribution3DNURBS(
+                  patch_, span, direction, sg_p, sg_q, N_fixed_boundary, traction,
+                  patch_.weights_for_span(span))
+            : computeLocalBoundaryLoadContribution3D(
+                  patch_, span, direction, sg_p, sg_q, N_fixed_boundary, traction);
 
         assembleLocalLoadContribution(local_load, span, global_load);
     }
@@ -1067,6 +1068,288 @@ Eigen::VectorXd PatchIntegrator::computeLocalBoundaryLoadContributionNURBS(
     return F_loc;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 3D NURBS implementations -- same quotient-rule rationalization pattern as
+// the 2D NURBS methods above, extended to 3 parametric directions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+PatchIntegrator::GaussPointGeometry3D PatchIntegrator::evaluateGaussPointGeometry3DNURBS(
+    const std::vector<const double*>& pts,
+    const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu,
+    const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv,
+    const Eigen::VectorXd& Nw, const Eigen::VectorXd& dNw,
+    const std::vector<double>& weights) const
+{
+    size_t nb_loc = pts.size();
+    GaussPointGeometry3D g;
+    g.R.resize(nb_loc);
+    g.dRdu.resize(nb_loc);
+    g.dRdv.resize(nb_loc);
+    g.dRdw.resize(nb_loc);
+
+    size_t idx = 0;
+    for (size_t kw = 0; kw < static_cast<size_t>(Nw.size()); ++kw) {
+        for (size_t jv = 0; jv < static_cast<size_t>(Nv.size()); ++jv) {
+            for (size_t iu = 0; iu < static_cast<size_t>(Nu.size()); ++iu) {
+                g.R[idx]    = Nu(iu) * Nv(jv) * Nw(kw);
+                g.dRdu[idx] = dNu(iu) * Nv(jv) * Nw(kw);
+                g.dRdv[idx] = Nu(iu) * dNv(jv) * Nw(kw);
+                g.dRdw[idx] = Nu(iu) * Nv(jv) * dNw(kw);
+                ++idx;
+            }
+        }
+    }
+
+    // NURBS rationalization (quotient rule: R_a = w_a N_a / W)
+    double W = 0.0, dWdu = 0.0, dWdv = 0.0, dWdw = 0.0;
+    for (size_t a = 0; a < nb_loc; ++a) {
+        W    += weights[a] * g.R[a];
+        dWdu += weights[a] * g.dRdu[a];
+        dWdv += weights[a] * g.dRdv[a];
+        dWdw += weights[a] * g.dRdw[a];
+    }
+    const double inv_W = 1.0 / W;
+    for (size_t a = 0; a < nb_loc; ++a) {
+        const double Ra = weights[a] * g.R[a] * inv_W;
+        g.dRdu[a] = (weights[a] * g.dRdu[a] - Ra * dWdu) * inv_W;
+        g.dRdv[a] = (weights[a] * g.dRdv[a] - Ra * dWdv) * inv_W;
+        g.dRdw[a] = (weights[a] * g.dRdw[a] - Ra * dWdw) * inv_W;
+        g.R[a] = Ra;
+    }
+
+    g.J11 = 0.0; g.J12 = 0.0; g.J13 = 0.0;
+    g.J21 = 0.0; g.J22 = 0.0; g.J23 = 0.0;
+    g.J31 = 0.0; g.J32 = 0.0; g.J33 = 0.0;
+    for (size_t a = 0; a < nb_loc; ++a) {
+        const double* P = pts[a];
+        g.J11 += g.dRdu[a] * P[0]; g.J21 += g.dRdu[a] * P[1]; g.J31 += g.dRdu[a] * P[2];
+        g.J12 += g.dRdv[a] * P[0]; g.J22 += g.dRdv[a] * P[1]; g.J32 += g.dRdv[a] * P[2];
+        g.J13 += g.dRdw[a] * P[0]; g.J23 += g.dRdw[a] * P[1]; g.J33 += g.dRdw[a] * P[2];
+    }
+
+    double detJ = g.J11*(g.J22*g.J33 - g.J23*g.J32)
+                - g.J12*(g.J21*g.J33 - g.J23*g.J31)
+                + g.J13*(g.J21*g.J32 - g.J22*g.J31);
+    g.detJ = (std::abs(detJ) < 1.e-14) ? 0.0 : detJ;
+
+    return g;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalStiffnessContribution3DNURBS(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const SpanGauss1D& sg_w, const std::vector<int>& span, const std::vector<double>& weights)
+{
+    int n = law_->n_dofs_per_cp();
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+    int ngauss_w = static_cast<int>(sg_w.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd K_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+
+    std::vector<PhysVector> grads(nb_loc, PhysVector(3));
+    PhysVector x_phys(3);
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            for (int gw = 0; gw < ngauss_w; ++gw) {
+                double w = sg_u.weight[gu] * sg_v.weight[gv] * sg_w.weight[gw];
+
+                const Eigen::VectorXd& Nu  = sg_u.N[gu];
+                const Eigen::VectorXd& dNu = sg_u.dN[gu];
+                const Eigen::VectorXd& Nv  = sg_v.N[gv];
+                const Eigen::VectorXd& dNv = sg_v.dN[gv];
+                const Eigen::VectorXd& Nw  = sg_w.N[gw];
+                const Eigen::VectorXd& dNw = sg_w.dN[gw];
+
+                GaussPointGeometry3D g = evaluateGaussPointGeometry3DNURBS(
+                    pts, Nu, dNu, Nv, dNv, Nw, dNw, weights);
+                if (g.detJ == 0.0) continue;
+
+                double detJ = g.detJ;
+                double invJ11 = (g.J22*g.J33 - g.J23*g.J32) / detJ;
+                double invJ12 = (g.J13*g.J32 - g.J12*g.J33) / detJ;
+                double invJ13 = (g.J12*g.J23 - g.J13*g.J22) / detJ;
+                double invJ21 = (g.J23*g.J31 - g.J21*g.J33) / detJ;
+                double invJ22 = (g.J11*g.J33 - g.J13*g.J31) / detJ;
+                double invJ23 = (g.J13*g.J21 - g.J11*g.J23) / detJ;
+                double invJ31 = (g.J21*g.J32 - g.J22*g.J31) / detJ;
+                double invJ32 = (g.J12*g.J31 - g.J11*g.J32) / detJ;
+                double invJ33 = (g.J11*g.J22 - g.J12*g.J21) / detJ;
+
+                x_phys.setZero();
+                for (size_t a = 0; a < nb_loc; ++a) {
+                    grads[a][0] = invJ11*g.dRdu[a] + invJ21*g.dRdv[a] + invJ31*g.dRdw[a];
+                    grads[a][1] = invJ12*g.dRdu[a] + invJ22*g.dRdv[a] + invJ32*g.dRdw[a];
+                    grads[a][2] = invJ13*g.dRdu[a] + invJ23*g.dRdv[a] + invJ33*g.dRdw[a];
+                    x_phys[0] += g.R[a] * pts[a][0];
+                    x_phys[1] += g.R[a] * pts[a][1];
+                    x_phys[2] += g.R[a] * pts[a][2];
+                }
+
+                double factor = w * std::abs(detJ);
+                for (size_t a = 0; a < nb_loc; ++a) {
+                    for (size_t b = a; b < nb_loc; ++b) {
+                        PhysMatrix block =
+                            law_->stiffness_density(grads[a], grads[b], x_phys) * factor;
+                        K_loc.block(n*a, n*b, n, n) += block;
+                        if (b != a)
+                            K_loc.block(n*b, n*a, n, n) += block.transpose();
+                    }
+                }
+            }
+        }
+    }
+    return K_loc;
+}
+
+Eigen::MatrixXd PatchIntegrator::computeLocalMassContribution3DNURBS(
+    const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+    const SpanGauss1D& sg_w, const std::vector<int>& span, const std::vector<double>& weights)
+{
+    int n = law_->n_dofs_per_cp();
+    int ngauss_u = static_cast<int>(sg_u.u_param.size());
+    int ngauss_v = static_cast<int>(sg_v.u_param.size());
+    int ngauss_w = static_cast<int>(sg_w.u_param.size());
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    Eigen::MatrixXd M_loc = Eigen::MatrixXd::Zero(n * nb_loc, n * nb_loc);
+    double rho = law_->material().rho;
+
+    for (int gu = 0; gu < ngauss_u; ++gu) {
+        for (int gv = 0; gv < ngauss_v; ++gv) {
+            for (int gw = 0; gw < ngauss_w; ++gw) {
+                double w = sg_u.weight[gu] * sg_v.weight[gv] * sg_w.weight[gw];
+
+                const Eigen::VectorXd& Nu  = sg_u.N[gu];
+                const Eigen::VectorXd& dNu = sg_u.dN[gu];
+                const Eigen::VectorXd& Nv  = sg_v.N[gv];
+                const Eigen::VectorXd& dNv = sg_v.dN[gv];
+                const Eigen::VectorXd& Nw  = sg_w.N[gw];
+                const Eigen::VectorXd& dNw = sg_w.dN[gw];
+
+                GaussPointGeometry3D g = evaluateGaussPointGeometry3DNURBS(
+                    pts, Nu, dNu, Nv, dNv, Nw, dNw, weights);
+                if (g.detJ == 0.0) continue;
+
+                double factor = rho * w * std::abs(g.detJ);
+                for (size_t a = 0; a < nb_loc; ++a) {
+                    for (size_t b = a; b < nb_loc; ++b) {
+                        double Ra_Rb = g.R[a] * g.R[b] * factor;
+                        for (int i = 0; i < n; ++i) {
+                            M_loc(n*a + i, n*b + i) += Ra_Rb;
+                            if (b != a)
+                                M_loc(n*b + i, n*a + i) += Ra_Rb;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return M_loc;
+}
+
+Eigen::VectorXd PatchIntegrator::computeLocalBoundaryLoadContribution3DNURBS(
+    const Patch& patch, const std::vector<int>& span, int direction,
+    const SpanGauss1D& sg_p, const SpanGauss1D& sg_q,
+    const Eigen::VectorXd& N_fixed_boundary, const Traction3D& traction,
+    const std::vector<double>& weights) const
+{
+    std::vector<int> varying_dirs;
+    for (int d = 0; d < 3; ++d)
+        if (d != direction) varying_dirs.push_back(d);
+    int dir_p = varying_dirs[0], dir_q = varying_dirs[1];
+
+    std::vector<const double*> pts = patch.control_points_for_span(span);
+    size_t nb_loc = pts.size();
+
+    int ngauss_p = static_cast<int>(sg_p.u_param.size());
+    int ngauss_q = static_cast<int>(sg_q.u_param.size());
+
+    Eigen::VectorXd F_loc = Eigen::VectorXd::Zero(3 * nb_loc);
+    Eigen::VectorXd zero_deriv = Eigen::VectorXd::Zero(N_fixed_boundary.size());
+
+    for (int gp = 0; gp < ngauss_p; ++gp) {
+        for (int gq = 0; gq < ngauss_q; ++gq) {
+            double w = sg_p.weight[gp] * sg_q.weight[gq];
+
+            const Eigen::VectorXd* N[3];
+            const Eigen::VectorXd* dN_p[3];
+            const Eigen::VectorXd* dN_q[3];
+            for (int d = 0; d < 3; ++d) {
+                if (d == direction) {
+                    N[d] = &N_fixed_boundary; dN_p[d] = &zero_deriv; dN_q[d] = &zero_deriv;
+                } else if (d == dir_p) {
+                    N[d] = &sg_p.N[gp]; dN_p[d] = &sg_p.dN[gp]; dN_q[d] = &zero_deriv;
+                } else {  // d == dir_q
+                    N[d] = &sg_q.N[gq]; dN_p[d] = &zero_deriv; dN_q[d] = &sg_q.dN[gq];
+                }
+            }
+
+            size_t nu = N[0]->size(), nv = N[1]->size(), nw = N[2]->size();
+            std::vector<double> R(nb_loc), dRdp(nb_loc), dRdq(nb_loc);
+            size_t idx = 0;
+            for (size_t kw = 0; kw < nw; ++kw) {
+                for (size_t jv = 0; jv < nv; ++jv) {
+                    for (size_t iu = 0; iu < nu; ++iu) {
+                        double Nu_ = (*N[0])(iu), Nv_ = (*N[1])(jv), Nw_ = (*N[2])(kw);
+                        R[idx] = Nu_ * Nv_ * Nw_;
+                        double dNu_p = (*dN_p[0])(iu), dNv_p = (*dN_p[1])(jv), dNw_p = (*dN_p[2])(kw);
+                        double dNu_q = (*dN_q[0])(iu), dNv_q = (*dN_q[1])(jv), dNw_q = (*dN_q[2])(kw);
+                        dRdp[idx] = dNu_p * Nv_ * Nw_ + Nu_ * dNv_p * Nw_ + Nu_ * Nv_ * dNw_p;
+                        dRdq[idx] = dNu_q * Nv_ * Nw_ + Nu_ * dNv_q * Nw_ + Nu_ * Nv_ * dNw_q;
+                        ++idx;
+                    }
+                }
+            }
+
+            // NURBS rationalization (quotient rule), BEFORE computing the
+            // surface tangents -- same ordering as
+            // computeLocalBoundaryLoadContributionNURBS (2D).
+            double W = 0.0, dWdp = 0.0, dWdq = 0.0;
+            for (size_t a = 0; a < nb_loc; ++a) {
+                W    += weights[a] * R[a];
+                dWdp += weights[a] * dRdp[a];
+                dWdq += weights[a] * dRdq[a];
+            }
+            const double inv_W = 1.0 / W;
+            for (size_t a = 0; a < nb_loc; ++a) {
+                const double Ra = weights[a] * R[a] * inv_W;
+                dRdp[a] = (weights[a] * dRdp[a] - Ra * dWdp) * inv_W;
+                dRdq[a] = (weights[a] * dRdq[a] - Ra * dWdq) * inv_W;
+                R[a] = Ra;
+            }
+
+            Eigen::Vector3d Tp = Eigen::Vector3d::Zero();
+            Eigen::Vector3d Tq = Eigen::Vector3d::Zero();
+            Eigen::Vector3d X  = Eigen::Vector3d::Zero();
+            for (size_t a = 0; a < nb_loc; ++a) {
+                const double* P = pts[a];
+                Tp[0] += dRdp[a]*P[0]; Tp[1] += dRdp[a]*P[1]; Tp[2] += dRdp[a]*P[2];
+                Tq[0] += dRdq[a]*P[0]; Tq[1] += dRdq[a]*P[1]; Tq[2] += dRdq[a]*P[2];
+                X[0]  += R[a]*P[0];    X[1]  += R[a]*P[1];    X[2]  += R[a]*P[2];
+            }
+            Eigen::Vector3d cross = Tp.cross(Tq);
+            double dA = cross.norm();
+            if (dA < 1.e-14) continue;
+
+            Eigen::Vector3d t = traction.evaluate(X);
+
+            for (size_t a = 0; a < nb_loc; ++a) {
+                F_loc[3*a]     += R[a] * t[0] * w * dA;
+                F_loc[3*a + 1] += R[a] * t[1] * w * dA;
+                F_loc[3*a + 2] += R[a] * t[2] * w * dA;
+            }
+        }
+    }
+
+    return F_loc;
+}
+
 double PatchIntegrator::integrateScalarOperator(ScalarLocalOperator& op,
                                                 const Eigen::VectorXd& u_global)
 {
@@ -1139,7 +1422,7 @@ double PatchIntegrator::integrateScalarOperator(ScalarLocalOperator& op,
 }
 
 // 3D equivalent of integrateScalarOperator() (error norms/energy functionals
-// on a 3D solid patch). Non-rational (B-spline) volumes only.
+// on a 3D solid patch). B-spline and NURBS.
 double PatchIntegrator::integrateScalarOperator3D(ScalarLocalOperator3D& op,
                                                   const Eigen::VectorXd& u_global)
 {
@@ -1147,10 +1430,7 @@ double PatchIntegrator::integrateScalarOperator3D(ScalarLocalOperator3D& op,
         throw std::logic_error(
             "PatchIntegrator::integrateScalarOperator3D: requires the 3-basis (3D solid) "
             "constructor (basis_w not set).");
-    if (patch_.cp_manager->is_rational())
-        throw std::logic_error(
-            "PatchIntegrator::integrateScalarOperator3D: 3D NURBS solids are not "
-            "implemented yet; this phase supports non-rational (B-spline) 3D volumes only.");
+    const bool rational = patch_.cp_manager->is_rational();
 
     const size_t dpc = patch_.dof_manager->dofs_per_control_point;
     double result = 0.0;
@@ -1166,6 +1446,9 @@ double PatchIntegrator::integrateScalarOperator3D(ScalarLocalOperator3D& op,
 
         std::vector<const double*> pts = patch_.control_points_for_span(span);
         size_t nb_loc = pts.size();
+
+        std::vector<double> weights_span;
+        if (rational) weights_span = patch_.weights_for_span(span);
 
         std::vector<size_t> span_local = buildSpanLocalIndices(patch_, span);
 
@@ -1185,7 +1468,9 @@ double PatchIntegrator::integrateScalarOperator3D(ScalarLocalOperator3D& op,
                     const Eigen::VectorXd& Nw  = sg_w.N[gw];
                     const Eigen::VectorXd& dNw = sg_w.dN[gw];
 
-                    GaussPointGeometry3D g = evaluateGaussPointGeometry3D(pts, Nu, dNu, Nv, dNv, Nw, dNw);
+                    GaussPointGeometry3D g = rational
+                        ? evaluateGaussPointGeometry3DNURBS(pts, Nu, dNu, Nv, dNv, Nw, dNw, weights_span)
+                        : evaluateGaussPointGeometry3D(pts, Nu, dNu, Nv, dNv, Nw, dNw);
                     if (g.detJ == 0.0) continue;
 
                     double detJ = g.detJ;

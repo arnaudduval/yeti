@@ -176,8 +176,9 @@ private:
     // 3D solid (BSplineVolume, 3 parametric directions) kernels. Parallel,
     // explicitly-named siblings of the 2D kernels above -- NOT a generic
     // N-D rewrite -- so the already-validated 2D numerics stay textually
-    // untouched. Non-rational (B-spline) volumes only for now: a 3D NURBS
-    // kernel does not exist yet (see collectTripletsImpl<true>'s guard).
+    // untouched. B-spline AND NURBS (see the ...NURBS siblings near the
+    // 2D NURBS implementations) -- dispatched at runtime exactly like the
+    // 2D kernels (patch_.cp_manager->is_rational()).
     // ─────────────────────────────────────────────────────────────────
 
     // Geometry shared by the 3D stiffness and mass kernels at one Gauss
@@ -194,13 +195,34 @@ private:
         const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv,
         const Eigen::VectorXd& Nw, const Eigen::VectorXd& dNw) const;
 
+    // NURBS variant -- same quotient-rule rationalization as
+    // evaluateGaussPointGeometryNURBS (2D), extended to the 3 parametric
+    // directions, applied BEFORE the 3x3 Jacobian (which is then computed
+    // identically to the B-spline path, on the already-rational R/dR).
+    GaussPointGeometry3D evaluateGaussPointGeometry3DNURBS(
+        const std::vector<const double*>& pts,
+        const Eigen::VectorXd& Nu, const Eigen::VectorXd& dNu,
+        const Eigen::VectorXd& Nv, const Eigen::VectorXd& dNv,
+        const Eigen::VectorXd& Nw, const Eigen::VectorXd& dNw,
+        const std::vector<double>& weights) const;
+
     Eigen::MatrixXd computeLocalStiffnessContribution3D(
         const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
         const SpanGauss1D& sg_w, const std::vector<int>& span);
+    // NURBS variant -- textually identical except for the geometry call.
+    Eigen::MatrixXd computeLocalStiffnessContribution3DNURBS(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const SpanGauss1D& sg_w, const std::vector<int>& span,
+        const std::vector<double>& weights);
 
     Eigen::MatrixXd computeLocalMassContribution3D(
         const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
         const SpanGauss1D& sg_w, const std::vector<int>& span);
+    // NURBS variant -- textually identical except for the geometry call.
+    Eigen::MatrixXd computeLocalMassContribution3DNURBS(
+        const Patch& patch, const SpanGauss1D& sg_u, const SpanGauss1D& sg_v,
+        const SpanGauss1D& sg_w, const std::vector<int>& span,
+        const std::vector<double>& weights);
 
     // Assemble local contribution into global matrix (shared by stiffness and mass)
     void assembleLocalContribution(const Eigen::MatrixXd& local_contribution, const std::vector<int>& span, std::vector<Eigen::Triplet<double>>& tripletList);
@@ -227,6 +249,14 @@ private:
         const Patch& patch, const std::vector<int>& span, int direction,
         const SpanGauss1D& sg_p, const SpanGauss1D& sg_q,
         const Eigen::VectorXd& N_fixed_boundary, const Traction3D& traction) const;
+    // NURBS variant -- rationalizes R/dRdp/dRdq (quotient rule) BEFORE
+    // computing the surface tangents Tp/Tq, same ordering as
+    // computeLocalBoundaryLoadContributionNURBS (2D).
+    Eigen::VectorXd computeLocalBoundaryLoadContribution3DNURBS(
+        const Patch& patch, const std::vector<int>& span, int direction,
+        const SpanGauss1D& sg_p, const SpanGauss1D& sg_q,
+        const Eigen::VectorXd& N_fixed_boundary, const Traction3D& traction,
+        const std::vector<double>& weights) const;
 
     // if constexpr dispatch helpers: IsRational=false generates code identical
     // to the current B-spline-only path; IsRational=true calls the NURBS
@@ -507,22 +537,23 @@ public:
 template<bool IsRational>
 void PatchIntegrator::collectTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList) {
     if (basis_w_) {
-        if constexpr (IsRational) {
-            throw std::logic_error(
-                "PatchIntegrator: 3D NURBS solids are not implemented yet; this phase "
-                "supports non-rational (B-spline) 3D volumes only.");
-        } else {
-            SpanNDIterator it = patch_.spans();
-            for (auto span : it) {
-                int idx_u = basis_u_.span_indices.at(span[0]);
-                int idx_v = basis_v_.span_indices.at(span[1]);
-                int idx_w = basis_w_->span_indices.at(span[2]);
-                const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
-                const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
-                const SpanGauss1D& sg_w = basis_w_->gauss_spans[idx_w];
-                Eigen::MatrixXd lc = computeLocalStiffnessContribution3D(patch_, sg_u, sg_v, sg_w, span);
-                assembleLocalContribution(lc, span, tripletList);
+        SpanNDIterator it = patch_.spans();
+        for (auto span : it) {
+            int idx_u = basis_u_.span_indices.at(span[0]);
+            int idx_v = basis_v_.span_indices.at(span[1]);
+            int idx_w = basis_w_->span_indices.at(span[2]);
+            const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+            const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+            const SpanGauss1D& sg_w = basis_w_->gauss_spans[idx_w];
+
+            Eigen::MatrixXd lc;
+            if constexpr (IsRational) {
+                auto w = patch_.weights_for_span(span);
+                lc = computeLocalStiffnessContribution3DNURBS(patch_, sg_u, sg_v, sg_w, span, w);
+            } else {
+                lc = computeLocalStiffnessContribution3D(patch_, sg_u, sg_v, sg_w, span);
             }
+            assembleLocalContribution(lc, span, tripletList);
         }
         return;
     }
@@ -547,22 +578,23 @@ void PatchIntegrator::collectTripletsImpl(std::vector<Eigen::Triplet<double>>& t
 template<bool IsRational>
 void PatchIntegrator::collectMassTripletsImpl(std::vector<Eigen::Triplet<double>>& tripletList) {
     if (basis_w_) {
-        if constexpr (IsRational) {
-            throw std::logic_error(
-                "PatchIntegrator: 3D NURBS solids are not implemented yet; this phase "
-                "supports non-rational (B-spline) 3D volumes only.");
-        } else {
-            SpanNDIterator it = patch_.spans();
-            for (auto span : it) {
-                int idx_u = basis_u_.span_indices.at(span[0]);
-                int idx_v = basis_v_.span_indices.at(span[1]);
-                int idx_w = basis_w_->span_indices.at(span[2]);
-                const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
-                const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
-                const SpanGauss1D& sg_w = basis_w_->gauss_spans[idx_w];
-                Eigen::MatrixXd lc = computeLocalMassContribution3D(patch_, sg_u, sg_v, sg_w, span);
-                assembleLocalContribution(lc, span, tripletList);
+        SpanNDIterator it = patch_.spans();
+        for (auto span : it) {
+            int idx_u = basis_u_.span_indices.at(span[0]);
+            int idx_v = basis_v_.span_indices.at(span[1]);
+            int idx_w = basis_w_->span_indices.at(span[2]);
+            const SpanGauss1D& sg_u = basis_u_.gauss_spans[idx_u];
+            const SpanGauss1D& sg_v = basis_v_.gauss_spans[idx_v];
+            const SpanGauss1D& sg_w = basis_w_->gauss_spans[idx_w];
+
+            Eigen::MatrixXd lc;
+            if constexpr (IsRational) {
+                auto w = patch_.weights_for_span(span);
+                lc = computeLocalMassContribution3DNURBS(patch_, sg_u, sg_v, sg_w, span, w);
+            } else {
+                lc = computeLocalMassContribution3D(patch_, sg_u, sg_v, sg_w, span);
             }
+            assembleLocalContribution(lc, span, tripletList);
         }
         return;
     }

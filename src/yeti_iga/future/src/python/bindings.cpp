@@ -850,7 +850,8 @@ IGABasis1D
              py::keep_alive<1, 5>(),
              "3D solid (BSplineVolume) constructor: one IGABasis1D per parametric "
              "direction (u, v, w). law must have n_dofs_per_cp() == 3 (Elasticity3D). "
-             "Non-rational (B-spline) volumes only for now. patch/basis_u/basis_v/"
+             "B-spline and NURBS volumes both supported (dispatched at runtime on "
+             "patch.cp_manager.is_rational). patch/basis_u/basis_v/"
              "basis_w are kept alive in Python for as long as this PatchIntegrator is "
              "alive (see the 4-argument 2D constructor's docstring).")
         .def(py::init<const Patch&, const IGABasis1D&, const IGABasis1D&, const IGABasis1D&>(),
@@ -971,8 +972,8 @@ IGABasis1D
             "3D equivalent of integrate_boundary_load(): integrates a Traction3D "
             "over this single patch's FACE obtained by fixing `direction` "
             "(0=u, 1=v, 2=w) at its first (side=0) or last (side=1) local index. "
-            "Requires the 3-basis (3D solid) constructor. Non-rational "
-            "(B-spline) volumes only.")
+            "Requires the 3-basis (3D solid) constructor. B-spline and NURBS "
+            "volumes both supported.")
         .def_static("assemble_boundary_load_3d", &PatchIntegrator::assembleBoundaryLoad3D,
             py::arg("assembly"), py::arg("specs"), py::arg("gauss_n") = 0,
             "Assemble several 3D distributed boundary loads (each on a "
