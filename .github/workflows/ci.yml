@@ -38,7 +38,10 @@ jobs:
   test:
     name: Test wheel on multiple Pythons
     needs: build
-    runs-on: ubuntu-latest
+    # Pinned (not ubuntu-latest): Python 3.9 reached EOL and actions/setup-python
+    # can no longer install it on newer ubuntu-latest images (currently 26.04).
+    # ubuntu-22.04 still has it. requires-python in pyproject.toml is >=3.9.
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
