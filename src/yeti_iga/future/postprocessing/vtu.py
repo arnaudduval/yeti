@@ -29,6 +29,42 @@ from ..bspline import BezierExtractor
 #   4. Volume interior points                            ← 3D only
 #
 # Our u-fastest flat index:  flat = iu + iv*(pu+1) [+ iw*(pu+1)*(pv+1)]
+#
+# Both the exact point order below AND the file-level metadata it depends on
+# were confirmed directly against VTK itself (VTK 9.7.0) rather than assumed
+# from documentation, after a rendered 3D solid came out visibly twisted
+# (self-intersecting "pinwheel" folds) even for a trivial, non-rational,
+# isotropic-degree box -- proving the bug lived in this permutation / the
+# file it's written into, not in the geometry, NURBS rationalization, or
+# BezierExtractor (each independently verified correct first). Two distinct,
+# compounding issues were found, both fixed now:
+#
+# 1. The 6 face-interior points were grouped/ordered wrong (an unverified
+#    guess at VTK's convention). The *actual* order --
+#    iu=0, iu=pu, iv=0, iv=pv, iw=0, iw=pw, with the lower-lettered free
+#    direction fastest within each face -- was read off directly from VTK's
+#    own ground truth: calling the static
+#    `vtkBezierHexahedron.PointIndexFromIJK(i, j, k, order)` for every grid
+#    point and inverting it, cross-checked at several isotropic and
+#    anisotropic degrees (not just the one case that first exposed the bug).
+#
+# 2. Independently, `write_bezier_patch_vtu`'s hand-rolled XML declared
+#    `<VTKFile ... version="2.0">`. VTK's XML reader silently mis-parses
+#    VTK_BEZIER_HEXAHEDRON connectivity under that (too old) format version
+#    -- confirmed by writing the identical point/connectivity data with
+#    vtkXMLUnstructuredGridWriter (which stamps version 2.3) and seeing no
+#    corruption, then bisecting the version string down to "2.2" as the
+#    boundary. This is also what caused the previously-diagnosed
+#    "anisotropic HigherOrderDegrees misread" crash (vtkBezierHexahedron
+#    segfaulting under warp_by_vector()/clip() for e.g. degree (2,2,1)) --
+#    that was the SAME root cause wearing a different symptom, not a
+#    separate bug; the degree-elevation clone that used to work around it
+#    (_equalize_hexahedron_degrees) is no longer needed and has been
+#    removed. The `HigherOrderDegrees` CellData array name is also now
+#    spelled correctly (it was "HighOrderDegrees", missing "er") for the
+#    same reason: self-consistent but non-canonical naming happened not to
+#    be the trigger here, but there's no reason to keep a typo that
+#    diverges from what VTK's own writer emits.
 
 
 def _perm_2d(pu: int, pv: int) -> list[int]:
@@ -98,19 +134,23 @@ def _perm_3d(pu: int, pv: int, pw: int) -> list[int]:
     for iw in range(1, pw): p.append(f(pu, pv, iw))
     for iw in range(1, pw): p.append(f(0,  pv, iw))
 
-    # 6 face interiors (one per face of the hex)
+    # 6 face interiors, in VTK order: iu=0, iu=pu, iv=0, iv=pv, iw=0, iw=pw --
+    # confirmed directly against vtkBezierHexahedron.PointIndexFromIJK (not
+    # the order this code originally guessed; see design.rst for how this
+    # was diagnosed). Within each face, the lower-lettered free direction
+    # varies fastest.
+    for iw in range(1, pw):
+        for iv in range(1, pv): p.append(f(0, iv, iw))    # face iu=0
+    for iw in range(1, pw):
+        for iv in range(1, pv): p.append(f(pu, iv, iw))   # face iu=pu
+    for iw in range(1, pw):
+        for iu in range(1, pu): p.append(f(iu, 0, iw))    # face iv=0
+    for iw in range(1, pw):
+        for iu in range(1, pu): p.append(f(iu, pv, iw))   # face iv=pv
     for iv in range(1, pv):
-        for iu in range(1, pu): p.append(f(iu, iv, 0))   # face iw=0
+        for iu in range(1, pu): p.append(f(iu, iv, 0))    # face iw=0
     for iv in range(1, pv):
-        for iu in range(1, pu): p.append(f(iu, iv, pw))  # face iw=pw
-    for iw in range(1, pw):
-        for iu in range(1, pu): p.append(f(iu, 0, iw))   # face iv=0
-    for iw in range(1, pw):
-        for iv in range(1, pv): p.append(f(pu, iv, iw))  # face iu=pu
-    for iw in range(1, pw):
-        for iu in range(1, pu): p.append(f(iu, pv, iw))   # face iv=pv (ascending)
-    for iw in range(1, pw):
-        for iv in range(1, pv): p.append(f(0, iv, iw))    # face iu=0 (ascending)
+        for iu in range(1, pu): p.append(f(iu, iv, pw))   # face iw=pw
 
     # Volume interior
     for iw in range(1, pw):
@@ -191,9 +231,13 @@ def write_bezier_patch_vtu(
 
     Notes
     -----
-    Requires Paraview 5.9+ / VTK 9.0+.
+    Requires Paraview 5.9+ / VTK 9.0+. The VTKFile header must declare
+    format version 2.2 or later -- version 2.0 (an older default some code
+    uses) makes VTK's XML reader silently mis-parse higher-order
+    (Bezier/Lagrange) cell connectivity, see the module-level comment above
+    _perm_3d() for how this was diagnosed.
     """
-    ndim     = len(patch.tensor.components)
+    ndim = len(patch.tensor.components)
     dim_phys = len(patch.control_point(0))
 
     if ndim == 2:
@@ -305,12 +349,12 @@ def _write_vtu_xml(
 
     L = [
         '<?xml version="1.0"?>',
-        '<VTKFile type="UnstructuredGrid" version="2.0" byte_order="LittleEndian">',
+        '<VTKFile type="UnstructuredGrid" version="2.2" byte_order="LittleEndian">',
         '  <UnstructuredGrid>',
         f'    <Piece NumberOfPoints="{n_pts}" NumberOfCells="{n_cells}">',
         # HigherOrderDegrees attribute tells VTK which CellData array holds degrees.
-        '      <CellData HigherOrderDegrees="HighOrderDegrees">',
-        '        <DataArray type="Int32" Name="HighOrderDegrees"'
+        '      <CellData HigherOrderDegrees="HigherOrderDegrees">',
+        '        <DataArray type="Int32" Name="HigherOrderDegrees"'
         ' NumberOfComponents="3" format="ascii">',
         f'          {hod_vals}',
         '        </DataArray>',
