@@ -165,6 +165,120 @@ def control_net_lines(patch, points=None):
     return pv.PolyData(points, lines=np.hstack(lines))
 
 
+def _iso_line_walk_3d_face(patch, fixed_dir, fixed_val, n_samples):
+    """
+    Like _iso_line_walk(), generalized to one boundary FACE of a 3D
+    (BSplineVolume) solid patch instead of the whole 2D domain: yields
+    (spans, params) for each knot-break line within the face where
+    parametric direction `fixed_dir` is held at `fixed_val` (0.0 or 1.0).
+    Behind element_boundary_curves_3d()/element_boundary_curves_3d_deformed().
+    """
+    comps = patch.tensor.components
+    d0, d1 = [d for d in range(3) if d != fixed_dir]
+    breaks0 = np.unique(comps[d0].knot_vector)
+    breaks1 = np.unique(comps[d1].knot_vector)
+
+    def spans_for(params):
+        return np.array(
+            [[comps[d].find_span(params[i, d]) for d in range(3)]
+             for i in range(len(params))], dtype=np.int32)
+
+    for b0 in breaks0:
+        params = np.zeros((n_samples, 3))
+        params[:, fixed_dir] = fixed_val
+        params[:, d0] = b0
+        params[:, d1] = np.linspace(breaks1[0], breaks1[-1], n_samples)
+        yield spans_for(params), params
+
+    for b1 in breaks1:
+        params = np.zeros((n_samples, 3))
+        params[:, fixed_dir] = fixed_val
+        params[:, d1] = b1
+        params[:, d0] = np.linspace(breaks0[0], breaks0[-1], n_samples)
+        yield spans_for(params), params
+
+
+def element_boundary_curves_3d(patch, n_samples=20):
+    """
+    True (curved) element boundaries on the outer surface of a 3D
+    (BSplineVolume) solid Patch -- one polyline per knot-break line on each
+    of the 6 faces of the parametric cube (u=0/1, v=0/1, w=0/1), evaluated
+    directly from the patch's basis via Patch.evaluate_patch_nd_omp(). The
+    3D (solid) analogue of element_boundary_curves() (2D shells, where the
+    whole parametric domain IS the rendered surface): a solid is rendered
+    via its boundary surface, so each of its 6 faces gets its own 2D
+    iso-line grid in its two free directions, exactly as
+    element_boundary_curves() would trace for a 2D patch.
+
+    For a single-element patch (no interior knots), this reduces to just
+    each face's 4-edge outline; for a multi-element patch it also includes
+    the interior element grid lines on each face.
+
+    This is the overlay to use instead of a pyvista/trame viewer's own
+    "edges" toggle, which (on a mesh already tessellated by
+    ``extract_surface(nonlinear_subdivision=...)`` for rendering) shows that
+    triangulation, not the actual NURBS element boundaries -- exactly the
+    2D-shell problem element_boundary_curves() was already written to solve,
+    now generalized to solids.
+
+    Parameters
+    ----------
+    patch : Patch
+        3D (BSplineVolume) patch to trace.
+    n_samples : int, default 20
+        Points sampled along each element edge.
+
+    Returns
+    -------
+    pyvista.PolyData
+    """
+    builder = _PolylineBuilder()
+    for fixed_dir in range(3):
+        for fixed_val in (0.0, 1.0):
+            for spans, params in _iso_line_walk_3d_face(patch, fixed_dir, fixed_val, n_samples):
+                builder.add(patch.evaluate_patch_nd_omp(spans, params))
+    return builder.build()
+
+
+def element_boundary_curves_3d_deformed(patch, u_global, factor=1.0, n_samples=20):
+    """
+    Like element_boundary_curves_3d(), but for a *deformed* FE solution --
+    adds the solution's displacement (scaled by `factor`) to the reference
+    geometry at the same fine samples along each boundary-surface element
+    edge, via PatchEvaluator. The 3D (solid) analogue of
+    element_boundary_curves_deformed().
+
+    Parameters
+    ----------
+    patch : Patch
+        3D (BSplineVolume) patch with a PatchDOFManager attached (required
+        by PatchEvaluator).
+    u_global : ndarray, shape (n_dof,)
+        Global solution vector matching `patch`'s dof numbering. Only the
+        first 3 dof components per control point (translations) are used.
+    factor : float, default 1.0
+        Displacement scale factor -- pass the same value given to
+        warp_by_vector() so this overlay matches the colored surface.
+    n_samples : int, default 20
+        Points sampled along each element edge.
+
+    Returns
+    -------
+    pyvista.PolyData
+    """
+    from ..bspline import PatchEvaluator  # local import, see element_boundary_curves_deformed
+    evaluator = PatchEvaluator(patch)
+
+    builder = _PolylineBuilder()
+    for fixed_dir in range(3):
+        for fixed_val in (0.0, 1.0):
+            for spans, params in _iso_line_walk_3d_face(patch, fixed_dir, fixed_val, n_samples):
+                pts_ref = patch.evaluate_patch_nd_omp(spans, params)
+                u_field = evaluator.evaluate_solution(params, u_global)
+                builder.add(pts_ref + factor * u_field[:, :pts_ref.shape[1]])
+    return builder.build()
+
+
 def element_boundary_curves(patch, n_samples=20):
     """
     True (curved) element boundaries of a Patch, evaluated directly from its
@@ -351,7 +465,7 @@ def add_deformed_shell(
         show_control_net is False.
     """
     surf = mesh if nonlinear_subdivision <= 1 else mesh.extract_surface(
-        nonlinear_subdivision=nonlinear_subdivision)
+        nonlinear_subdivision=nonlinear_subdivision, algorithm=None)
     warped = surf.warp_by_vector(field_name, factor=factor)
 
     title = scalar_bar_title
