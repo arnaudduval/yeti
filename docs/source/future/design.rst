@@ -924,6 +924,55 @@ assembly workflow described above — it exists to provide an alternate, per-ele
 representation (e.g. for export/interop with finite-element-style tools or alternate
 assembly strategies), independent of patch sharing or refinement propagation.
 
+VTU export and a VTK higher-order hexahedron bug
+----------------------------------------------------
+
+``yeti_iga.future.postprocessing.vtu.write_bezier_patch_vtu`` exports a patch as
+VTK high-order Bézier cells — ``VTK_BEZIER_QUADRILATERAL`` (type 77) for a 2D patch,
+``VTK_BEZIER_HEXAHEDRON`` (type 79) for a 3D (``BSplineVolume``) patch — using
+``BezierExtractor`` (see above) to get each element's Bézier control points, so this
+is the same per-element decomposition the rest of the module already relies on, not a
+separate geometric representation. NURBS patches additionally write a
+``RationalWeights`` point-data array so VTK applies the rational Bézier formula exactly
+rather than silently treating the cell as non-rational.
+
+Two non-obvious constraints, confirmed against VTK itself
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Two details of the 3D (``VTK_BEZIER_HEXAHEDRON``) export path look arbitrary but are
+load-bearing — relaxing either reintroduces a bug with no exception and no crash, just a
+visibly wrong (twisted, self-intersecting) rendered shape.
+
+**The VTKFile header must declare format version 2.2 or later.** VTK's own XML reader
+silently mis-parses ``VTK_BEZIER_HEXAHEDRON`` connectivity under version ``"2.0"`` (a
+plausible-looking default) — confirmed by writing identical data with
+``vtkXMLUnstructuredGridWriter`` itself (which stamps version ``2.3`` and round-trips
+correctly) and bisecting the version string down to find ``"2.2"`` as the boundary. This
+was also the root cause of a previously-separate-looking crash: an **anisotropic**-degree
+hexahedron (e.g. degree ``(2,2,1)``, the natural shape for a solid with two curved
+directions and one straight thickness direction) used to make pyvista's
+``warp_by_vector()``/``clip()`` segfault outright, worked around by exporting a
+degree-elevated, all-directions-equal clone instead. Under version ``"2.0"``, VTK's
+reader falls back to inferring the cell's order from total point count — wrong but
+consistently-sized for an isotropic cell, ambiguous (and memory-corrupting) for an
+anisotropic one. Declaring ``version="2.2"`` fixes both; the degree-elevation clone
+workaround is no longer needed and has been removed.
+
+**``_perm_3d()``'s face-interior point order must match VTK's own convention, not a
+guess.** VTK orders a hexahedron's 6 face-interior point groups as
+``iu=0, iu=pu, iv=0, iv=pv, iw=0, iw=pw`` (lower-lettered free direction fastest within
+each face) — read directly off ``vtkBezierHexahedron.PointIndexFromIJK(i, j, k, order)``
+rather than assumed, and checked at several isotropic and anisotropic degrees, not just
+the one that first exposed the bug. 2D patches (``VTK_BEZIER_QUADRILATERAL``) were
+checked the same way and were already correct — this is 3D-hexahedron-specific.
+
+.. code-block:: python
+
+   # A degree-(2,2,1) NURBS solid (two rational, circular-arc directions +
+   # one straight, non-rational thickness direction) -- exports and renders
+   # directly, no workaround needed.
+   write_bezier_patch_vtu(patch, "solid.vtu", field=displacement, field_name="disp")
+
 Worked example
 ------------------
 
